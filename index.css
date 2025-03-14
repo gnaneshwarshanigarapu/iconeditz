@@ -134,14 +134,15 @@ h2 {
     color: #5AF08C;
     font-size: 18px;
 }
+.vid{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
 video{
     display: flex;
     width: 320px;
     margin: 20px;
-}
-.vid{
-    display: flex;
-    justify-content: center;
 }
 
 #tools {
