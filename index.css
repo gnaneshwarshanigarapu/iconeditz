@@ -54,6 +54,8 @@ nav ul li a {
     padding: 20px;
     margin: 25px;
     height: 600px;
+    width: 100%;
+    display: flex;
 }
 h2 {
     color: #9D98FF;
