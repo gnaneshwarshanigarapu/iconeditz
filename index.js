@@ -2,22 +2,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const navLinks = document.querySelectorAll('.nav-link');
     const contentSections = document.querySelectorAll('.content-section');
 
+    // Navigation link click event
     navLinks.forEach(link => {
         link.addEventListener('click', function(event) {
             event.preventDefault();
             const target = this.getAttribute('data-target');
 
+            // Remove active class from all sections
             contentSections.forEach(section => {
                 section.classList.remove('active');
             });
 
-            document.getElementById(target).classList.add('active');
+            // Add active class to the clicked section
+            const targetSection = document.getElementById(target);
+            targetSection.classList.add('active');
 
-            // Smooth scrolling
-            document.getElementById(target).scrollIntoView({ behavior: 'smooth' });
+            // Smooth scrolling to target section
+            targetSection.scrollIntoView({ behavior: 'smooth' });
         });
     });
 
+    // Contact form submission
     const contactForm = document.getElementById('contactForm');
     contactForm.addEventListener('submit', function(event) {
         event.preventDefault();
@@ -31,16 +36,18 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Here you can add code to handle the form submission, like sending an email or saving to a database
+        // You can replace this with actual form submission logic
         alert(`Thank you, ${name}! Your message has been sent.`);
         contactForm.reset();
     });
 
-    // Setup and start animation!
+    // Typed.js animation setup
     var typed = new Typed('#element', {
-        strings: ['Video Editor.','Content Creator.'],
+        strings: ['Video Editor.', 'Content Creator.'],
         typeSpeed: 50,
         backSpeed: 50,
-        loop: true // Added loop property to continuously loop the animation
+        backDelay: 1000, // Delay before backspacing starts
+        loop: true,      // Loop the animation
+        showCursor: false // Hide the typing cursor
     });
 });
