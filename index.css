@@ -1,20 +1,17 @@
-*{
+* {
     margin: 0px;
     padding: 0px;
 }
 body {
     font-family: 'poppins';
     margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #464E61;
+    padding: 0px;
+    background-color: #464e61 !important;
     box-sizing: border-box;
 }
-
-nav{
+nav {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
     background-color: #2F333C;
     color: white;
@@ -22,16 +19,20 @@ nav{
     top: 0;
     z-index: 1;
     width: 100%;
+    padding: 10px 20px;
 }
-.nav-left a h1{
-    display: block;
-    float: left;   
-    justify-content: space-around;
+.navbar {
+    background-color: #2F333C; 
+    position: fixed;
 }
-.nav-left h1 {
+.navbar-brand h1{
+    margin-left: 25px;
     color: #9D98FF;
     text-decoration: none;
-    font-size: auto;
+    font-size: 24px;
+}
+#navbarNav{
+    margin-right: 15px;
 }
 nav ul {
     list-style-type: none;
@@ -44,19 +45,22 @@ nav ul li a {
     padding: 10px;
     display: block;
 }
+.nav-item a{
+    color: white;
+}
 .nav-item a:hover {
     color: #6aff9b;
 }
 .nav-item a:focus {
     color: #6aff9b;
 }
+
 .content-section {
     background-color: #2F333C;
     color: white;
     padding: 20px;
     margin: 25px;
-    height: 600px;
-    display: flex;
+    height: auto;
 }
 h2 {
     color: #9D98FF;
@@ -67,25 +71,36 @@ h2 {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    margin-top: 70px;
+    flex-direction: column;
 }
-#home > div{
-    width: 40%;
-    float: left;
+#home > div {
+    width: 100%;
+    text-align: center;
 }
 .home-left {
+    text-align: left;
     font-size: 30px;
-    margin: 30px ;
+    margin: 30px;
     padding-left: 10px;
-}  
-.home-right img{
+}
+.home-left-text{
+    padding-left: 100px;
+    padding-bottom: 10px;
+}
+.home-right img {
     width: 80%;
     border-radius: 20%;
 }
-.namecolor{
+.namecolor {
     color: #9D98FF;
 }
-.social-links a i{
+.social-links {
+    display: flex;
+    justify-content: center; 
+    gap: 20px; 
+    align-items: center;
+}
+.social-links a i {
     display: block;
     text-decoration: none;
     justify-content: space-between;
@@ -93,19 +108,14 @@ h2 {
     color: #9D98FF;
     padding-right: 10px;
 }
-.social-links :hover{
+.social-links :hover {
     color: #6aff9b;
 }
-
-#about{
-    height: fit-content;
-    display: flex;
-    justify-content: flex-start;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: center;
+#element {
+    display: inline-block;
 }
-.about{
+
+#about .about {
     width: 100%;
     height: auto;
     display: flex;
@@ -114,15 +124,15 @@ h2 {
     flex-wrap: nowrap;
     align-items: center;
 }
-.about-text{
-    padding: 10px 100px 10px 100px;
+.about-text {
+    padding: 10px 100px;
     text-indent: 50px;
     text-align: justify;
 }
 .about-text-b {
     text-align: justify;
 }
-.about-details{
+.about-details {
     display: flex;
     flex-direction: column;
     padding: 10px;
@@ -139,19 +149,18 @@ h2 {
     flex-wrap: nowrap;
     align-items: center;
 }
-#project span{
+#project span {
     color: #5AF08C;
     font-size: 18px;
 }
-.vid{
-    width: 100%;
+video {
+    display: flex;
+    width: 400px;
+    margin: 20px;
+}
+.vid {
     display: flex;
     justify-content: center;
-}
-video{
-    display: flex;
-    width: 320px;
-    margin: 20px;
 }
 
 #tools {
@@ -160,6 +169,11 @@ video{
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: center;
+}
+#tools .container {
+    background-color: white; 
+    padding: 20px;          
+    border-radius: 10px; 
 }
 .logo-container {
     display: flex;
@@ -173,7 +187,7 @@ video{
     margin: 100px;
     border-radius: 5px;
 }
-.logo-container img{
+.logo-container img {
     width: 150px;
 }
 
@@ -183,7 +197,7 @@ video{
     flex-direction: column;
 }
 
-.contact-main{
+.contact-main {
     display: flex;
     height: 100%;
     justify-content: center;
@@ -203,7 +217,7 @@ video{
     flex-direction: column;
 }
 label {
-    color:  #9D98FF;
+    color: #9D98FF;
     float: left;
 }
 input, textarea {
@@ -220,20 +234,19 @@ textarea {
 }
 button {
     padding: 10px;
-    background-color:  #6aff9b;
-    color:  white;
+    background-color: #6aff9b;
+    color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
 }
 button:hover {
-    background-color:  #6aff9b;
+    background-color: #6aff9b;
 }
 
-.contact-main-sub2{
+.contact-main-sub2 {
     width: 50%;
     height: 100%;
-    /* background-color: #5AF08C; */
     border-radius: 18px;
     display: flex;
     flex-direction: column;
@@ -242,29 +255,32 @@ button:hover {
     padding-left: 20px;
 }
 
-.contact-main-sub2 span{
-    color:  #6aff9b;
+.contact-main-sub2 span {
+    color: #6aff9b;
     font-size: 20px;
     padding-top: 20px;
     text-align: center;
 }
 
-.contact-info{
+.center-text {
+    text-align: center;
+}
+.contact-info {
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     flex-wrap: wrap;
     padding: 10px;
+    padding-left: 50px;
 }
-.contact-info-item{
+.contact-info-item {
     width: 100%;
     margin: 10px;
 }
-.contact-info-item i{
+.contact-info-item i {
     text-decoration: none;
-    color:  #9D98FF;
-    /* background-color: rgba(255, 255, 255, 0.492); */
+    color: #9D98FF;
     padding: 10px;
     border-radius: 50%;
     margin-right: 10px;
@@ -278,8 +294,7 @@ button:hover {
     padding: 10px;
 }
 
-footer{
-    width: 100%;
+footer {
     display: flex;
     justify-content: space-around;
     align-items: center;
@@ -288,118 +303,87 @@ footer{
     padding: 20px;
     margin-bottom: 25px;
 }
-footer a{
+footer a {
     color: #6aff9b;
     text-decoration: none;
     display: block;
 }
 
-/* Mobile Responsive Styles */
+/* Mobile Responsive Design */
 @media (max-width: 768px) {
-  /* General Adjustments */
-  body {
-    padding-top: 60px; /* Adjust for fixed navbar */
-  }
-
-  /* Navbar */
-  nav {
-    flex-direction: column;
-    padding: 10px;
-    text-align: center;
-  }
-  .nav-left h1 {
-    font-size: 24px; /* Smaller font size for mobile */
-  }
-  nav ul {
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px 0;
-  }
-  nav ul li a {
-    padding: 5px;
-  }
-
-  /* Home Section */
-  #home {
-    flex-direction: column;
-    text-align: center;
-    margin-top: 80px; /* Adjust for fixed navbar */
-  }
-  #home > div {
-    width: 100%;
-  }
-  .home-left {
-    font-size: 24px; /* Smaller font size for mobile */
-    margin: 20px 0;
-  }
-  .home-right img {
-    width: 60%; /* Smaller image for mobile */
-    margin-top: 20px;
-  }
-  .social-links {
-    justify-content: center;
-  }
-
-  /* About Section */
-  #about .about {
-    padding: 10px;
-  }
-  .about-text {
-    padding: 10px; /* Reduce padding for mobile */
-    text-indent: 0; /* Remove text indent for mobile */
-  }
-  .about-details {
-    padding-left: 10px; /* Reduce padding for mobile */
-    margin-top: 20px;
-  }
-
-  /* Projects Section */
-  #project {
-    padding: 10px;
-  }
-  .vid {
-    flex-direction: column;
-    align-items: center;
-  }
-  video {
-    width: 100%; /* Full width for mobile */
-    margin: 10px 0;
-  }
-
-  /* Tools Section */
-  .logo-container {
-    width: 90%; /* Full width for mobile */
-    margin: 20px auto;
-    padding: 10px;
-  }
-  .logo-container img {
-    width: 100px; /* Smaller logos for mobile */
-  }
-
-  /* Contact Section */
-  .contact-main {
-    flex-direction: column;
-    width: 90%; /* Full width for mobile */
-    padding: 10px;
-  }
-  .contact-main-sub1, .contact-main-sub2 {
-    width: 100%;
-    padding: 10px;
-  }
-  .contact-main-sub2 span {
-    font-size: 18px; /* Smaller font size for mobile */
-  }
-  .contact-info-item {
-    text-align: center;
-  }
-
-  /* Footer */
-  footer {
-    flex-direction: column;
-    text-align: center;
-    padding: 10px;
-  }
-  footer span {
-    margin: 5px 0;
-  }
+    body {
+        background-color: #464E61; /* You can keep the same background for mobile */
+    }
+    nav {
+        flex-direction: column;
+        padding: 10px;
+    }
+    .nav-left a h1 {
+        font-size: 24px;
+    }
+    nav ul {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .content-section {
+        margin: 10px;
+    }
+    #home {
+        flex-direction: column;
+        align-items: center;
+    }
+    .home-left {
+        font-size: 20px;
+    }
+    .home-left-text{
+        padding-left: 0px;
+        padding-bottom: 30px;
+    }
+    .home-right img {
+        width: 90%;
+        margin-top: 0px;
+    }
+    #element {
+        white-space: nowrap;
+    }
+    .about-text {
+        padding: 10px 20px;
+        text-align: justify;
+    }
+    .about-details {
+        padding-left: 20px;
+    }
+    #project {
+        flex-direction: column;
+        align-items: center;
+    }
+    .logo-container {
+        width: 100%;
+        margin: 20px;
+        padding: 20px;
+        height: auto;
+    }
+    .contact-main {
+        flex-direction: column;
+        width: 100%;
+    }
+    .contact-main-sub1, .contact-main-sub2 {
+        width: 100%;
+        padding-left: 20px;
+    }
+    .contact-info {
+        padding-left: 0px;
+    }
+    .contact-info-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    footer {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px;
+    }
 }
