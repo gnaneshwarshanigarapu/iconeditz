@@ -26,156 +26,253 @@
     <!-- Google Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:400,700,900">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,700,900">
+
+    <!--Bootstrap-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
     
 </head>
-<body>
-    <!-- Start Navbar -->
-     <header class="nav-container">
-      <nav class="nav-menu d-none d-lg-block">
-        <div class="nav-left">
-          <a href="#home" class="nav-link" data-target="home"><h1>Icon Editz</h1></a>
-        </div>
-        <div class="nav-right">
-            <ul>
-              <li class="nav-item"><a href="#Home" class="nav-link" data-target="home"><span>Home</span></a></li>
-              <li class="nav-item"><a href="#About" class="nav-link" data-target="about"><span>About</span></a></li>
-              <li class="nav-item"><a href="#Project" class="nav-link" data-target="project"> <span>Projects</span></a></li>
-              <li class="nav-item"><a href="#Tools" class="nav-link" data-target="tools"> <span>Tools</span></a></li>
-              <li class="nav-item"><a href="#Contact" class="nav-link" data-target="contact"> <span>Contact</span></a></li>
-            </ul>
-        </div>
-      </nav>
-    </header>
-		<!-- End Navbar -->
+<body> 
+  <!-- Start Navbar -->
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-light">
+      <div class="container-fluid">
+          <a class="navbar-brand" href="#home"><h1>Icon Editz</h1></a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+              aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+              <ul class="navbar-nav ms-auto">
+                  <li class="nav-item">
+                      <a class="nav-link" href="#Home" data-target="home">Home</a>
+                  </li>
+                  <li class="nav-item">
+                      <a class="nav-link" href="#About" data-target="about">About</a>
+                  </li>
+                  <li class="nav-item">
+                      <a class="nav-link" href="#Project" data-target="project">Projects</a>
+                  </li>
+                  <li class="nav-item">
+                      <a class="nav-link" href="#Tools" data-target="tools">Tools</a>
+                  </li>
+                  <li class="nav-item">
+                      <a class="nav-link" href="#Contact" data-target="contact">Contact</a>
+                  </li>
+              </ul>
+          </div>
+      </div>
+  </nav>  
+  <!-- End Navbar -->
+
+  <!-- Start Home Section -->
+  <section id="home" class="content-section py-5">
+      <div class="container">
+          <div class="row align-items-center">
+              <!-- Left Section -->
+              <div class="col-lg-6 col-12 mb-4">
+                  <div class="home-left">
+                      <div class="home-left-text">
+                        Hi, My name is <span class="namecolor">Nani</span>
+                        <div>and I am a <span id="element"></span></div>
+                      </div>
+                      <div class="social-links">
+                          <a href="mailto:shanigarapugnaneshwar@gmail.com" target="_blank" class="google"><i
+                                  class="fa-regular fa-envelope"></i></a>
+                          <a href="https://www.youtube.com/@iconeditz143" target="_blank" class="youtube"><i
+                                  class="fa-brands fa-youtube"></i></a>
+                          <a href="https://www.instagram.com/icon._editz/" target="_blank" class="instagram"><i
+                                  class="fa-brands fa-instagram"></i></a>
+                      </div>
+                  </div>
+              </div>
+              <!-- Right Section -->
+              <div class="col-lg-6 col-12">
+                  <div class="home-right">
+                      <img src="../website/logo/iocn editz.jpg" alt="Nani" class="img-fluid">
+                  </div>
+              </div>
+          </div>
+      </div>
+  </section>
+  <!-- End Home Section -->
+
+  <!-- Start About Section -->
+  <section id="about" class="content-section py-5">
+      <div class="container">
+          <div class="row">
+              <!-- Left Section (About Text) -->
+              <div class="col-lg-6 col-md-12 mb-4">
+                  <div class="about">
+                      <h2>About Me</h2>
+                      <p class="about-text">
+                          I am a passionate and creative video editor with hands-on experience in various types of video projects, including reels, YouTube content, wedding videos, birthday celebrations, and 3D lyric videos. My journey in video editing began during my college days, where I discovered my love for storytelling and visual design. Since then, I have been dedicated to honing my skills and creating engaging, polished content that resonates with audiences.
+                      </p>
+                      <p class="about-text">
+                          I thrive on transforming raw footage into compelling narratives and have worked on a diverse range of projects that have allowed me to explore different editing techniques and styles. Whether it’s crafting a heartfelt wedding video, a dynamic reel, or a visually stunning 3D lyric video, I am committed to delivering high-quality work that captures the essence of each story.
+                      </p>
+                  </div>
+              </div>
+              <!-- Right Section (Details) -->
+              <div class="col-lg-6 col-md-12">
+                  <div class="about-details">
+                      <p class="about-text-b">Name: <span class="about-text-details">Nani</span></p>
+                      <p class="about-text-b">Birthday: <span class="about-text-details">22 November 2002</span></p>
+                      <p class="about-text-b">Phone: <span class="about-text-details">+91 9346084649</span></p>
+                      <p class="about-text-b">Village: <span class="about-text-details">Sirikonda, Kathalapur, Jagital, Telangana, 505462</span></p>
+                      <p class="about-text-b">Email: <span class="about-text-details">Shanigarapugnaneshwar143@gmail.com</span></p>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </section>
+  <!-- End About Section -->
+
+  <!-- Start Project Section -->
+  <section id="project" class="content-section py-5">
+    <div class="container">
+      <h2 class="text-center mb-4">Projects</h2>
     
-    <!-- Start Home Section -->
-      <section id="home" class="content-section active">
-          <div class="home-left">
-            Hi, My name is <span class="namecolor">Nani</span>
-            <!-- Element to contain animated typing -->
-            <div>and I am a <span id="element"></span></div>
-            <div class="social-links">
-              <a href="mailto:shanigarapugnaneshwar@gmail.com" target="_blank" class="google"><i class="fa-regular fa-envelope"></i></a>
-              <a href="https://www.youtube.com/@iconeditz143" target="_blank" class="youtube"><i class="fa-brands fa-youtube"></i></a>
-              <a href="https://www.instagram.com/icon._editz/" target="_blank" class="instagram"><i class="fa-brands fa-instagram"></i></a>
-            </div>
+      <!-- Pre-Wedding Video -->
+      <div class="mb-4">
+        <h4>Pre-Wedding Video</h4>
+        <div class="vid">
+          <video controls class="w-100 mb-3" src="videos/pre-wedding video.mp4"></video>
+        </div>
+      </div>
+    
+      <!-- Lyrics Video -->
+      <div class="mb-4">
+        <h4>Lyrics Video</h4>
+        <div class="row">
+          <div class="col-md-6 mb-3 vid">
+            <video controls class="w-100" src="videos/lyrics video naa.mp4"></video>
           </div>
-          <div class="home-right">
-            <img src="logo/iocn editz.jpg" alt="Nani">
+          <div class="col-md-6 mb-3 vid">
+            <video controls class="w-100" src="videos/lyrics video.mp4"></video>
           </div>
-      </section>
-    <!-- End Home Section -->
-
-    <!-- Start About Section -->
-      <section id="about" class="content-section">
-	<h2>About Me</h2>
-        <div class="about">
-          <p class="about-text">
-            I am a passionate and creative video editor with hands-on experience in various types of video projects, including reels, YouTube content, wedding videos, birthday celebrations, and 3D lyric videos. My journey in video editing began during my college days, where I discovered my love for storytelling and visual design. Since then, I have been dedicated to honing my skills and creating engaging, polished content that resonates with audiences.
-          </p>
-          <p class="about-text">
-            I thrive on transforming raw footage into compelling narratives and have worked on a diverse range of projects that have allowed me to explore different editing techniques and styles. Whether it’s crafting a heartfelt wedding video, a dynamic reel, or a visually stunning 3D lyric video, I am committed to delivering high-quality work that captures the essence of each story.
-          </p>
         </div>
-        <div class="about-details">
-          <p class="about-text-b">Name     : <span class="about-text-details">Nani</span></p>
-          <p class="about-text-b">Birthday : <span class="about-text-details">22 November 2002</span></p>
-          <p class="about-text-b">Phone    : <span class="about-text-details">+91 9346084649</span></p>
-          <p class="about-text-b">Village  : <span class="about-text-details">Sirikonda, Kathalapur, Jagital, Telanganna, 505462</span></p>
-          <p class="about-text-b">Email    : <span class="about-text-details">Shanigarapugnaneshwar143@gmail.com</span></p>
-        </div>
-      </section>
-    <!-- End About Section -->
+      </div>
 
-    <!-- Start Project Section -->
-      <section id="project" class="content-section">
-        <h2>Projects</h2>
-        <span>Pre-Wedding Video</span>
-        <div class="vid">
-          <video controls src="videos/pre-wedding video.mp4"></video>
-        </div>
-        <span>Lyrics Video</span>
-        <div class="vid">
-          <video controls src="videos/lyrics video naa.mp4"></video>
-          <video controls src="videos/lyrics video.mp4"></video>
-        </div>
-        <span>3D Lyrics Video</span>
-        <div class="vid">
-          <video controls src="videos/3D Lyrics Video 1.mp4"></video>
-          <video controls src="videos/3D Lyrics Video 2.mp4"></video>
-          <video controls src="videos/3D Lyrics Video 3.mp4"></video>
-        </div>
-        <span>Pochamma Video</span>
-        <div class="vid">
-          <video controls src="videos/pochamma full video.mp4"></video>
-          <video controls src="videos/pochamma fast beat.mp4"></video>
-        </div>
-        <span>Fast Beat Video</span>
-        <div class="vid">
-          <video controls src="videos/whatsapp status fast beat.mp4"></video>
-          <video controls src="videos/Birthday.mp4"></video>
-        </div>
-        <!-- Add more projects as needed -->
-      </section>
-    <!-- End Project Section -->
-
-    <!-- Start Skills Section -->
-      <section id="tools" class="content-section">
-        <h2>Tools</h2>
-        <div class="logo-container">
-          <img src="logo/capcut.png" alt="Capcut">
-          <img src="logo/premiere-pro.png" alt="Adobe Premiere Pro">
-          <img src="logo/after-effects.png" alt="Adobe After Effects">
-          <img src="logo/davinci resolve.png" alt="DaVinci Resolve">
-        </div>
-      </section>
-    <!-- End Skills Section -->
-
-    <!-- Start Contact Section -->
-      <section id="contact" class="content-section">
-        <h2>Contact us</h2>
-        <div class="contact-main">
-          <div class="contact-main-sub1">
-            <form id="contactForm">
-              <label for="name">Name *</label>
-              <input type="text" id="name" name="name" placeholder="Your Name..." required>
-
-              <label for="email">Email Address *</label>
-              <input type="email" id="email" name="email" placeholder="Your Email Address..." required>
-
-              <label for="email">Subject *</label>
-              <input type="text" id="subject" name="subject" placeholder="Subject" required>
-
-              <label for="message">Message *</label>
-              <textarea id="message" name="message" placeholder="Your Message..." required></textarea>
-
-              <button type="submit">Send Message</button>
-            </form>
+      <!-- 3D Lyrics Video -->
+      <div class="mb-4">
+        <h4>3D Lyrics Video</h4>
+        <div class="row">
+          <div class="col-md-4 mb-3 vid">
+            <video controls class="w-100" src="videos/3D Lyrics Video 1.mp4"></video>
           </div>
-          <div class="contact-main-sub2">
+          <div class="col-md-4 mb-3 vid">
+            <video controls class="w-100" src="videos/3D Lyrics Video 2.mp4"></video>
+          </div>
+          <div class="col-md-4 mb-3 vid">
+            <video controls class="w-100" src="videos/3D Lyrics Video 3.mp4"></video>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pochamma Video -->
+      <div class="mb-4">
+        <h4>Pochamma Video</h4>
+        <div class="row">
+          <div class="col-md-6 mb-3 vid">
+            <video controls class="w-100" src="videos/pochamma full video.mp4"></video>
+          </div>
+          <div class="col-md-6 mb-3 vid">
+            <video controls class="w-100" src="videos/pochamma fast beat.mp4"></video>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fast Beat Video -->
+      <div class="mb-4">
+        <h4>Fast Beat Video</h4>
+        <div class="row">
+          <div class="col-md-6 mb-3 vid">
+            <video controls class="w-100" src="videos/whatsapp status fast beat.mp4"></video>
+          </div>
+          <div class="col-md-6 mb-3 vid">
+            <video controls class="w-100" src="videos/Birthday.mp4"></video>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add more projects as needed -->
+    </div>
+  </section>
+  <!-- End Project Section -->
+
+  <!-- Start Tools Section -->
+  <section id="tools" class="content-section py-5">
+    <div class="container">
+      <h2 class="text-center mb-4">Tools</h2>
+      <div class="row justify-content-center">
+        <div class="col-md-3 col-6 mb-4">
+          <img src="../website/logo/capcut.png" alt="Capcut" class="img-fluid">
+        </div>
+        <div class="col-md-3 col-6 mb-4">
+          <img src="../website/logo/premiere-pro.png" alt="Adobe Premiere Pro" class="img-fluid">
+        </div>
+        <div class="col-md-3 col-6 mb-4">
+          <img src="../website/logo/after-effects.png" alt="Adobe After Effects" class="img-fluid">
+        </div>
+        <div class="col-md-3 col-6 mb-4">
+          <img src="../website/logo/davinci resolve.png" alt="DaVinci Resolve" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- End Tools Section -->
+
+  <!-- Start Contact Section -->
+  <section id="contact" class="content-section py-5">
+    <div class="container">
+      <h2 class="text-center mb-4">Contact Us</h2>
+      <div class="row">
+        <div class="col-md-6 mb-4">
+          <form id="contactForm">
+            <label for="name">Name *</label>
+            <input type="text" id="name" name="name" placeholder="Your Name..." required class="form-control mb-3">
+
+            <label for="email">Email Address *</label>
+            <input type="email" id="email" name="email" placeholder="Your Email Address..." required class="form-control mb-3">
+
+            <label for="subject">Subject *</label>
+            <input type="text" id="subject" name="subject" placeholder="Subject" required class="form-control mb-3">
+
+            <label for="message">Message *</label>
+            <textarea id="message" name="message" placeholder="Your Message..." required class="form-control mb-3"></textarea>
+
+            <button type="submit" class="btn btn-primary">Send Message</button>
+          </form>
+        </div>
+
+        <div class="col-md-6">
+          <div class="center-text">
             <span>Get in Touch with Us</span>
-            <div class="contact-info">
-              <!-- <div class="contact-info-item">
-                <a href="mailto:shanigarapugnaneshwar143@gmail.com" target="_blank" class="google">
-                  <i class="fa-regular fa-envelope"></i><span class="contact-text">Email : shanigarapugnaneshwar143@gmail.com </span></a>
-              </div> -->
-              <div class="contact-info-item">
-                <a href="https://www.instagram.com/icon._editz/" target="_blank" class="instagram">
-                  <i class="fa-brands fa-instagram"></i><span class="contact-text">Instagram : @icon._editz </span></a>
-              </div>
-              <div class="contact-info-item">
-                <a href="https://www.youtube.com/@iconeditz143" target="_blank" class="youtube">
-                  <i class="fa-brands fa-youtube"></i><span class="contact-text">Youtube : Icon Editz </span></a>
-              </div>
+        </div>
+          <div class="contact-info">
+            <div class="contact-info-item mb-3">
+              <a href="https://www.instagram.com/icon._editz/" target="_blank" class="instagram">
+                <i class="fa-brands fa-instagram"></i><span class="contact-text">Instagram: @icon._editz</span>
+              </a>
+            </div>
+            <div class="contact-info-item mb-3">
+              <a href="https://www.youtube.com/@iconeditz143" target="_blank" class="youtube">
+                <i class="fa-brands fa-youtube"></i><span class="contact-text">Youtube: Icon Editz</span>
+              </a>
             </div>
           </div>
         </div>
-      </section>
-      <!-- End Contact Section -->
+      </div>
+    </div>
+  </section>
+  <!-- End Contact Section -->
 
-      <footer>
-        <span> Copyright &copy; 2025 Icon Editz</span>
-        <span>Designed by <a href="https://www.instagram.com/icon._editz/" target="_blank">Icon Editz</a></span>
-      </footer>
+  <!-- Footer -->
+  <footer class="text-center py-3">
+    <span> Copyright &copy; 2025 Icon Editz</span><br>
+    <span>Designed by <a href="https://www.instagram.com/icon._editz/" target="_blank">Icon Editz</a></span>
+  </footer>
 </body>
 </html>
