@@ -170,11 +170,6 @@ video {
     flex-wrap: nowrap;
     align-items: center;
 }
-#tools .container {
-    background-color: white; 
-    padding: 20px;          
-    border-radius: 10px; 
-}
 .logo-container {
     display: flex;
     justify-content: center;
@@ -186,6 +181,9 @@ video {
     gap: 20px;
     margin: 100px;
     border-radius: 5px;
+    background-color: white; 
+    padding: 20px;          
+    border-radius: 10px; 
 }
 .logo-container img {
     width: 150px;
