@@ -172,16 +172,12 @@ video {
 }
 .logo-container {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    background-color: white;
-    height: 200px;
-    width: 1250px;
     border-radius: 5px;
-    background-color: white; 
-    padding: 20px;          
-    border-radius: 10px; 
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    flex-wrap: wrap;
+    align-items: center; 
 }
 .logo-container img {
     width: 150px;
