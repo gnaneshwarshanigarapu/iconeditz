@@ -325,6 +325,10 @@ footer a {
         flex-direction: column;
         align-items: center;
     }
+    #home .container{
+        display: flex;
+        flex-direction: column-reverse;
+    }
     .home-left {
         font-size: 20px;
     }
