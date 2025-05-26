@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 message: message
             };
 
-            emailjs.send('service_icon143', 'service_icon143', templateParams)
+            emailjs.send('service_icon143', 'template_icon143', templateParams)
                 .then(() => {
                     alert(`Thank you, ${name}! Your message has been sent.`);
                     contactForm.reset();
