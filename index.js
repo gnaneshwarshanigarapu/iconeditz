@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Initialize EmailJS with your public key
+    emailjs.init('kvz96lSChbMs58rQa');
+
     const navLinks = document.querySelectorAll('.nav-link');
     const contentSections = document.querySelectorAll('.content-section');
     const contactForm = document.getElementById('contactForm');
@@ -9,14 +12,10 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             const target = this.getAttribute('data-target');
 
-            // Remove active class from all sections
             contentSections.forEach(section => section.classList.remove('active'));
 
-            // Add active class to the clicked section
             const targetSection = document.getElementById(target);
             targetSection.classList.add('active');
-
-            // Smooth scrolling
             targetSection.scrollIntoView({ behavior: 'smooth' });
         });
     });
@@ -61,4 +60,5 @@ document.addEventListener('DOMContentLoaded', function () {
         loop: true,
         showCursor: false
     });
+});
 });
