@@ -13,7 +13,7 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #2F333C;
+    background-color: #0062ff;
     color: white;
     position: fixed;
     top: 0;
@@ -22,12 +22,12 @@ nav {
     padding: 10px 20px;
 }
 .navbar {
-    background-color: #2F333C; 
+    background-color: #ffffff; 
     position: fixed;
 }
 .navbar-brand h1{
     margin-left: 25px;
-    color: #9D98FF;
+    color: #062ffF;
     text-decoration: none;
     font-size: 24px;
 }
@@ -49,21 +49,21 @@ nav ul li a {
     color: white;
 }
 .nav-item a:hover {
-    color: #6aff9b;
+    color: #0062ff;
 }
 .nav-item a:focus {
-    color: #6aff9b;
+    color: #0062ff;
 }
 
 .content-section {
-    background-color: #2F333C;
+    background-color: #ffffff;
     color: white;
     padding: 20px;
     margin: 25px;
     height: auto;
 }
 h2 {
-    color: #9D98FF;
+    color: #000000;
     font-weight: normal;
 }
 
@@ -92,7 +92,7 @@ h2 {
     border-radius: 20%;
 }
 .namecolor {
-    color: #9D98FF;
+    color: #000000;
 }
 .social-links {
     display: flex;
@@ -105,11 +105,11 @@ h2 {
     text-decoration: none;
     justify-content: space-between;
     float: left;
-    color: #9D98FF;
+    color: #000000;
     padding-right: 10px;
 }
 .social-links :hover {
-    color: #6aff9b;
+    color: #3037f9;
 }
 #element {
     display: inline-block;
@@ -150,7 +150,7 @@ h2 {
     align-items: center;
 }
 #project span {
-    color: #5AF08C;
+    color: #0062ff;
     font-size: 18px;
 }
 video {
@@ -209,7 +209,7 @@ video {
     flex-direction: column;
 }
 label {
-    color: #9D98FF;
+    color: #0062ff;
     float: left;
 }
 input, textarea {
@@ -226,14 +226,14 @@ textarea {
 }
 button {
     padding: 10px;
-    background-color: #6aff9b;
+    background-color: #0062ff;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
 }
 button:hover {
-    background-color: #6aff9b;
+    background-color: #0062ff;
 }
 
 .contact-main-sub2 {
@@ -248,7 +248,7 @@ button:hover {
 }
 
 .contact-main-sub2 span {
-    color: #6aff9b;
+    color: #0062ff;
     font-size: 20px;
     padding-top: 20px;
     text-align: center;
@@ -272,7 +272,7 @@ button:hover {
 }
 .contact-info-item i {
     text-decoration: none;
-    color: #9D98FF;
+    color: #0062ff;
     padding: 10px;
     border-radius: 50%;
     margin-right: 10px;
@@ -296,7 +296,7 @@ footer {
     margin-bottom: 25px;
 }
 footer a {
-    color: #6aff9b;
+    color: #0062ff;
     text-decoration: none;
     display: block;
 }
