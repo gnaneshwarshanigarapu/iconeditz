@@ -333,25 +333,31 @@ footer a {
     #home {
         flex-direction: column;
         align-items: center;
+        margin-top: 0px;
     }
     #home .container{
         display: flex;
         flex-direction: column-reverse;
     }
     .home-left {
+        margin-left: 0px;
+        margin-right: 0px;
         font-size: 20px;
     }
     .home-left-text{
+        width: 100%;
         padding-left: 0px;
         padding-bottom: 30px;
     }
-    .home-right img {
-        width: 90%;
-        margin-top: 0px;
-    }
-    .textc{
+    .textc2{
+        width: 100%;
         font-size: 15px;
     }
+    .home-right img {
+        width: 90%;
+        margin-top: 50px;
+    }
+    
     #element {
         white-space: nowrap;
     }
