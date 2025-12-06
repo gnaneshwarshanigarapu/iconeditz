@@ -156,13 +156,15 @@ h2 {
     font-size: 18px;
 }
 video {
-    display: flex;
-    width: 400px;
-    margin: 20px;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 20px auto;
 }
+
 .vid {
-    display: flex;
-    justify-content: center;
+    width: 100%;
 }
 
 #tools {
@@ -368,6 +370,17 @@ footer a {
         margin: 20px;
         padding: 20px;
         height: auto;
+    }
+   #project video {
+        width: 100% !important;
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 10px auto;
+    }
+
+    .w-50 {
+        width: 100% !important;
     }
     .contact-main {
         flex-direction: column;
