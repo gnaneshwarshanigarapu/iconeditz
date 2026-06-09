@@ -128,6 +128,14 @@ textarea {
   mask-image: radial-gradient(circle at center, black, transparent 72%);
 }
 
+.bg-grid {
+  background-image:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.12), transparent 55%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+
 @media (max-width: 768px) {
   .section-padding {
     padding: 4rem 1rem;

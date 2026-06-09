@@ -28,23 +28,18 @@ function ProjectPreview({ project }) {
           loop
           playsInline
           preload="metadata"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-55 transition-opacity duration-300 group-hover:opacity-80"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-90 transition-opacity duration-300 group-hover:opacity-100"
         />
       )}
-      <div className="pointer-events-none absolute inset-0 purple-grid opacity-70" />
-      <div className="pointer-events-none absolute left-6 right-6 top-6 h-4 rounded-full border border-white/25" />
+      <div className="pointer-events-none absolute inset-0 purple-grid opacity-15" />
+      <div className="pointer-events-none absolute left-6 right-6 top-6 h-4 rounded-full border border-white/15" />
       <div className="pointer-events-none absolute bottom-8 left-6 right-6 space-y-3">
         {[0, 1, 2].map((line) => (
           <div key={line} className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-white/80" />
-            <span className="h-2 flex-1 rounded-full bg-white/25" />
+            <span className="h-2 w-2 rounded-full bg-white/50" />
+            <span className="h-2 flex-1 rounded-full bg-white/10" />
           </div>
         ))}
-      </div>
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="rounded-full border border-white/30 bg-black/30 p-5 backdrop-blur-md">
-          <FiPlay className="text-3xl text-white" />
-        </div>
       </div>
     </div>
   )
