@@ -1,7 +1,10 @@
 export const scrollToSection = (sectionId) => {
   const section = document.getElementById(sectionId)
   if (section) {
-    section.scrollIntoView({ behavior: 'smooth' })
+    const header = document.querySelector('nav')
+    const headerHeight = header?.offsetHeight || 80
+    const top = section.getBoundingClientRect().top + window.scrollY - headerHeight - 16
+    window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' })
   }
 }
 

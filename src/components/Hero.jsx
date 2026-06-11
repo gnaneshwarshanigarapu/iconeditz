@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { FiArrowRight, FiMousePointer } from 'react-icons/fi'
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { FiPlay, FiMousePointer, FiX } from 'react-icons/fi'
 import { FaInstagram, FaYoutube } from 'react-icons/fa'
 import { AiOutlineMail } from 'react-icons/ai'
 import { fadeInUp, staggerContainer } from '../utils/animations'
@@ -9,62 +9,153 @@ import { scrollToSection } from '../utils/helpers'
 export default function Hero() {
   const words = ['Video Editor', 'Motion Designer', 'Content Creator']
   const [currentWord, setCurrentWord] = useState(0)
-  const pointerRef = useRef(null)
+  const [showreelModalOpen, setShowreelModalOpen] = useState(false)
+  const canvasRef = useRef(null)
+  const profile3dRef = useRef(null)
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentWord((prev) => (prev + 1) % words.length)
     }, 4000)
+
     return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
-    let frameId
-    const target = pointerRef.current
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const handleMove = (event) => {
-      if (!target) return
-      const x = event.clientX
-      const y = event.clientY
+    const ctx = canvas.getContext('2d')
+    let W = window.innerWidth
+    let H = window.innerHeight
+    let rafId
+    const particles = []
 
-      if (frameId) cancelAnimationFrame(frameId)
-      frameId = requestAnimationFrame(() => {
-        target.style.left = `${x}px`
-        target.style.top = `${y}px`
-        target.style.opacity = '1'
+    const resize = () => {
+      W = canvas.width = window.innerWidth
+      H = canvas.height = window.innerHeight
+    }
+
+    class Particle {
+      constructor() {
+        this.reset(true)
+      }
+
+      reset(init) {
+        this.x = Math.random() * W
+        this.y = init ? Math.random() * H : H + 10
+        this.size = Math.random() * 2 + 0.3
+        this.speedY = -(Math.random() * 0.4 + 0.1)
+        this.speedX = (Math.random() - 0.5) * 0.2
+        this.opacity = Math.random() * 0.5 + 0.1
+        this.life = 0
+        this.maxLife = Math.random() * 600 + 200
+      }
+
+      update() {
+        this.x += this.speedX
+        this.y += this.speedY
+        this.life += 1
+        if (this.life > this.maxLife || this.y < -10) this.reset(false)
+      }
+
+      draw() {
+        ctx.save()
+        ctx.globalAlpha = this.opacity * (1 - this.life / this.maxLife)
+        ctx.fillStyle = '#9D5CFF'
+        ctx.shadowBlur = this.size * 3
+        ctx.shadowColor = 'rgba(157,92,255,0.6)'
+        ctx.beginPath()
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+    }
+
+    for (let i = 0; i < 80; i += 1) {
+      particles.push(new Particle())
+    }
+
+    const drawGrid = () => {
+      ctx.strokeStyle = 'rgba(157,92,255,0.05)'
+      ctx.lineWidth = 0.5
+      for (let x = 0; x < W; x += 80) {
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, H)
+        ctx.stroke()
+      }
+      for (let y = 0; y < H; y += 80) {
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(W, y)
+        ctx.stroke()
+      }
+    }
+
+    const loop = () => {
+      ctx.clearRect(0, 0, W, H)
+      drawGrid()
+      particles.forEach((p) => {
+        p.update()
+        p.draw()
       })
+      rafId = requestAnimationFrame(loop)
     }
 
-    const handleLeave = () => {
-      if (!target) return
-      if (frameId) cancelAnimationFrame(frameId)
-      target.style.opacity = '0'
+    const handleMouseMove = (e) => {
+      const card = profile3dRef.current
+      if (!card) return
+      const rect = card.getBoundingClientRect()
+      const cx = rect.left + rect.width / 2
+      const cy = rect.top + rect.height / 2
+      const rx = ((e.clientY - cy) / rect.height) * 20
+      const ry = (-(e.clientX - cx) / rect.width) * 20
+      card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) scale(1.02)`
     }
 
-    window.addEventListener('mousemove', handleMove)
-    window.addEventListener('mouseout', handleLeave)
+    const handleMouseLeave = () => {
+      const card = profile3dRef.current
+      if (!card) return
+      card.style.transform = 'rotateY(0deg) rotateX(0deg)'
+    }
+
+    resize()
+    window.addEventListener('resize', resize)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseleave', handleMouseLeave)
+    loop()
 
     return () => {
-      window.removeEventListener('mousemove', handleMove)
-      window.removeEventListener('mouseout', handleLeave)
-      if (frameId) cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseleave', handleMouseLeave)
+      cancelAnimationFrame(rafId)
     }
   }, [])
 
-  return (
-    <section id="hero" className="relative min-h-screen pt-20 overflow-hidden lg:cursor-none">
-      {/* Cursor effect */}
-      <div
-        ref={pointerRef}
-        className="fixed left-0 top-0 pointer-events-none z-50 hidden lg:flex items-center justify-center opacity-0 transition-all duration-150"
-        style={{ width: 60, height: 60, transform: 'translate(-50%, -50%)' }}
-      >
-        <div className="absolute inset-0 rounded-full border border-primary/40 bg-primary/10 backdrop-blur-xl" />
-        <div className="relative flex items-center justify-center h-full w-full">
-          <span className="h-3.5 w-3.5 rounded-full bg-primary shadow-[0_0_20px_rgba(157,92,255,0.4)]" />
-        </div>
-      </div>
+  const enable3D = import.meta.env.VITE_ENABLE_3D_BACKGROUND === 'true'
 
+  // determine quality by screen width
+  const [quality, setQuality] = useState('high')
+  useEffect(() => {
+    const w = window.innerWidth
+    if (w < 640) setQuality('low')
+    else if (w < 1024) setQuality('medium')
+    else setQuality('high')
+  }, [])
+
+  const BackgroundScene = lazy(() => import('../three/BackgroundScene'))
+
+  return (
+    <section id="hero" className="relative min-h-screen pt-20 overflow-hidden">
+
+      {!enable3D && <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 -z-10" />}
+      {enable3D && (
+        <Suspense fallback={null}>
+          <BackgroundScene quality={quality} />
+        </Suspense>
+      )}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background -z-10" />
       <div className="purple-grid absolute inset-0 -z-10 opacity-45" />
 
@@ -97,11 +188,11 @@ export default function Hero() {
               <motion.button
                 whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(157, 92, 255, 0.6)' }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => scrollToSection('projects')}
+                onClick={() => setShowreelModalOpen(true)}
                 className="px-8 py-4 bg-gradient-purple rounded-lg text-text font-bold flex items-center justify-center gap-2 hover:shadow-glow-purple-lg transition-all"
               >
-                View Work
-                <FiArrowRight />
+                Watch Showreel
+                <FiPlay className="text-xl" />
               </motion.button>
 
               <motion.button
@@ -110,7 +201,7 @@ export default function Hero() {
                 onClick={() => scrollToSection('contact')}
                 className="px-8 py-4 border-2 border-primary rounded-lg text-text font-bold hover:bg-primary/10 transition-all"
               >
-                Get in Touch
+                Hire Me
               </motion.button>
             </motion.div>
 
@@ -151,45 +242,19 @@ export default function Hero() {
             </motion.div>
           </motion.div>
 
-          <motion.div variants={fadeInUp} className="relative mx-auto w-full max-w-xl">
-            <div className="relative overflow-hidden rounded-[48px] border border-primary/30 bg-[#1f0f35]/80 p-6 shadow-[0_40px_120px_rgba(157,92,255,0.12)] backdrop-blur-xl">
-              <div className="absolute -right-10 top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
-              <div className="absolute -left-10 bottom-10 h-24 w-24 rounded-full bg-[#ffffff10] blur-3xl" />
-
-              <div className="rounded-[36px] bg-[#190b2b] border border-white/5 p-6 shadow-inner">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="space-y-2">
-                    <div className="h-3 w-16 rounded-full bg-primary/40" />
-                    <div className="h-2 w-24 rounded-full bg-white/10" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-red-500" />
-                    <span className="h-3 w-3 rounded-full bg-yellow-300" />
-                    <span className="h-3 w-3 rounded-full bg-green-500" />
-                  </div>
-                </div>
-
-                <div className="relative h-[360px] rounded-[28px] bg-gradient-to-br from-[#4927f3]/40 via-[#5d4bff]/20 to-[#140627]/40 border border-white/10 overflow-hidden">
-                  <div className="absolute inset-0 bg-grid opacity-30" />
-                  <div className="absolute left-6 top-6 h-4 w-24 rounded-full bg-white/10" />
-                  <div className="absolute left-6 bottom-6 h-4 w-28 rounded-full bg-white/10" />
-                  <div className="absolute right-6 top-10 h-28 w-28 rounded-full bg-primary/20 blur-2xl" />
-                  <div className="absolute inset-x-8 bottom-20 h-2 rounded-full bg-primary/30" />
-                  <div className="absolute inset-x-12 top-16 h-2 rounded-full bg-white/20" />
-                  <div className="absolute left-8 top-28 h-2 w-16 rounded-full bg-white/20" />
-                  <div className="absolute right-8 top-28 h-2 w-20 rounded-full bg-white/20" />
-                  <div className="absolute inset-x-10 top-44 h-16 rounded-3xl bg-[#0f0821]/80 border border-white/5" />
-                  <div className="absolute bottom-8 left-10 flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-3xl bg-[#1d0f38] border border-white/10 flex items-center justify-center text-primary text-xl font-bold">
-                      IE
-                    </div>
-                    <div>
-                      <p className="text-sm text-white/70 uppercase tracking-[0.22em]">Icon Editz</p>
-                      <p className="text-xs text-white/40">Creative Studio</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <motion.div variants={fadeInUp} className="relative mx-auto w-full max-w-xl flex justify-center perspective-[1000px]">
+            <div ref={profile3dRef} className="relative transition-transform duration-200 ease-out preserve-3d">
+              {/* Soft purple glow */}
+              <div className="absolute inset-0 scale-110 rounded-full bg-primary/40 blur-[80px]" />
+              
+              {/* Subtle floating animation on the image itself */}
+              <motion.img 
+                animate={{ y: [-10, 10, -10] }}
+                transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+                src="/assets/logos/icon-editz.jpg" 
+                alt="Icon Editz Logo" 
+                className="relative z-10 w-64 md:w-80 lg:w-96 rounded-full shadow-[0_0_80px_rgba(157,92,255,0.4)] border-4 border-primary/20 object-cover aspect-square"
+              />
             </div>
           </motion.div>
         </div>
@@ -212,6 +277,40 @@ export default function Hero() {
           </span>
         </button>
       </motion.div>
+
+      {/* Showreel Modal */}
+      <AnimatePresence>
+        {showreelModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden border border-primary/30 shadow-[0_0_120px_rgba(157,92,255,0.2)]"
+            >
+              <button 
+                onClick={() => setShowreelModalOpen(false)}
+                className="absolute top-4 right-4 z-10 p-3 bg-black/50 text-white rounded-full hover:bg-primary transition-colors group"
+                aria-label="Close Showreel"
+              >
+                <FiX className="text-2xl group-hover:rotate-90 transition-transform duration-300" />
+              </button>
+              <video 
+                src="/videos/3d-lyrics-video-1.mp4" 
+                className="w-full h-full object-cover"
+                controls 
+                autoPlay 
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }
+
