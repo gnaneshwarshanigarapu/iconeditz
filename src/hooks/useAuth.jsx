@@ -1,98 +1,191 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { isSupabaseConfigured, signIn, signOut, supabase } from '../utils/supabase'
-
-const LOCAL_ADMIN_KEY = 'icon-editz.local-admin'
-
-const adminEmailList = (import.meta.env.VITE_ADMIN_EMAILS || '')
-  .split(',')
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean)
+import {
+  getSession,
+  isSupabaseConfigured,
+  sendPasswordResetEmail,
+  signIn,
+  signOut,
+  supabase,
+  supabaseDebugConfig,
+} from '../utils/supabase'
 
 const AuthContext = createContext({
   user: null,
   loading: true,
   isAdmin: false,
-  isConfigured: false,
+  role: 'customer',
+  isConfigured: true,
   login: async () => {},
   logout: async () => {},
+  requestPasswordReset: async () => {},
 })
+
+const toAuthUser = (authUser) => {
+  if (!authUser) return null
+  const appRole = authUser.app_metadata?.role
+  const userRole = authUser.user_metadata?.role
+
+  return {
+    id: authUser.id,
+    email: authUser.email,
+    role: appRole || userRole || 'customer',
+    appRole,
+    userRole,
+  }
+}
+
+const hasAdminRole = (authUser) => Boolean(authUser && (authUser.appRole === 'admin' || authUser.userRole === 'admin'))
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!supabase) {
-      try {
-        const storedAdmin = window.localStorage.getItem(LOCAL_ADMIN_KEY)
-        setUser(storedAdmin ? JSON.parse(storedAdmin) : null)
-      } catch {
-        setUser(null)
-      }
-      setLoading(false)
-      return undefined
+    let isMounted = true
+
+    const debugSession = (label, payload) => {
+      console.info(`[Admin Auth] ${label}`, {
+        supabaseUrl: supabaseDebugConfig.url,
+        isConfigured: supabaseDebugConfig.isConfigured,
+        hasAnonKey: supabaseDebugConfig.hasAnonKey,
+        ...payload,
+      })
     }
 
-    let mounted = true
+    const checkSession = async () => {
+      if (!isSupabaseConfigured || !supabase) {
+        console.error('[Admin Auth] Supabase is not configured', supabaseDebugConfig)
+        if (isMounted) setLoading(false)
+        return
+      }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      setUser(data.session?.user || null)
-      setLoading(false)
-    })
+      const { data, error } = await getSession()
+      debugSession('getSession response', {
+        sessionUserEmail: data?.session?.user?.email || null,
+        error: error || null,
+      })
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
+      if (error) console.error('[Admin Auth] getSession error', error)
+      if (isMounted) {
+        setUser(toAuthUser(data?.session?.user))
+        setLoading(false)
+      }
+    }
+
+    checkSession()
+
+    if (!supabase) return () => {
+      isMounted = false
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      debugSession('auth state changed', {
+        event,
+        sessionUserEmail: session?.user?.email || null,
+      })
+      setUser(toAuthUser(session?.user))
       setLoading(false)
     })
 
     return () => {
-      mounted = false
-      data.subscription.unsubscribe()
+      isMounted = false
+      subscription.unsubscribe()
     }
   }, [])
 
   const value = useMemo(() => {
-    const email = user?.email?.toLowerCase()
-    const isLocalAdmin = Boolean(user?.isLocalAdmin)
-    const isAdmin = Boolean(user && (isLocalAdmin || !adminEmailList.length || adminEmailList.includes(email)))
+    const isAdmin = hasAdminRole(user)
+    const role = isAdmin ? 'admin' : 'customer'
 
     return {
       user,
       loading,
       isAdmin,
+      role,
       isConfigured: isSupabaseConfigured,
       login: async (emailAddress, password) => {
-        if (!isSupabaseConfigured) {
-          if (!emailAddress || !password) throw new Error('Enter an email and password to open local admin.')
+        const submittedEmail = emailAddress.trim().toLowerCase()
 
-          const localUser = {
-            id: 'local-admin',
-            email: emailAddress,
-            isLocalAdmin: true,
+        console.groupCollapsed('[Admin Auth] signInWithPassword attempt')
+        console.log('Login attempt:', submittedEmail)
+        console.info('[Admin Auth] email submitted', submittedEmail)
+        console.info('[Admin Auth] current Supabase URL', supabaseDebugConfig.url)
+        console.log('Project URL:', supabaseDebugConfig.url)
+        console.info('[Admin Auth] environment loaded', {
+          isConfigured: supabaseDebugConfig.isConfigured,
+          hasAnonKey: supabaseDebugConfig.hasAnonKey,
+          anonKeyPrefix: supabaseDebugConfig.anonKeyPrefix,
+        })
+
+        try {
+          const response = await signIn(submittedEmail, password)
+          const { data, error } = response
+
+          console.log('Auth response:', data)
+          console.info('[Admin Auth] auth response', {
+            user: data?.user
+              ? {
+                  id: data.user.id,
+                  email: data.user.email,
+                  appMetadata: data.user.app_metadata,
+                  userMetadata: data.user.user_metadata,
+                }
+              : null,
+            session: data?.session
+              ? {
+                  expiresAt: data.session.expires_at,
+                  tokenType: data.session.token_type,
+                }
+              : null,
+          })
+
+          if (error) {
+            console.error('Supabase Auth Error:', error)
+            console.error('Auth error:', error)
+            throw error
           }
 
-          window.localStorage.setItem(LOCAL_ADMIN_KEY, JSON.stringify(localUser))
-          setUser(localUser)
-          return localUser
+          if (!data?.user) {
+            const missingUserError = new Error('Supabase did not return a user for this login attempt.')
+            console.error('[Admin Auth] auth error', missingUserError)
+            throw missingUserError
+          }
+
+          const adminUser = toAuthUser(data.user)
+          if (!hasAdminRole(adminUser)) {
+            await signOut()
+            throw new Error('This account is authenticated but is not authorized for admin access. Add role "admin" to the user metadata in Supabase.')
+          }
+
+          const {
+            data: { session },
+          } = await getSession()
+          console.log('Session:', session)
+
+          setUser(adminUser)
+          return adminUser
+        } catch (error) {
+          console.error('Auth error:', error)
+          console.error('[Admin Auth] auth error', error)
+          throw error
+        } finally {
+          console.groupEnd()
         }
-
-        const { data, error } = await signIn(emailAddress, password)
-        if (error) throw error
-
-        const loginEmail = data.user?.email?.toLowerCase()
-        if (adminEmailList.length && !adminEmailList.includes(loginEmail)) {
-          await signOut()
-          throw new Error('This account is not authorized for admin access.')
-        }
-
-        return data.user
       },
       logout: async () => {
-        if (isSupabaseConfigured) await signOut()
-        window.localStorage.removeItem(LOCAL_ADMIN_KEY)
+        const { error } = await signOut()
+        if (error) {
+          console.error('[Admin Auth] signOut error', error)
+          throw error
+        }
         setUser(null)
       },
+      requestPasswordReset: async (emailAddress) => {
+        const { error } = await sendPasswordResetEmail(emailAddress)
+        if (error) throw error
+      }
     }
   }, [loading, user])
 

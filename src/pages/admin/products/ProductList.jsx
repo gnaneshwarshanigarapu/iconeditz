@@ -41,11 +41,11 @@ export default function ProductList() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
                 <img
-                  src={product.thumbnail}
+                  src={product.image || "/default-product.png"}
                   alt={product.title}
                   className="h-16 w-24 rounded-lg border border-white/10 object-cover"
-                  onError={(event) => {
-                    event.currentTarget.src = 'https://via.placeholder.com/160x90.png?text=Icon+Editz'
+                  onError={(e) => {
+                    e.currentTarget.src = "/default-product.png"
                   }}
                 />
                 <div>

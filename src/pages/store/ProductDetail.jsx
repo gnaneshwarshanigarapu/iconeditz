@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useProducts } from '../../hooks/useProducts'
+import CheckoutModal from '../../components/store/CheckoutModal'
 
 export default function ProductDetail() {
   const { productId } = useParams()
   const { getProduct } = useProducts()
   const product = getProduct(productId)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
 
   if (!product) {
     return (
@@ -45,11 +47,11 @@ export default function ProductDetail() {
             ) : (
               <>
                 <img
-                  src={product.thumbnail}
+                  src={product.image || "/default-product.png"}
                   alt={product.title}
                   className="w-full h-full object-cover"
-                  onError={(event) => {
-                    event.currentTarget.src = 'https://via.placeholder.com/1280x720.png?text=Icon+Editz'
+                  onError={(e) => {
+                    e.currentTarget.src = "/default-product.png"
                   }}
                 />
                 {product.demoVideo && (
@@ -117,10 +119,13 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            <button className="w-full bg-primary hover:bg-primary-hover text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all transform hover:-translate-y-1 active:translate-y-0">
+            <button 
+              onClick={() => setShowCheckout(true)}
+              className="w-full bg-primary hover:bg-primary-hover text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all transform hover:-translate-y-1 active:translate-y-0"
+            >
               Buy Now
             </button>
-            <p className="text-center text-text-muted text-sm mt-4">Payment integration coming soon</p>
+            <p className="text-center text-text-muted text-sm mt-4">Secure payment via Razorpay</p>
           </div>
         </div>
       </div>
@@ -142,6 +147,13 @@ export default function ProductDetail() {
             ))}
           </div>
         </div>
+      )}
+
+      {showCheckout && (
+        <CheckoutModal 
+          product={product} 
+          onClose={() => setShowCheckout(false)} 
+        />
       )}
     </div>
   )

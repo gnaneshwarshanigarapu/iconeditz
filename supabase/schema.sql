@@ -32,6 +32,10 @@ create table if not exists products (
   price numeric(10,2) default 0,
   discount_price numeric(10,2),
   zip_path text,
+  screenshots text[],
+  google_drive_link text,
+  onedrive_link text,
+  dropbox_link text,
   published boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -41,43 +45,25 @@ create table if not exists products (
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
-  total numeric(10,2) not null,
-  currency text default 'INR',
-  status text default 'pending',
-  payment_provider text,
-  payment_id text,
+  order_id text unique not null,
+  product_id uuid references products(id) on delete set null,
+  product_name text not null,
+  customer_name text not null,
+  customer_email text not null,
+  customer_phone text not null,
+  amount numeric(10,2) not null,
+  payment_status text default 'pending',
+  download_link text,
   created_at timestamptz default now()
 );
 
--- Order items
-create table if not exists order_items (
-  id uuid primary key default gen_random_uuid(),
-  order_id uuid references orders(id) on delete cascade,
-  product_id uuid references products(id) on delete set null,
-  price numeric(10,2),
-  quantity int default 1
-);
-
--- Downloads (grant records)
+-- Downloads
 create table if not exists downloads (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete set null,
-  product_id uuid references products(id) on delete set null,
-  signed_url text,
-  expires_at timestamptz,
-  created_at timestamptz default now()
-);
-
--- Payments (store provider responses)
-create table if not exists payments (
-  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
   order_id uuid references orders(id) on delete cascade,
-  provider text,
-  provider_payment_id text,
-  amount numeric(10,2),
-  currency text,
-  status text,
-  payload jsonb,
+  product_id uuid references products(id) on delete set null,
+  download_link text,
   created_at timestamptz default now()
 );
 

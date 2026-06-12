@@ -3,7 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+console.log('Supabase URL:', supabaseUrl)
+console.log('Supabase Key Loaded:', !!supabaseAnonKey)
+console.log('Project URL:', supabaseUrl)
+
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
+export const supabaseDebugConfig = {
+  url: supabaseUrl || '',
+  hasAnonKey: Boolean(supabaseAnonKey),
+  anonKeyPrefix: supabaseAnonKey ? `${supabaseAnonKey.slice(0, 12)}...` : '',
+  isConfigured: isSupabaseConfigured,
+}
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -17,7 +27,7 @@ export const supabase = isSupabaseConfigured
 
 const requireSupabase = () => {
   if (!supabase) {
-    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.')
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment.')
   }
   return supabase
 }
@@ -27,11 +37,17 @@ const assertOk = ({ data, error }) => {
   return data
 }
 
+const toProductImage = (value) => {
+  if (!value || String(value).includes(['placeholder', 'com'].join('.'))) return ''
+  return value
+}
+
 export const productRowToProduct = (row) => ({
   id: row.id,
   title: row.title || '',
   category: row.category || 'Uncategorized',
-  thumbnail: row.thumbnail || '',
+  image: toProductImage(row.thumbnail_path || row.thumbnail),
+  thumbnail: toProductImage(row.thumbnail_path || row.thumbnail),
   screenshots: row.screenshots || [],
   demoVideo: row.demo_video || '',
   description: row.description || '',
@@ -40,13 +56,17 @@ export const productRowToProduct = (row) => ({
   discountPrice: row.discount_price === null ? null : Number(row.discount_price) || null,
   tags: row.tags || [],
   published: Boolean(row.published),
+  zipPath: row.zip_path || '',
+  googleDriveLink: row.google_drive_link || '',
+  onedriveLink: row.onedrive_link || '',
+  dropboxLink: row.dropbox_link || '',
   createdAt: row.created_at,
 })
 
 export const productToRow = (product) => ({
   title: product.title || 'Untitled Product',
   category: product.category || 'Uncategorized',
-  thumbnail: product.thumbnail || '',
+  thumbnail_path: product.thumbnail || product.thumbnailPath || '',
   screenshots: product.screenshots || [],
   demo_video: product.demoVideo || '',
   description: product.description || '',
@@ -55,16 +75,30 @@ export const productToRow = (product) => ({
   discount_price: product.discountPrice ? Number(product.discountPrice) : null,
   tags: product.tags || [],
   published: Boolean(product.published),
+  zip_path: product.zipPath || '',
+  google_drive_link: product.googleDriveLink || '',
+  onedrive_link: product.onedriveLink || '',
+  dropbox_link: product.dropboxLink || '',
 })
 
 export const signIn = async (email, password) => {
   const client = requireSupabase()
-  return client.auth.signInWithPassword({ email, password })
+  const { data, error } = await client.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  })
+
+  return { data, error }
 }
 
 export const signOut = async () => {
   const client = requireSupabase()
   return client.auth.signOut()
+}
+
+export const getSession = async () => {
+  const client = requireSupabase()
+  return client.auth.getSession()
 }
 
 export const getCurrentUser = async () => {

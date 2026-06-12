@@ -25,6 +25,11 @@ const toNullableNumber = (value) => {
   return Number.isFinite(number) ? number : null
 }
 
+const toProductImage = (value) => {
+  if (!value || String(value).includes(['placeholder', 'com'].join('.'))) return ''
+  return value
+}
+
 const createProductId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
   return `prod-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -37,12 +42,14 @@ const normalizeStatus = (product = {}) => {
 
 const normalizeProduct = (product = {}) => {
   const status = normalizeStatus(product)
+  const image = toProductImage(product.image || product.thumbnail || product.thumbnailPath)
 
   return {
     id: product.id || createProductId(),
     title: product.title?.trim() || 'Untitled Product',
     category: product.category?.trim() || 'Uncategorized',
-    thumbnail: product.thumbnail || product.thumbnailPath || '',
+    image,
+    thumbnail: image,
     screenshots: toList(product.screenshots),
     demoVideo: product.demoVideo || product.demo_video || '',
     description: product.description || '',

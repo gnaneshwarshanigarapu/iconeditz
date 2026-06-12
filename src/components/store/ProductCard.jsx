@@ -8,11 +8,11 @@ export default function ProductCard({ product }) {
     <div className="bg-surface rounded-xl overflow-hidden shadow-lg border border-white/5 hover:border-primary/50 transition-all group flex flex-col h-full">
       <div className="relative aspect-video bg-surface-dark overflow-hidden">
         <img
-          src={product.thumbnail}
+          src={product.image || "/default-product.png"}
           alt={product.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(event) => {
-            event.currentTarget.src = 'https://via.placeholder.com/640x360.png?text=Icon+Editz'
+          onError={(e) => {
+            e.currentTarget.src = "/default-product.png"
           }}
         />
         <div className="absolute top-2 right-2 bg-primary/90 text-white text-xs px-2 py-1 rounded-md font-medium">

@@ -143,11 +143,11 @@ export default function AdminDashboard() {
                 <tr key={product.id} className="hover:bg-white/[0.03]">
                   <td className="px-5 py-4">
                     <img
-                      src={product.thumbnail}
+                      src={product.image || "/default-product.png"}
                       alt={product.title}
                       className="h-12 w-20 rounded-lg border border-white/10 object-cover"
-                      onError={(event) => {
-                        event.currentTarget.src = 'https://via.placeholder.com/160x90.png?text=Icon+Editz'
+                      onError={(e) => {
+                        e.currentTarget.src = "/default-product.png"
                       }}
                     />
                   </td>

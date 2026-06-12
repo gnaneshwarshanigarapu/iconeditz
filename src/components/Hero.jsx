@@ -6,11 +6,21 @@ import { AiOutlineMail } from 'react-icons/ai'
 import { fadeInUp, staggerContainer } from '../utils/animations'
 import { scrollToSection } from '../utils/helpers'
 
+const CSSFallback = () => (
+  <div className="absolute inset-0 -z-10 overflow-hidden bg-background">
+    <div className="absolute top-[20%] left-[20%] w-[40rem] h-[40rem] rounded-full bg-primary/20 blur-[120px] animate-pulse-glow" />
+    <div className="absolute bottom-[20%] right-[20%] w-[30rem] h-[30rem] rounded-full bg-primary-light/10 blur-[100px] animate-pulse-glow" style={{ animationDelay: '1s' }} />
+    <div className="purple-grid absolute inset-0 opacity-30" />
+  </div>
+)
+
+const BackgroundScene = lazy(() => import('../three/BackgroundScene'))
+
 export default function Hero() {
   const words = ['Video Editor', 'Motion Designer', 'Content Creator']
   const [currentWord, setCurrentWord] = useState(0)
   const [showreelModalOpen, setShowreelModalOpen] = useState(false)
-  const canvasRef = useRef(null)
+  const [isDesktop, setIsDesktop] = useState(true)
   const profile3dRef = useRef(null)
 
   useEffect(() => {
@@ -22,87 +32,6 @@ export default function Hero() {
   }, [])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    let W = window.innerWidth
-    let H = window.innerHeight
-    let rafId
-    const particles = []
-
-    const resize = () => {
-      W = canvas.width = window.innerWidth
-      H = canvas.height = window.innerHeight
-    }
-
-    class Particle {
-      constructor() {
-        this.reset(true)
-      }
-
-      reset(init) {
-        this.x = Math.random() * W
-        this.y = init ? Math.random() * H : H + 10
-        this.size = Math.random() * 2 + 0.3
-        this.speedY = -(Math.random() * 0.4 + 0.1)
-        this.speedX = (Math.random() - 0.5) * 0.2
-        this.opacity = Math.random() * 0.5 + 0.1
-        this.life = 0
-        this.maxLife = Math.random() * 600 + 200
-      }
-
-      update() {
-        this.x += this.speedX
-        this.y += this.speedY
-        this.life += 1
-        if (this.life > this.maxLife || this.y < -10) this.reset(false)
-      }
-
-      draw() {
-        ctx.save()
-        ctx.globalAlpha = this.opacity * (1 - this.life / this.maxLife)
-        ctx.fillStyle = '#9D5CFF'
-        ctx.shadowBlur = this.size * 3
-        ctx.shadowColor = 'rgba(157,92,255,0.6)'
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.restore()
-      }
-    }
-
-    for (let i = 0; i < 80; i += 1) {
-      particles.push(new Particle())
-    }
-
-    const drawGrid = () => {
-      ctx.strokeStyle = 'rgba(157,92,255,0.05)'
-      ctx.lineWidth = 0.5
-      for (let x = 0; x < W; x += 80) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, H)
-        ctx.stroke()
-      }
-      for (let y = 0; y < H; y += 80) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(W, y)
-        ctx.stroke()
-      }
-    }
-
-    const loop = () => {
-      ctx.clearRect(0, 0, W, H)
-      drawGrid()
-      particles.forEach((p) => {
-        p.update()
-        p.draw()
-      })
-      rafId = requestAnimationFrame(loop)
-    }
-
     const handleMouseMove = (e) => {
       const card = profile3dRef.current
       if (!card) return
@@ -120,21 +49,27 @@ export default function Hero() {
       card.style.transform = 'rotateY(0deg) rotateX(0deg)'
     }
 
-    resize()
-    window.addEventListener('resize', resize)
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseleave', handleMouseLeave)
-    loop()
 
     return () => {
-      window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseleave', handleMouseLeave)
-      cancelAnimationFrame(rafId)
     }
   }, [])
 
-  const enable3D = import.meta.env.VITE_ENABLE_3D_BACKGROUND === 'true'
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+    
+    checkIsDesktop()
+    window.addEventListener('resize', checkIsDesktop)
+    return () => window.removeEventListener('resize', checkIsDesktop)
+  }, [])
+
+  const envEnable3D = import.meta.env.VITE_ENABLE_3D_BACKGROUND !== 'false'
+  const shouldLoad3D = isDesktop && envEnable3D
 
   // determine quality by screen width
   const [quality, setQuality] = useState('high')
@@ -145,17 +80,17 @@ export default function Hero() {
     else setQuality('high')
   }, [])
 
-  const BackgroundScene = lazy(() => import('../three/BackgroundScene'))
-
   return (
     <section id="hero" className="relative min-h-screen pt-20 overflow-hidden">
 
-      {!enable3D && <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 -z-10" />}
-      {enable3D && (
-        <Suspense fallback={null}>
+      {shouldLoad3D ? (
+        <Suspense fallback={<CSSFallback />}>
           <BackgroundScene quality={quality} />
         </Suspense>
+      ) : (
+        <CSSFallback />
       )}
+      
       <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background -z-10" />
       <div className="purple-grid absolute inset-0 -z-10 opacity-45" />
 
