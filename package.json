@@ -1,0 +1,16 @@
+{
+  "name": "website",
+  "private": true,
+  "workspaces": [
+    "icon-editz"
+  ],
+  "scripts": {
+    "dev": "npm --prefix icon-editz run dev",
+    "build": "npm --prefix icon-editz run build",
+    "preview": "npm --prefix icon-editz run preview",
+    "lint": "npm --prefix icon-editz run lint"
+  },
+  "devDependencies": {
+    "vite": "^8.1.5"
+  }
+}

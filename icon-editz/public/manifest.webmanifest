@@ -1,0 +1,9 @@
+{
+  "name": "Icon Editz",
+  "short_name": "Icon Editz",
+  "description": "Premium video editing and motion graphics for modern brands and creators.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05020a",
+  "theme_color": "#9D5CFF"
+}
