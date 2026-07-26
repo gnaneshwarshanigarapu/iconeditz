@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FiBox,
@@ -15,12 +15,6 @@ import {
 } from 'react-icons/fi'
 import { useProducts } from '../../hooks/useProducts'
 
-const mockMetrics = {
-  totalOrders: 24,
-  totalRevenue: 42750,
-  totalDownloads: 318,
-}
-
 const formatCurrency = (value) => `Rs.${value.toLocaleString('en-IN')}`
 
 const statusStyles = {
@@ -29,62 +23,117 @@ const statusStyles = {
   archived: 'bg-slate-500/20 text-slate-300',
 }
 
-const formatStatus = (status) => status.charAt(0).toUpperCase() + status.slice(1)
+const formatStatus = (status) => {
+  const statusString = String(status)
+  if(status === true) return 'Published'
+  if(status === false) return 'Draft'
+  return statusString.charAt(0).toUpperCase() + statusString.slice(1)
+}
+
+// A simple skeleton loader for the stats cards
+const StatCardSkeleton = () => (
+  <div className="rounded-xl border border-white/10 bg-white/[0.055] p-5 shadow-xl shadow-black/20 backdrop-blur-xl animate-pulse">
+    <div className="h-4 bg-gray-600 rounded w-1/3"></div>
+    <div className="h-8 bg-gray-500 rounded w-1/2 mt-3"></div>
+    <div className="h-3 bg-gray-600 rounded w-1/4 mt-2"></div>
+  </div>
+)
 
 export default function AdminDashboard() {
   const {
-    products,
-    productCounts,
+    getDashboardSummary,
+    getRecentProducts,
     deleteProduct,
-    publishProduct,
-    unpublishProduct,
-    archiveProduct,
+    toggleProductPublish,
   } = useProducts()
-  const recentProducts = products.slice(0, 6)
 
-  const stats = [
-    { label: 'Total Products', value: productCounts.total, icon: FiBox, detail: 'All admin records' },
-    { label: 'Published Products', value: productCounts.published, icon: FiEye, detail: 'Visible everywhere' },
-    { label: 'Draft Products', value: productCounts.draft, icon: FiEyeOff, detail: 'Admin only' },
-    { label: 'Archived Products', value: productCounts.archived, icon: FiSlash, detail: 'Kept in records' },
-    { label: 'Total Orders', value: mockMetrics.totalOrders, icon: FiShoppingBag, detail: 'Mock orders' },
-    { label: 'Total Revenue', value: formatCurrency(mockMetrics.totalRevenue), icon: FiTrendingUp, detail: 'Mock revenue' },
-    { label: 'Total Downloads', value: mockMetrics.totalDownloads, icon: FiDownload, detail: 'Mock downloads' },
-  ]
+  const [summary, setSummary] = useState(null)
+  const [recentProducts, setRecentProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [summaryData, productsData] = await Promise.all([
+        getDashboardSummary(),
+        getRecentProducts({ limit: 6 }),
+      ])
+      setSummary(summaryData)
+      setRecentProducts(productsData)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [getDashboardSummary, getRecentProducts])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const handleMutation = async (action) => {
+    try {
+      await action()
+      await fetchData() // Refetch data after mutation
+    } catch (err) {
+      alert(`Error: ${err.message}`)
+    }
+  }
 
   const handleDelete = (product) => {
-    if (window.confirm(`Delete "${product.title}"?`)) deleteProduct(product.id)
+    if (window.confirm(`Delete "${product.title}"?`)) {
+      handleMutation(() => deleteProduct(product.id))
+    }
+  }
+
+  const handleTogglePublish = (product) => {
+    handleMutation(() => toggleProductPublish(product.id, !product.published))
+  }
+
+  const stats = summary ? [
+    { label: 'Total Products', value: summary.totalProducts, icon: FiBox, detail: 'All products' },
+    { label: 'Published Products', value: summary.publishedProducts, icon: FiEye, detail: 'Visible in store' },
+    { label: 'Total Customers', value: summary.totalCustomers, icon: FiShoppingBag, detail: 'All registered users' },
+    { label: 'Total Revenue', value: formatCurrency(summary.totalSales), icon: FiTrendingUp, detail: 'From paid orders' },
+  ] : []
+
+  if (error) {
+    return <div className="text-red-500 text-center">Error loading dashboard: {error}</div>
   }
 
   return (
     <div className="space-y-8">
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <article key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.055] p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-text-muted">{stat.label}</p>
-                  <p className="mt-3 text-3xl font-bold text-white">{stat.value}</p>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">{stat.detail}</p>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/15 text-xl text-primary">
-                  <Icon />
-                </div>
-              </div>
-            </article>
-          )
-        })}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+          : stats.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <article key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.055] p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-text-muted">{stat.label}</p>
+                      <p className="mt-3 text-3xl font-bold text-white">{stat.value}</p>
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">{stat.detail}</p>
+                    </div>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/15 text-xl text-primary">
+                      <Icon />
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
       </section>
 
+      {/* Quick Actions section remains the same */}
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="rounded-xl border border-white/10 bg-white/[0.055] p-6 shadow-xl shadow-black/20 backdrop-blur-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Store Pulse</p>
               <h2 className="mt-2 text-2xl font-bold text-white">Creative assets are ready to sell</h2>
-              <p className="mt-2 text-text-muted">Mock order data is displayed until the backend and payment phases are connected.</p>
+              <p className="mt-2 text-text-muted">Manage your digital storefront and view real-time stats.</p>
             </div>
             <Link to="/store" className="inline-flex items-center justify-center rounded-lg border border-primary/30 bg-primary/15 px-4 py-2 text-sm font-semibold text-white hover:bg-primary/25">
               View Store
@@ -139,13 +188,24 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
-              {recentProducts.map((product) => (
+              {loading && Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td className="px-5 py-4"><div className="h-12 w-20 rounded-lg bg-gray-600"></div></td>
+                  <td className="px-5 py-4"><div className="h-4 bg-gray-600 rounded w-3/4"></div></td>
+                  <td className="px-5 py-4"><div className="h-4 bg-gray-600 rounded w-1/2"></div></td>
+                  <td className="px-5 py-4"><div className="h-4 bg-gray-600 rounded w-1/4"></div></td>
+                  <td className="px-5 py-4"><div className="h-6 w-20 rounded-full bg-gray-600"></div></td>
+                  <td className="px-5 py-4"><div className="h-8 w-32 rounded-lg bg-gray-600"></div></td>
+                </tr>
+              ))}
+              {!loading && recentProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-white/[0.03]">
                   <td className="px-5 py-4">
                     <img
-                      src={product.image || "/assets/images/og-icon-editz.png"}
+                      src={product.thumbnail || "/assets/images/og-icon-editz.png"}
                       alt={product.title}
                       className="h-12 w-20 rounded-lg border border-white/10 object-cover"
+                      loading="lazy"
                       onError={(e) => {
                         e.currentTarget.src = "/assets/images/og-icon-editz.png"
                       }}
@@ -158,8 +218,8 @@ export default function AdminDashboard() {
                   <td className="px-5 py-4 text-sm text-text-muted">{product.category}</td>
                   <td className="px-5 py-4 font-semibold text-white">Rs.{product.discountPrice || product.price}</td>
                   <td className="px-5 py-4">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[product.status] || statusStyles.draft}`}>
-                      {formatStatus(product.status)}
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[product.published ? 'published' : 'draft']}`}>
+                      {formatStatus(product.published)}
                     </span>
                   </td>
                   <td className="px-5 py-4">
@@ -167,20 +227,9 @@ export default function AdminDashboard() {
                       <Link to={`/admin/products/${product.id}/edit`} className="rounded-lg border border-white/10 bg-white/[0.05] p-2 text-text-muted hover:text-white" aria-label={`Edit ${product.title}`}>
                         <FiEdit3 />
                       </Link>
-                      {product.status === 'published' ? (
-                        <button type="button" onClick={() => unpublishProduct(product.id)} className="rounded-lg border border-yellow-400/20 bg-yellow-500/10 p-2 text-yellow-200" aria-label={`Unpublish ${product.title}`}>
-                          <FiEyeOff />
-                        </button>
-                      ) : (
-                        <button type="button" onClick={() => publishProduct(product.id)} className="rounded-lg border border-green-400/20 bg-green-500/10 p-2 text-green-200" aria-label={`Publish ${product.title}`}>
-                          <FiEye />
-                        </button>
-                      )}
-                      {product.status !== 'archived' && (
-                        <button type="button" onClick={() => archiveProduct(product.id)} className="rounded-lg border border-slate-400/20 bg-slate-500/10 p-2 text-slate-200" aria-label={`Archive ${product.title}`}>
-                          <FiSlash />
-                        </button>
-                      )}
+                      <button type="button" onClick={() => handleTogglePublish(product)} className={`rounded-lg p-2 ${product.published ? 'border-yellow-400/20 bg-yellow-500/10 text-yellow-200' : 'border-green-400/20 bg-green-500/10 text-green-200'}`} aria-label={product.published ? `Unpublish ${product.title}` : `Publish ${product.title}`}>
+                        {product.published ? <FiEyeOff /> : <FiEye />}
+                      </button>
                       <button type="button" onClick={() => handleDelete(product)} className="rounded-lg border border-red-400/20 bg-red-500/10 p-2 text-red-200" aria-label={`Delete ${product.title}`}>
                         <FiTrash2 />
                       </button>
@@ -189,7 +238,7 @@ export default function AdminDashboard() {
                 </tr>
               ))}
 
-              {recentProducts.length === 0 && (
+              {!loading && recentProducts.length === 0 && (
                 <tr>
                   <td colSpan="6" className="px-5 py-10 text-center text-text-muted">
                     No products yet. Add your first product to populate this dashboard.
