@@ -1,0 +1,13 @@
+* [33m026fb97[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Premium portfolio update with admin CMS
+[31m|[m * [33m73041c8[m[33m ([m[1;36mHEAD[m[33m)[m Fix product image loading and production deployment setup
+[31m|[m * [33m09786a4[m Fix three-mesh-bvh
+[31m|[m * [33me72f195[m Icon Editz Vercel Migration
+[31m|[m * [33me82e2e2[m Update repository with current Icon Editz site code
+[31m|[m * [33mc97f316[m Rename logo file to logo/icon editz.jpg
+[31m|[m *   [33m500a42e[m Resolve merge conflict in index.html by keeping the Vite React template
+[31m|[m [33m|[m[31m\[m  
+[31m|[m [33m|[m[31m/[m  
+[31m|[m[31m/[m[33m|[m   
+* [33m|[m [33m92eef57[m Updated index.html layout
+* [33m|[m [33m9122881[m Updated index.html layout
+* [33m|[m [33m8164c94[m Updated video responsive styles
