@@ -34,6 +34,14 @@ create policy "Products - admin update" on products
 create policy "Products - admin delete" on products
   for delete using (public.is_admin());
 
+alter table categories enable row level security;
+drop policy if exists "Categories - public read" on categories;
+drop policy if exists "Categories - admin manage" on categories;
+create policy "Categories - public read" on categories
+  for select using (true);
+create policy "Categories - admin manage" on categories
+  for all using (public.is_admin()) with check (public.is_admin());
+
 alter table orders enable row level security;
 drop policy if exists "Orders - owner" on orders;
 drop policy if exists "Orders - insert authenticated" on orders;
@@ -61,3 +69,20 @@ alter table wishlist enable row level security;
 drop policy if exists "Wishlist - owner" on wishlist;
 create policy "Wishlist - owner" on wishlist
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+alter table reviews enable row level security;
+drop policy if exists "Reviews - public read" on reviews;
+drop policy if exists "Reviews - author insert" on reviews;
+drop policy if exists "Reviews - author update" on reviews;
+drop policy if exists "Reviews - author delete" on reviews;
+drop policy if exists "Reviews - admin manage" on reviews;
+create policy "Reviews - public read" on reviews
+  for select using (true);
+create policy "Reviews - author insert" on reviews
+  for insert with check (auth.uid() = user_id);
+create policy "Reviews - author update" on reviews
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Reviews - author delete" on reviews
+  for delete using (auth.uid() = user_id);
+create policy "Reviews - admin manage" on reviews
+  for all using (public.is_admin()) with check (public.is_admin());

@@ -1,64 +1,39 @@
-import React from 'react'
-import { motion } from 'framer-motion'
-import { FiFilm, FiMusic, FiSliders, FiZap } from 'react-icons/fi'
-import { fadeInUp, staggerContainer } from '../utils/animations'
+import React, { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowRight, Check, ChevronDown, Clapperboard, Lightbulb, MessageCircle, Palette, Play, Sparkles, Wand2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useSiteContent } from '../hooks/useSiteContent'
+import { defaultServicesPage } from '../data/defaultServicesPage'
 
-const services = [
-  {
-    title: 'Reels & Status Edits',
-    description: 'Punchy short-form edits with fast beat cuts, transitions, captions, and mobile-first framing.',
-    icon: FiZap,
-  },
-  {
-    title: 'Wedding Films',
-    description: 'Cinematic highlight edits for pre-wedding, wedding, and event memories with smooth pacing.',
-    icon: FiFilm,
-  },
-  {
-    title: '3D Lyric Videos',
-    description: 'Animated typography, depth, glow, camera movement, and timing built around the song.',
-    icon: FiMusic,
-  },
-  {
-    title: 'Color & Polish',
-    description: 'Color grading, cleanup, overlays, sound balance, and export-ready finishing for every platform.',
-    icon: FiSliders,
-  },
-]
+const icons = [Sparkles, Play, Wand2, Clapperboard, Palette, Lightbulb]
+const visible = (items = []) => items.filter((entry) => entry.visible && entry.status !== 'draft')
+const Section = ({ label, title, children }) => <section className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24"><div className="mb-10 max-w-2xl"><p className="text-sm uppercase tracking-[.36em] text-primary">{label}</p><h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">{title}</h2></div>{children}</section>
 
 export default function Services() {
-  return (
-    <section id="services" className="relative py-20 md:py-32">
-      <div className="container-custom">
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.25 }}
-        >
-          <motion.div variants={fadeInUp} className="mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold">
-              <span className="text-gradient">Services</span>
-            </h2>
-            <div className="w-20 h-1 bg-gradient-purple mt-4 rounded-full" />
-          </motion.div>
+  const { content } = useSiteContent()
+  const storedPage = content.servicesPage || {}
+  const page = {
+    ...defaultServicesPage,
+    ...storedPage,
+    hero: { ...defaultServicesPage.hero, ...storedPage.hero },
+    cta: { ...defaultServicesPage.cta, ...storedPage.cta },
+  }
+  const [faq, setFaq] = useState(null)
+  const [testimonial, setTestimonial] = useState(0)
+  const hero = page.hero
+  const cta = page.cta
+  const testimonials = visible(page.testimonials)
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services.map((service) => {
-              const Icon = service.icon
-              return (
-                <motion.div key={service.title} variants={fadeInUp} className="glass-effect rounded-xl p-6 hover:border-primary/50 transition-all">
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/20 text-primary">
-                    <Icon className="text-2xl" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-3">{service.title}</h3>
-                  <p className="text-sm leading-relaxed text-text-muted">{service.description}</p>
-                </motion.div>
-              )
-            })}
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  )
+  return <main className="relative overflow-hidden pb-12 pt-24"><div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(157,92,255,.25),transparent_30%),radial-gradient(circle_at_90%_35%,rgba(179,136,255,.16),transparent_24%)]" />
+    {hero.visible && hero.status !== 'draft' && <section className="relative mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 lg:px-8 lg:pb-24"><motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/20 via-[#0d0718]/90 to-white/5 p-8 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl sm:p-14"><p className="text-sm uppercase tracking-[.38em] text-primary">{hero.label}</p><h1 className="text-gradient mt-5 max-w-4xl text-4xl font-semibold leading-tight sm:text-6xl">{hero.heading}</h1><p className="mt-6 max-w-2xl text-base leading-8 text-text-muted sm:text-lg">{hero.description}</p><div className="mt-8 flex flex-wrap gap-4"><Link to={hero.primaryHref} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 py-3 font-semibold text-white"><MessageCircle className="h-4 w-4" />{hero.primaryCta}</Link><Link to={hero.secondaryHref} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-white/5 px-6 py-3 font-semibold text-white">{hero.secondaryCta}<ArrowRight className="h-4 w-4" /></Link></div></motion.div></section>}
+    <Section label="What I do" title="Creative built for attention and impact"><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{visible(page.services).map((service, index) => { const Icon = icons[index % icons.length]; return <motion.article key={service.id} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .03 }} className="group rounded-[1.5rem] border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-primary/40"><div className="inline-flex rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary"><Icon className="h-5 w-5" /></div><h3 className="mt-5 text-xl font-semibold text-white">{service.title}</h3><p className="mt-3 text-sm leading-7 text-text-muted">{service.description}</p><ul className="mt-5 space-y-2 text-sm text-text-muted">{(service.features || []).map((feature) => <li key={feature} className="flex gap-2"><Check className="h-4 w-4 text-primary" />{feature}</li>)}</ul><div className="mt-5 grid gap-2 text-xs text-text-muted"><p><span className="font-semibold text-primary">Delivery:</span> {service.delivery || 'Custom timeline'}</p><p><span className="font-semibold text-primary">Best for:</span> {service.bestFor || 'Brands and creators'}</p></div><div className="mt-6 flex items-center justify-between"><span className="text-sm font-semibold text-primary">{service.price}</span><Link to="/contact" className="rounded-full border border-primary/30 px-4 py-2 text-sm font-semibold text-white">Hire Me</Link></div></motion.article> })}</div></Section>
+    <Section label="My process" title="A clear path from idea to delivery"><div className="grid gap-4 md:grid-cols-5">{visible(page.process).map((step, index) => <div key={step.id} className="relative rounded-2xl border border-white/10 bg-white/5 p-5"><span className="text-sm font-semibold text-primary">0{index + 1}</span><h3 className="mt-4 font-semibold text-white">{step.title}</h3><p className="mt-2 text-sm leading-6 text-text-muted">{step.description}</p>{index < page.process.length - 1 && <ArrowRight className="absolute -right-3 top-1/2 hidden h-5 w-5 text-primary md:block" />}</div>)}</div></Section>
+    <Section label="Why Icon Editz" title="A premium experience, without the agency overhead"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{visible(page.features).map((feature, index) => <div key={feature.id} className="rounded-2xl border border-white/10 bg-white/5 p-5"><Sparkles className="h-5 w-5 text-primary" /><h3 className="mt-4 font-semibold text-white">{feature.title}</h3><p className="mt-2 text-sm text-text-muted">{feature.description}</p></div>)}</div></Section>
+    <Section label="Industries" title="Creative for every kind of story"><div className="flex flex-wrap gap-3">{visible(page.industries).map((industry) => <span key={industry.id} className="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm text-white">{industry.title}</span>)}</div></Section>
+    <Section label="Software expertise" title="The tools behind the polish"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{visible(page.software).map((tool, index) => <div key={tool.id} className="rounded-2xl border border-white/10 bg-white/5 p-5"><div className="flex items-center justify-between"><Palette className="h-6 w-6 text-primary" /><span className="text-primary">{tool.description}</span></div><h3 className="mt-5 font-semibold text-white">{tool.title}</h3><div className="mt-4 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light" style={{ width: `${tool.percentage}%` }} /></div><p className="mt-2 text-sm text-text-muted">{tool.percentage}% experience</p></div>)}</div></Section>
+    <Section label="Service packages" title="Choose the level of creative support you need"><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{visible(page.packages).map((pack) => <article key={pack.id} className="rounded-[1.5rem] border border-primary/20 bg-gradient-to-b from-primary/10 to-white/5 p-6"><h3 className="text-xl font-semibold text-white">{pack.title}</h3><p className="mt-2 text-sm text-text-muted">{pack.description}</p><p className="mt-5 text-2xl font-semibold text-primary">{pack.price}</p><ul className="mt-6 space-y-3 text-sm text-text-muted">{(pack.features || []).map((feature) => <li key={feature} className="flex gap-2"><Check className="h-4 w-4 text-primary" />{feature}</li>)}</ul><Link to="/contact" className="mt-7 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white">Get Started</Link></article>)}</div></Section>
+    <Section label="FAQ" title="Helpful answers before we begin"><div className="mx-auto max-w-3xl space-y-3">{visible(page.faq).map((entry, index) => <div key={entry.id} className="rounded-2xl border border-white/10 bg-white/5"><button onClick={() => setFaq(faq === index ? null : index)} className="flex w-full items-center justify-between px-6 py-5 text-left font-semibold text-white">{entry.title}<ChevronDown className={`h-5 w-5 text-primary transition ${faq === index ? 'rotate-180' : ''}`} /></button><AnimatePresence>{faq === index && <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden px-6 pb-5 text-sm leading-7 text-text-muted">{entry.description}</motion.p>}</AnimatePresence></div>)}</div></Section>
+    <Section label="Client notes" title="Trusted creative partnerships">{testimonials.length > 0 && <div className="mx-auto max-w-3xl rounded-[1.8rem] border border-white/10 bg-white/5 p-8 text-center"><div className="text-primary">{'★'.repeat(testimonials[testimonial].rating || 5)}</div><p className="mt-5 text-lg leading-8 text-text-muted">“{testimonials[testimonial].review}”</p><p className="mt-6 font-semibold text-white">{testimonials[testimonial].title}</p><p className="text-sm text-text-muted">{testimonials[testimonial].description}</p><div className="mt-6 flex justify-center gap-2">{testimonials.map((entry, index) => <button key={entry.id} onClick={() => setTestimonial(index)} aria-label={`View testimonial ${index + 1}`} className={`h-2.5 w-2.5 rounded-full ${index === testimonial ? 'bg-primary' : 'bg-white/20'}`} />)}</div></div>}</Section>
+    {cta.visible && cta.status !== 'draft' && <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="rounded-[2rem] border border-primary/20 bg-gradient-to-r from-primary/25 via-white/5 to-primary/10 p-8 sm:p-12"><h2 className="text-3xl font-semibold text-white sm:text-4xl">{cta.heading}</h2><p className="mt-4 max-w-2xl text-text-muted">{cta.description}</p><div className="mt-7 flex flex-wrap gap-4"><Link to={cta.primaryHref} className="rounded-full bg-primary px-6 py-3 font-semibold text-white">{cta.primaryCta}</Link><Link to={cta.secondaryHref} className="rounded-full border border-primary/30 bg-white/5 px-6 py-3 font-semibold text-white">{cta.secondaryCta}</Link></div></div></section>}
+  </main>
 }

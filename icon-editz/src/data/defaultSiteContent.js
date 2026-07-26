@@ -1,4 +1,7 @@
+import { defaultServicesPage } from './defaultServicesPage'
+
 export const defaultSiteContent = {
+  servicesPage: defaultServicesPage,
   hero: {
     heading: 'ICON EDITZ',
     subtitle: 'Motion Graphics • Video Editing • Branding • Creative Assets',

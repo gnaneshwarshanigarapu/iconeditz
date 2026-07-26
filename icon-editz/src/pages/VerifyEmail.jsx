@@ -13,7 +13,8 @@ export default function VerifyEmail() {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true })
+        if (!supabase) throw new Error('Supabase is not configured.')
+        const { data, error } = await supabase.auth.getSession()
         if (error) {
           setStatus('error')
           setMessage('Verification failed. Please try the link again or request a new verification email.')

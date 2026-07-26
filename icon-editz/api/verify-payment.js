@@ -1,12 +1,6 @@
 import crypto from 'crypto';
 import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY // Use service role key if modifying protected data, but for this anon/service key based on your RLS
-);
+import { supabase } from '../src/utils/supabase.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

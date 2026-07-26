@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Play, Sparkles, ChevronDown } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useSiteContent } from '../hooks/useSiteContent'
+import { defaultServicesPage } from '../data/defaultServicesPage'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import ImageWithFallback from './ui/ImageWithFallback'
 import VideoWithPlaceholder from './ui/VideoWithPlaceholder'
@@ -69,6 +71,8 @@ export default function PremiumHomepage() {
   }, [])
 
   const heroBadges = content.hero.badges || []
+  const servicesPage = { ...defaultServicesPage, ...(content.servicesPage || {}) }
+  const featuredServices = (servicesPage.services || []).filter((service) => service.visible && service.status !== 'draft' && service.featured).slice(0, 4)
   const visibleProjects = (content.projects.items || []).filter((item) => item.visible).slice(0, 3)
   const visibleTools = (content.tools.items || []).filter((item) => item.visible)
   const visibleTestimonials = (content.testimonials.items || []).filter((item) => item.visible)
@@ -150,6 +154,16 @@ export default function PremiumHomepage() {
           </motion.div>
         </div>
       </SectionShell>
+
+      {featuredServices.length > 0 && <SectionShell id="services" eyebrow={servicesPage.homeServices?.label || 'Featured Services'} title={servicesPage.homeServices?.heading || 'Creative support for every big idea'} description={servicesPage.homeServices?.description}>
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {featuredServices.map((service, index) => {
+            const Icon = iconRegistry[service.icon] || Sparkles
+            return <motion.div key={service.id} variants={cardMotion} transition={{ delay: index * 0.06 }} className="rounded-[1.6rem] border border-white/10 bg-white/5 p-7 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-primary/30"><div className="inline-flex rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary"><Icon className="h-5 w-5" /></div><h3 className="mt-5 text-xl font-semibold text-white">{service.title}</h3><p className="mt-3 text-sm leading-8 text-text-muted">{service.description}</p></motion.div>
+          })}
+        </div>
+        {servicesPage.homeServices?.buttonVisible !== false && <div className="mt-10 flex justify-center"><Link to={servicesPage.homeServices?.buttonUrl || '/services'} className="group inline-flex items-center gap-2 rounded-full border border-primary/50 bg-gradient-to-r from-primary/20 via-white/5 to-primary-light/20 px-6 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(157,92,255,.22)] transition duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-[0_0_34px_rgba(157,92,255,.45)]">{servicesPage.homeServices?.buttonText || 'View All Services'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Link></div>}
+      </SectionShell>}
 
       <SectionShell id="projects" eyebrow="Featured Projects" title="Three standout collaborations that reflect the studio’s best work" description="The homepage highlights only the strongest work so the story stays focused and premium.">
         <div className="grid gap-6 lg:grid-cols-3">

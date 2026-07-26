@@ -1,18 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Small hack to determine if we are in a Vite (client-side) environment.
+const isVite = typeof import.meta !== 'undefined' && typeof import.meta.env !== 'undefined'
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
-export const supabaseDebugConfig = {
-  url: supabaseUrl || '',
-  hasAnonKey: Boolean(supabaseAnonKey),
-  anonKeyPrefix: supabaseAnonKey ? `${supabaseAnonKey.slice(0, 12)}...` : '',
-  isConfigured: isSupabaseConfigured,
+const supabaseUrl = isVite
+  ? import.meta.env.VITE_SUPABASE_URL
+  : process.env.VITE_SUPABASE_URL
+
+const supabaseKey = isVite
+  ? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  : process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey)
+
+if (import.meta.env.DEV && !isSupabaseConfigured) {
+  console.warn('[Supabase] Not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.')
 }
 
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+  ? createClient(supabaseUrl, supabaseKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
@@ -21,9 +26,16 @@ export const supabase = isSupabaseConfigured
     })
   : null
 
+export const supabaseDebugConfig = {
+  url: supabaseUrl || '',
+  hasPublishableKey: Boolean(supabaseKey),
+  publishableKeyPrefix: supabaseKey ? `${supabaseKey.slice(0, 12)}...` : '',
+  isConfigured: isSupabaseConfigured,
+}
+
 const requireSupabase = () => {
   if (!supabase) {
-    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment.')
+    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to your environment.')
   }
   return supabase
 }
@@ -184,7 +196,12 @@ export const getDashboardStats = async () => {
 
 export const signInWithGoogle = async () => {
   const client = requireSupabase()
-  return client.auth.signInWithOAuth({ provider: 'google' })
+  return client.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/`,
+    },
+  })
 }
 
 export const signUp = async (email, password, options = {}) => {
@@ -209,7 +226,33 @@ export const updateUserPassword = async (password) => {
   return client.auth.updateUser({ password })
 }
 
-export const getUserOrders = async () => []
-export const getUserDownloads = async () => []
-export const getUserWishlist = async () => []
-export const updateUserProfile = async () => ({ data: null, error: null })
+const getRequiredUser = async () => {
+  const user = await getCurrentUser()
+  if (!user) throw new Error('You must be signed in to access this resource.')
+  return user
+}
+
+export const getUserOrders = async () => {
+  const client = requireSupabase()
+  const user = await getRequiredUser()
+  return assertOk(await client.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }))
+}
+
+export const getUserDownloads = async () => {
+  const client = requireSupabase()
+  const user = await getRequiredUser()
+  return assertOk(await client.from('downloads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }))
+}
+
+export const getUserWishlist = async () => {
+  const client = requireSupabase()
+  const user = await getRequiredUser()
+  return assertOk(await client.from('wishlist').select('*').eq('user_id', user.id).order('created_at', { ascending: false }))
+}
+
+export const updateUserProfile = async (profile) => {
+  const client = requireSupabase()
+  const user = await getRequiredUser()
+  const { id: _id, created_at: _createdAt, ...updates } = profile || {}
+  return client.from('profiles').upsert({ id: user.id, ...updates }).select('*').single()
+}

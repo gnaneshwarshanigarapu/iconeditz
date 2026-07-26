@@ -4,9 +4,11 @@ import {
   isSupabaseConfigured,
   sendPasswordResetEmail,
   signIn,
+  signInWithGoogle,
   signOut,
   supabase,
   supabaseDebugConfig,
+  updateUserPassword,
 } from '../utils/supabase'
 
 const AuthContext = createContext({
@@ -18,6 +20,8 @@ const AuthContext = createContext({
   login: async () => {},
   logout: async () => {},
   requestPasswordReset: async () => {},
+  resetPassword: async () => {},
+  loginWithGoogle: async () => {},
 })
 
 const toAuthUser = (authUser) => {
@@ -31,6 +35,9 @@ const toAuthUser = (authUser) => {
     role: appRole || userRole || 'customer',
     appRole,
     userRole,
+    user_metadata: authUser.user_metadata || {},
+    app_metadata: authUser.app_metadata || {},
+    email_confirmed_at: authUser.email_confirmed_at || null,
   }
 }
 
@@ -47,7 +54,7 @@ export function AuthProvider({ children }) {
       console.info(`[Admin Auth] ${label}`, {
         supabaseUrl: supabaseDebugConfig.url,
         isConfigured: supabaseDebugConfig.isConfigured,
-        hasAnonKey: supabaseDebugConfig.hasAnonKey,
+        hasPublishableKey: supabaseDebugConfig.hasPublishableKey,
         ...payload,
       })
     }
@@ -115,8 +122,8 @@ export function AuthProvider({ children }) {
         console.log('Project URL:', supabaseDebugConfig.url)
         console.info('[Admin Auth] environment loaded', {
           isConfigured: supabaseDebugConfig.isConfigured,
-          hasAnonKey: supabaseDebugConfig.hasAnonKey,
-          anonKeyPrefix: supabaseDebugConfig.anonKeyPrefix,
+          hasPublishableKey: supabaseDebugConfig.hasPublishableKey,
+          publishableKeyPrefix: supabaseDebugConfig.publishableKeyPrefix,
         })
 
         try {
@@ -185,7 +192,16 @@ export function AuthProvider({ children }) {
       requestPasswordReset: async (emailAddress) => {
         const { error } = await sendPasswordResetEmail(emailAddress)
         if (error) throw error
-      }
+      },
+      resetPassword: async (password) => {
+        const { error } = await updateUserPassword(password)
+        if (error) throw error
+      },
+      loginWithGoogle: async () => {
+        const { data, error } = await signInWithGoogle()
+        if (error) throw error
+        return data
+      },
     }
   }, [loading, user])
 

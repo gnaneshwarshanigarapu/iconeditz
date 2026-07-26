@@ -15,7 +15,12 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const verifySession = async () => {
-      const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true })
+      if (!supabase) {
+        setError('Supabase is not configured.')
+        setStatus('error')
+        return
+      }
+      const { data, error } = await supabase.auth.getSession()
       if (error || !data?.session) {
         setError('Unable to validate password reset link. Please try again from the email received.')
         setStatus('error')

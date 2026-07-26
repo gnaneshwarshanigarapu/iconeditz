@@ -20,8 +20,7 @@ npm install @supabase/supabase-js @resend/node
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=public-anon-key
-VITE_SUPABASE_SERVICE_ROLE_KEY=service-role-key   # server-only
+VITE_SUPABASE_PUBLISHABLE_KEY=public-publishable-key
 VITE_RESEND_API_KEY=your_resend_key
 RAZORPAY_KEY_ID=rzp_test_xxx
 RAZORPAY_KEY_SECRET=rzp_test_secret

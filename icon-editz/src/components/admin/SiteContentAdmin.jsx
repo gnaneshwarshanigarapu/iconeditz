@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSiteContent } from '../../hooks/useSiteContent'
+import { defaultServicesPage } from '../../data/defaultServicesPage'
 import { Sparkles, Zap, BadgeCheck, Palette, Share2, Clapperboard, Film, Image, PenTool, Save } from 'lucide-react'
 
 const iconLibrary = {
@@ -32,6 +33,7 @@ export default function SiteContentAdmin() {
       { id: 'hero', label: 'Hero' },
       { id: 'showreel', label: 'Showreel' },
       { id: 'services', label: 'Services' },
+      { id: 'servicesPage', label: 'Services Page' },
       { id: 'projects', label: 'Projects' },
       { id: 'tools', label: 'Tools' },
       { id: 'testimonials', label: 'Testimonials' },
@@ -137,6 +139,30 @@ export default function SiteContentAdmin() {
             ))}
           </div>
         )
+      case 'servicesPage': {
+        const page = { ...defaultServicesPage, ...(content.servicesPage || {}) }
+        const collections = ['services', 'process', 'features', 'industries', 'software', 'packages', 'faq', 'testimonials']
+        const updateCollection = (collection, updater) => updateSection('servicesPage', (current = {}) => ({ ...current, [collection]: updater(current[collection] || []) }))
+        const updateItem = (collection, index, changes) => updateCollection(collection, (items) => items.map((entry, entryIndex) => entryIndex === index ? { ...entry, ...changes } : entry))
+        const moveItem = (collection, index, direction) => updateCollection(collection, (items) => {
+          const target = index + direction
+          if (target < 0 || target >= items.length) return items
+          const next = [...items]; [next[index], next[target]] = [next[target], next[index]]; return next
+        })
+        return (
+          <div className="space-y-6">
+            <p className="text-sm leading-6 text-text-muted">Manage every Services page collection. Changes save automatically; use visibility and status to hide, show, publish, or draft content.</p>
+            {['hero', 'homeServices', 'cta'].map((section) => (
+              <div key={section} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="mb-3 font-semibold text-white">{section === 'hero' ? 'Hero' : section === 'homeServices' ? 'Homepage Services CTA' : 'Closing CTA'}</p>
+                <div className="grid gap-3 md:grid-cols-2">{Object.entries(page[section] || {}).filter(([key]) => !['visible', 'status'].includes(key)).map(([key, value]) => <input key={key} value={value || ''} onChange={(event) => updateSection('servicesPage', (current = {}) => ({ ...current, [section]: { ...(current[section] || {}), [key]: event.target.value } }))} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white" placeholder={key} />)}</div>
+                <div className="mt-3 flex gap-3 text-sm text-text-muted"><button type="button" onClick={() => updateSection('servicesPage', (current = {}) => ({ ...current, [section]: { ...(current[section] || {}), visible: !(current[section]?.visible) } }))}>{page[section]?.visible ? 'Hide' : 'Show'}</button><button type="button" onClick={() => updateSection('servicesPage', (current = {}) => ({ ...current, [section]: { ...(current[section] || {}), status: current[section]?.status === 'published' ? 'draft' : 'published' } }))}>{page[section]?.status === 'published' ? 'Draft' : 'Publish'}</button></div>
+              </div>
+            ))}
+            {collections.map((collection) => <div key={collection} className="rounded-2xl border border-white/10 bg-white/5 p-4"><div className="mb-3 flex items-center justify-between"><p className="font-semibold capitalize text-white">{collection}</p><button type="button" onClick={() => updateCollection(collection, (items) => [...items, { id: `${collection}-${Date.now()}`, title: 'New item', description: '', visible: true, status: 'draft' }])} className="text-sm text-primary">+ Add</button></div><div className="space-y-3">{(page[collection] || []).map((entry, index) => <div key={entry.id} className="rounded-xl border border-white/10 bg-black/20 p-3"><div className="grid gap-2 md:grid-cols-2"><input value={entry.title || ''} onChange={(event) => updateItem(collection, index, { title: event.target.value })} className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-sm text-white" placeholder="Title" /><input value={entry.price || entry.percentage || ''} onChange={(event) => updateItem(collection, index, collection === 'software' ? { percentage: Number(event.target.value) } : { price: event.target.value })} className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-sm text-white" placeholder="Price / skill %" /><textarea value={entry.description || entry.review || ''} onChange={(event) => updateItem(collection, index, entry.review !== undefined ? { review: event.target.value } : { description: event.target.value })} className="md:col-span-2 min-h-16 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-sm text-white" placeholder="Description" /><textarea value={(entry.features || []).join('\n')} onChange={(event) => updateItem(collection, index, { features: event.target.value.split('\n').filter(Boolean) })} className="md:col-span-2 min-h-14 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-sm text-white" placeholder="Features (one per line)" /></div><div className="mt-3 flex flex-wrap gap-3 text-xs text-text-muted"><button type="button" onClick={() => updateItem(collection, index, { visible: !entry.visible })}>{entry.visible ? 'Hide' : 'Show'}</button>{collection === 'services' && <button type="button" onClick={() => updateItem(collection, index, { featured: !entry.featured })}>{entry.featured ? 'Featured' : 'Not featured'}</button>}<button type="button" onClick={() => updateItem(collection, index, { status: entry.status === 'published' ? 'draft' : 'published' })}>{entry.status === 'published' ? 'Draft' : 'Publish'}</button><button type="button" onClick={() => moveItem(collection, index, -1)}>Move up</button><button type="button" onClick={() => moveItem(collection, index, 1)}>Move down</button><button type="button" onClick={() => updateCollection(collection, (items) => items.filter((_, itemIndex) => itemIndex !== index))} className="text-red-300">Delete</button></div></div>)}</div></div>)}
+          </div>
+        )
+      }
       case 'projects':
         return (
           <div className="space-y-4">
