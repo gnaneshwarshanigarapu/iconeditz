@@ -81,7 +81,9 @@ export default function Navbar() {
           {/* Center: Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-6 xl:gap-8">
             {navItems.map((item) => {
-              const isActive = (location.pathname === '/' && activeSection === item.id) || (location.pathname.startsWith('/store') && item.label === 'Store');
+              const isActive = item.path === '/'
+                ? location.pathname === '/' && activeSection === item.id
+                : location.pathname.startsWith(item.path);
               return (
                 <motion.button
                   key={item.label}
@@ -105,7 +107,7 @@ export default function Navbar() {
           {/* Right: Hire Me Button & Mobile Toggle */}
           <div className="flex items-center gap-3 md:gap-4">
             <button
-              onClick={() => handleNavClick({ id: 'contact', path: '/' })}
+              onClick={() => navigate('/contact')}
               className="hidden md:block rounded-full bg-gradient-purple hover:bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all shadow-glow-purple hover:shadow-glow-purple-lg transform hover:-translate-y-0.5 whitespace-nowrap"
             >
               Hire Me
@@ -134,7 +136,9 @@ export default function Navbar() {
           >
             <div className="px-6 py-6 flex flex-col gap-4">
               {navItems.map((item) => {
-                const isActive = (location.pathname === '/' && activeSection === item.id) || (location.pathname.startsWith('/store') && item.label === 'Store');
+                const isActive = item.path === '/'
+                  ? location.pathname === '/' && activeSection === item.id
+                  : location.pathname.startsWith(item.path);
                 return (
                   <motion.button
                     key={item.label}
@@ -147,7 +151,10 @@ export default function Navbar() {
                 )
               })}
               <button
-                onClick={() => handleNavClick({ id: 'contact', path: '/' })}
+                onClick={() => {
+                  navigate('/contact')
+                  setIsOpen(false)
+                }}
                 className="w-full rounded-full bg-gradient-purple px-4 py-3.5 text-center text-white font-bold mt-2 shadow-glow-purple md:hidden"
               >
                 Hire Me

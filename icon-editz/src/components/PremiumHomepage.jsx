@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Play, Sparkles, ChevronDown } from 'lucide-react'
 import { useSiteContent } from '../hooks/useSiteContent'
@@ -69,18 +69,10 @@ export default function PremiumHomepage() {
   }, [])
 
   const heroBadges = content.hero.badges || []
-  const visibleServices = (content.services.items || []).filter((item) => item.visible)
   const visibleProjects = (content.projects.items || []).filter((item) => item.visible).slice(0, 3)
   const visibleTools = (content.tools.items || []).filter((item) => item.visible)
   const visibleTestimonials = (content.testimonials.items || []).filter((item) => item.visible)
   const visibleFaq = (content.faq.items || []).filter((item) => item.visible)
-
-  const footerLinks = useMemo(() => [
-    { label: 'Home', href: '#hero' },
-    { label: 'Services', href: '#services' },
-    { label: 'Projects', href: '#projects' },
-    { label: 'Contact', href: '#contact' },
-  ], [])
 
   return (
     <div className="relative overflow-hidden bg-transparent">
@@ -90,7 +82,7 @@ export default function PremiumHomepage() {
         <div className="grid w-full gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <motion.div initial={prefersReducedMotion ? false : { opacity: 0, x: -18 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} transition={{ duration: 0.24 }} className="max-w-2xl">
             <p className="text-sm uppercase tracking-[0.36em] text-primary">Premium creative studio</p>
-            <h1 className="mt-5 text-4xl font-semibold leading-[0.95] text-white sm:text-5xl lg:text-7xl">{content.hero.heading}</h1>
+            <h1 className="text-gradient mt-5 text-4xl font-semibold leading-[0.95] sm:text-5xl lg:text-7xl">{content.hero.heading}</h1>
             <p className="mt-5 text-base font-medium text-primary sm:text-lg">{content.hero.subtitle}</p>
             <p className="mt-6 max-w-xl text-base leading-8 text-text-muted sm:text-lg">{content.hero.description}</p>
             <div className="mt-8 flex flex-wrap gap-3 sm:gap-4">
@@ -156,22 +148,6 @@ export default function PremiumHomepage() {
             <p className="mt-4 text-base leading-8 text-text-muted">{content.showreel.description}</p>
             <a href="/projects" className="mt-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/20">{content.showreel.buttonText} <ArrowRight className="h-4 w-4" /></a>
           </motion.div>
-        </div>
-      </SectionShell>
-
-      <SectionShell id="services" eyebrow="Services" title="Premium services for standalone campaigns and full creative partnerships" description="Every service is tuned for clarity, performance, and a polished finish that feels effortless.">
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {visibleServices.map((service, index) => {
-            const Icon = iconRegistry[service.icon] || Sparkles
-            return (
-              <motion.div key={service.id} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }} className="rounded-[1.6rem] border border-white/10 bg-white/5 p-7 backdrop-blur-xl transition hover:-translate-y-1 hover:border-primary/30">
-                <div className="inline-flex rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary"><Icon className="h-5 w-5" /></div>
-                <h3 className="mt-5 text-xl font-semibold text-white">{service.title}</h3>
-                <p className="mt-3 text-sm leading-8 text-text-muted">{service.description}</p>
-                <a href="/services" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">Learn More <ArrowRight className="h-4 w-4" /></a>
-              </motion.div>
-            )
-          })}
         </div>
       </SectionShell>
 
@@ -256,34 +232,18 @@ export default function PremiumHomepage() {
         </div>
       </SectionShell>
 
-      <section id="contact" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:pb-24">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:pb-24">
         <motion.div initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/20 via-white/5 to-transparent p-8 shadow-[0_20px_80px_rgba(0,0,0,0.28)] sm:p-12">
           <div className="max-w-2xl">
-            <p className="text-sm uppercase tracking-[0.36em] text-primary">Ready to create</p>
-            <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">{content.cta.heading}</h2>
-            <p className="mt-4 text-lg leading-8 text-text-muted">{content.cta.description}</p>
+            <p className="text-sm uppercase tracking-[0.36em] text-primary">Ready when you are</p>
+            <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Let&apos;s create your next standout project.</h2>
+            <p className="mt-4 text-lg leading-8 text-text-muted">Tell us what you&apos;re building and we&apos;ll take it from there.</p>
           </div>
           <div className="mt-8 flex flex-wrap gap-4">
-            <a href={content.cta.primaryHref || '/contact'} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 py-3 text-sm font-semibold text-white">{content.cta.primaryCta} <ArrowRight className="h-4 w-4" /></a>
-            <a href={content.cta.secondaryHref || '/store'} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-white/5 px-6 py-3 text-sm font-semibold text-white">{content.cta.secondaryCta}</a>
+            <a href="/contact" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 py-3 text-sm font-semibold text-white">Get in touch <ArrowRight className="h-4 w-4" /></a>
           </div>
         </motion.div>
       </section>
-
-      <footer className="border-t border-white/10 bg-[#07040d]/90 px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-lg font-semibold text-white">{content.site.brandName}</p>
-            <p className="mt-2 text-sm leading-8 text-text-muted">{content.site.copyright}</p>
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-text-muted">
-            {footerLinks.map((link) => (
-              <a key={link.href} href={link.href} className="transition hover:text-primary">{link.label}</a>
-            ))}
-            <a href={`mailto:${content.site.email}`} className="transition hover:text-primary">Email</a>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
