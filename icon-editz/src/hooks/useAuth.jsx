@@ -7,7 +7,6 @@ import {
   signInWithGoogle,
   signOut,
   supabase,
-  supabaseDebugConfig,
   updateUserPassword,
 } from '../utils/supabase'
 
@@ -50,24 +49,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let isMounted = true
 
-    const debugSession = (label, payload) => {
-      console.info(`[Admin Auth] ${label}`, {
-        supabaseUrl: supabaseDebugConfig.url,
-        isConfigured: supabaseDebugConfig.isConfigured,
-        hasPublishableKey: supabaseDebugConfig.hasPublishableKey,
-        ...payload,
-      })
-    }
-
     const checkSession = async () => {
-      if (!isSupabaseConfigured || !supabase) {
-        console.error('[Admin Auth] Supabase is not configured', supabaseDebugConfig)
+      if (!isSupabaseConfigured() || !supabase) {
+        console.error('[Admin Auth] Supabase is not configured')
         if (isMounted) setLoading(false)
         return
       }
 
       const { data, error } = await getSession()
-      debugSession('getSession response', {
+      console.info('[Admin Auth] getSession response', {
         sessionUserEmail: data?.session?.user?.email || null,
         error: error || null,
       })
@@ -88,7 +78,7 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      debugSession('auth state changed', {
+      console.info('[Admin Auth] auth state changed', {
         event,
         sessionUserEmail: session?.user?.email || null,
       })
@@ -111,21 +101,14 @@ export function AuthProvider({ children }) {
       loading,
       isAdmin,
       role,
-      isConfigured: isSupabaseConfigured,
+      isConfigured: isSupabaseConfigured(),
       login: async (emailAddress, password) => {
         const submittedEmail = emailAddress.trim().toLowerCase()
 
         console.groupCollapsed('[Admin Auth] signInWithPassword attempt')
         console.log('Login attempt:', submittedEmail)
         console.info('[Admin Auth] email submitted', submittedEmail)
-        console.info('[Admin Auth] current Supabase URL', supabaseDebugConfig.url)
-        console.log('Project URL:', supabaseDebugConfig.url)
-        console.info('[Admin Auth] environment loaded', {
-          isConfigured: supabaseDebugConfig.isConfigured,
-          hasPublishableKey: supabaseDebugConfig.hasPublishableKey,
-          publishableKeyPrefix: supabaseDebugConfig.publishableKeyPrefix,
-        })
-
+        
         try {
           const response = await signIn(submittedEmail, password)
           const { data, error } = response
