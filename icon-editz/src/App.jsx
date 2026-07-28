@@ -6,6 +6,7 @@ import ServicesPage from './pages/ServicesPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProductsPage from './pages/ProductsPage'
 import ContactPage from './pages/ContactPage'
+import HireFromUsPage from './pages/HireFromUsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -35,8 +36,8 @@ function AppChrome() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/hire-us" element={<HireFromUsPage />} />
             <Route path="/store/*" element={<StoreRoutes />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/payments/*" element={<PaymentRoutes />} />

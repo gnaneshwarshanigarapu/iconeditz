@@ -12,6 +12,7 @@ const ProductList = lazy(() => import('../pages/admin/products/ProductList'))
 const AddProduct = lazy(() => import('../pages/admin/products/AddProduct'))
 const EditProduct = lazy(() => import('../pages/admin/products/EditProduct'))
 const SiteContentAdmin = lazy(() => import('../components/admin/SiteContentAdmin'))
+const HireFromUsAdminPage = lazy(() => import('../pages/admin/HireFromUsAdminPage'))
 
 function AdminPage({ title, children }) {
   return (
@@ -45,6 +46,7 @@ export default function AdminRoutes() {
         <Route path="/products/add" element={<AdminPage title="Add Product"><AddProduct /></AdminPage>} />
         <Route path="/products/:id/edit" element={<AdminPage title="Edit Product"><EditProduct /></AdminPage>} />
         <Route path="/content" element={<AdminPage title="Site Content"><SiteContentAdmin /></AdminPage>} />
+        <Route path="/hire-us" element={<AdminPage title="Hire From Us CMS"><HireFromUsAdminPage /></AdminPage>} />
         <Route path="/orders" element={<AdminPage title="Orders"><MockAdminSection title="Orders" /></AdminPage>} />
         <Route path="/customers" element={<AdminPage title="Customers"><MockAdminSection title="Customers" /></AdminPage>} />
         <Route path="/downloads" element={<AdminPage title="Downloads"><MockAdminSection title="Downloads" /></AdminPage>} />

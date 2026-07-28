@@ -10,6 +10,7 @@ import {
   FiSettings,
   FiShoppingBag,
   FiUsers,
+  FiBriefcase,
 } from 'react-icons/fi'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -18,6 +19,7 @@ const navItems = [
   { label: 'Products', to: '/admin/products', icon: FiBox },
   { label: 'Add Product', to: '/admin/products/add', icon: FiPlusCircle },
   { label: 'Homepage Content', to: '/admin/content', icon: FiEdit },
+  { label: 'Hire From Us CMS', to: '/admin/hire-us', icon: FiBriefcase },
   { label: 'Orders', to: '/admin/orders', icon: FiShoppingBag },
   { label: 'Customers', to: '/admin/customers', icon: FiUsers },
   { label: 'Downloads', to: '/admin/downloads', icon: FiDownload },
@@ -26,6 +28,7 @@ const navItems = [
 
 export default function Sidebar() {
   const { logout } = useAuth()
+
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-[#0f0a1f]/90 px-4 py-5 text-text shadow-2xl shadow-black/30 backdrop-blur-2xl lg:flex lg:flex-col">
