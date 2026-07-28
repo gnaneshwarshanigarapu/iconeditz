@@ -61,7 +61,7 @@ export const api = {
 
     getById: async (productId) => {
       try {
-        const response = await fetch(`${API_URL}/api/products/${productId}`, {
+        const response = await fetch(`${API_URL}/api/products?id=${encodeURIComponent(productId)}`, {
           headers: getHeaders(),
           signal: AbortSignal.timeout(API_TIMEOUT),
         })
@@ -75,7 +75,7 @@ export const api = {
 
     search: async (query) => {
       try {
-        const response = await fetch(`${API_URL}/api/products/search?q=${query}`, {
+        const response = await fetch(`${API_URL}/api/products?q=${encodeURIComponent(query)}`, {
           headers: getHeaders(),
           signal: AbortSignal.timeout(API_TIMEOUT),
         })
@@ -139,10 +139,10 @@ export const api = {
   auth: {
     login: async (email, password) => {
       try {
-        const response = await fetch(`${API_URL}/api/auth/login`, {
+        const response = await fetch(`${API_URL}/api/auth`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ action: 'login', email, password }),
           signal: AbortSignal.timeout(API_TIMEOUT),
         })
         
@@ -157,10 +157,10 @@ export const api = {
 
     register: async (userData) => {
       try {
-        const response = await fetch(`${API_URL}/api/auth/register`, {
+        const response = await fetch(`${API_URL}/api/auth`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify(userData),
+          body: JSON.stringify({ action: 'register', ...userData }),
           signal: AbortSignal.timeout(API_TIMEOUT),
         })
         
@@ -179,7 +179,7 @@ export const api = {
 
     getCurrentUser: async (token) => {
       try {
-        const response = await fetch(`${API_URL}/api/auth/me`, {
+        const response = await fetch(`${API_URL}/api/auth`, {
           headers: getHeaders(token),
           signal: AbortSignal.timeout(API_TIMEOUT),
         })

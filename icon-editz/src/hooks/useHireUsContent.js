@@ -18,7 +18,7 @@ export function useHireUsContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    try { const data = await request('/api/cms/hire-us', { token: null }); const staticSections = data.sections.reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
+    try { const data = await request('/api/cms?section=hire-us', { token: null }); const staticSections = (data.sections ?? []).reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
     catch (issue) { setError(issue) } finally { setLoading(false) }
   }, [])
 
@@ -27,7 +27,7 @@ export function useHireUsContent() {
 
   const save = useCallback(async (published = false) => {
     setSaving(true); setError(null)
-    try { await request('/api/cms/hire-us', { method: 'PUT', body: { sections: ['hero','enquiry_form','contact','social','seo'].map(section => ({ section, content: content[section] })), features: content.features, services: content.services, gallery: content.gallery, faq: content.faq, published } }); await fetchData(); setSaving(false); return true }
+    try { await request('/api/cms?section=hire-us', { method: 'PUT', body: { sections: ['hero','enquiry_form','contact','social','seo'].map(section => ({ section, content: content[section] })), features: content.features, services: content.services, gallery: content.gallery, faq: content.faq, published } }); await fetchData(); setSaving(false); return true }
     catch (issue) { setError(issue) }
     setSaving(false)
     return false
