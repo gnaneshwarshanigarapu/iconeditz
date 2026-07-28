@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDown, GripVertical, ImagePlus, Loader2, Plus, Save, Send, Trash2, Upload, X } from 'lucide-react'
-import { supabase } from '../../utils/supabase'
+import { request } from '../../utils/api'
 import { emptyHireUsContent, useHireUsContent } from '../../hooks/useHireUsContent'
 
 const icons = ['Sparkles', 'Wand2', 'Video', 'Palette', 'Rocket', 'Heart', 'Star', 'Zap']
@@ -17,7 +17,7 @@ export default function HireFromUsAdminPage() {
  const { content, loading, error, saving, updateSection, save } = useHireUsContent(); const [open, setOpen] = useState('Hero'); const [status, setStatus] = useState(''); const autosave = useRef(null)
  useEffect(() => { if (loading || saving) return; clearTimeout(autosave.current); autosave.current = setTimeout(async () => { const ok = await save(false); setStatus(ok ? 'Draft saved just now' : 'Could not save draft') }, 1400); return () => clearTimeout(autosave.current) }, [content, loading])
  const set = (section, field, value) => updateSection(section, old => ({ ...old, [field]: value }))
- const upload = async (file, callback) => { if (!file) return; const path = `hire-us/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '-')}`; setStatus('Uploading media…'); const { error: uploadError } = await supabase.storage.from('hire-us-media').upload(path, file); if (uploadError) { setStatus(uploadError.message); return }; const { data } = supabase.storage.from('hire-us-media').getPublicUrl(path); callback(data.publicUrl); setStatus('Upload complete') }
+ const upload = async (file, callback) => { if (!file) return; setStatus('Uploading media…'); try { const form = new FormData(); form.append('file', file); form.append('folder','hire-us'); const data = await request('/api/uploads', { method: 'POST', body: form }); callback(data.url); setStatus('Upload complete') } catch (err) { setStatus(err.message) } }
  const list = (key, next) => updateSection(key, next)
  const staticPanels = [
   ['Hero', 'First impression and call to action', <div className="grid gap-4 md:grid-cols-2"><UploadField label="Background image" value={content.hero.backgroundImage} onFile={f => upload(f, v => set('hero','backgroundImage',v))}/><UploadField label="Background video" value={content.hero.backgroundVideo} accept="video/*" onFile={f => upload(f, v => set('hero','backgroundVideo',v))}/><Input label="Heading" value={content.hero.heading} onChange={v=>set('hero','heading',v)}/><Input label="Subtitle" value={content.hero.subtitle} onChange={v=>set('hero','subtitle',v)}/><Area label="Description" value={content.hero.description} onChange={v=>set('hero','description',v)}/><div className="grid grid-cols-2 gap-3"><Input label="CTA text" value={content.hero.ctaText} onChange={v=>set('hero','ctaText',v)}/><Input label="CTA URL" value={content.hero.ctaUrl} onChange={v=>set('hero','ctaUrl',v)}/></div></div>],

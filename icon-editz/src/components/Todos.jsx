@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
 
 export default function Todos() {
   const [todos, setTodos] = useState([]);
@@ -9,7 +8,8 @@ export default function Todos() {
     async function getTodos() {
       try {
         setLoading(true);
-        const { data: todos, error } = await supabase.from('todos').select();
+        // Todos are not part of the production API surface; keep this demo list local.
+        const todos = []; const error = null;
         if (error) {
           console.error('Error fetching todos:', error);
         } else if (todos) {

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { supabase } from '../../utils/supabase';
 
 export default function CheckoutModal({ product, onClose }) {
   const [formData, setFormData] = useState({
@@ -42,10 +41,8 @@ export default function CheckoutModal({ product, onClose }) {
       // 2. Determine download link (priority: zip -> google -> onedrive -> dropbox)
       const downloadLink = product.zip_path || product.google_drive_link || product.onedrive_link || product.dropbox_link;
 
-      // 3. Create Order record in Supabase
-      const { data: dbOrder, error: dbError } = await supabase
-        .from('orders')
-        .insert({
+      // 3. Persist the pending order through the API.
+      const orderResponse = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
           order_id: data.id,
           product_id: product.id,
           product_name: product.title,
@@ -55,11 +52,10 @@ export default function CheckoutModal({ product, onClose }) {
           amount: amount,
           payment_status: 'pending',
           download_link: downloadLink
-        })
-        .select()
-        .single();
-
-      if (dbError) throw new Error('Database Error: ' + dbError.message);
+        }) });
+      const orderPayload = await orderResponse.json();
+      if (!orderResponse.ok) throw new Error(orderPayload?.error?.message || 'Unable to create order');
+      const dbOrder = orderPayload.data;
 
       // 4. Setup Razorpay options
       const options = {

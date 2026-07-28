@@ -50,21 +50,24 @@ export default function AdminDashboard() {
 
   const loadDashboard = async () => {
     try {
-      const [productList = [], orders = [], users = []] = await Promise.all([
+      const [productResponse = {}, ordersResponse = {}, usersResponse = {}] = await Promise.all([
         getProducts(),
         getOrders(),
         getUsers(),
       ])
 
-      const totalSales = orders.reduce((sum, order) => sum + Number(order.amount ?? 0), 0)
-      const monthlyRevenue = orders.reduce((sum, order) => sum + Number(order.amount ?? 0), 0)
-      const recentOrders = orders.slice(0, 5)
+      const productList = Array.isArray(productResponse?.data) ? productResponse.data : []
+      const orders = Array.isArray(ordersResponse?.data) ? ordersResponse.data : []
+      const users = Array.isArray(usersResponse?.data) ? usersResponse.data : []
+      const totalSales = (orders ?? []).reduce((sum, order) => sum + Number(order.amount ?? 0), 0)
+      const monthlyRevenue = (orders ?? []).reduce((sum, order) => sum + Number(order.amount ?? 0), 0)
+      const recentOrders = (orders ?? []).slice(0, 5)
 
       setProducts(productList)
       setStats({
         totalSales,
-        totalProducts: productList.length,
-        totalCustomers: users.length,
+        totalProducts: (productList ?? []).length,
+        totalCustomers: (users ?? []).length,
         monthlyRevenue,
         recentOrders,
       })
@@ -497,8 +500,8 @@ export default function AdminDashboard() {
           </div>
 
           <div className="mt-6 space-y-4">
-            {products.length > 0 ? (
-              products.map((product) => (
+            {(products ?? []).length > 0 ? (
+              (products ?? []).map((product) => (
                 <div key={product.id} className="flex flex-col gap-4 rounded-3xl border border-primary/10 bg-background/90 p-5 md:flex-row md:items-center md:justify-between">
                   <div className="space-y-2">
                     <p className="text-lg font-semibold">{product.title || 'Untitled product'}</p>

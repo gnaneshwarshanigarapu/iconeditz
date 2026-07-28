@@ -59,8 +59,8 @@ export default function AdminDashboard() {
         getDashboardSummary(),
         getRecentProducts({ limit: 6 }),
       ])
-      setSummary(summaryData)
-      setRecentProducts(productsData)
+      setSummary(summaryData?.data ?? { totalProducts: 0, totalCustomers: 0, totalSales: 0 })
+      setRecentProducts(Array.isArray(productsData?.data) ? productsData.data : [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
                   <td className="px-5 py-4"><div className="h-8 w-32 rounded-lg bg-gray-600"></div></td>
                 </tr>
               ))}
-              {!loading && recentProducts.map((product) => (
+              {!loading && (recentProducts ?? []).map((product) => (
                 <tr key={product.id} className="hover:bg-white/[0.03]">
                   <td className="px-5 py-4">
                     <img
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
                 </tr>
               ))}
 
-              {!loading && recentProducts.length === 0 && (
+              {!loading && (recentProducts ?? []).length === 0 && (
                 <tr>
                   <td colSpan="6" className="px-5 py-10 text-center text-text-muted">
                     No products yet. Add your first product to populate this dashboard.

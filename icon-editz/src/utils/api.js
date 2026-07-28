@@ -1,8 +1,15 @@
 // API client utilities for future backend integration
 // This file handles all API calls to your backend
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 30000
+
+export const request = async (path, { method = 'GET', body, token = localStorage.getItem('token'), headers = {} } = {}) => {
+  const response = await fetch(`${API_URL}${path}`, { method, headers: { ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers }, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(API_TIMEOUT) })
+  const payload = response.status === 204 ? null : await response.json().catch(() => null)
+  if (!response.ok) throw new Error(payload?.error?.message || payload?.message || 'Request failed')
+  return payload?.data ?? payload
+}
 
 // Create request headers
 const getHeaders = (token = null) => {

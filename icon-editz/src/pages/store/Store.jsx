@@ -76,8 +76,9 @@ export default function Store() {
           category: selectedCategory,
           searchQuery: debouncedSearchQuery,
         })
-        setProducts(fetchedProducts)
-        setTotalPages(Math.ceil(count / PAGE_SIZE))
+        const safeProducts = Array.isArray(fetchedProducts) ? fetchedProducts : []
+        setProducts(safeProducts)
+        setTotalPages(Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)))
       } catch (err) {
         setError(err.message)
         // Gracefully handle the missing FTS column error
@@ -157,10 +158,10 @@ export default function Store() {
           <h3 className="text-xl font-medium text-white mb-2">Something went wrong</h3>
           <p className="text-text-muted">{error}</p>
         </div>
-      ) : products.length > 0 ? (
+      ) : (products ?? []).length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {products.map(product => (
+            {(products ?? []).map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
@@ -174,8 +175,8 @@ export default function Store() {
         </>
       ) : (
         <div className="text-center py-20 bg-surface rounded-xl border border-white/5">
-          <h3 className="text-xl font-medium text-white mb-2">No products found</h3>
-          <p className="text-text-muted">Try adjusting your search or category filter.</p>
+          <h3 className="text-xl font-medium text-white mb-2">No products available</h3>
+          <p className="text-text-muted">Try again later or adjust your search or category filter.</p>
         </div>
       )}
     </div>

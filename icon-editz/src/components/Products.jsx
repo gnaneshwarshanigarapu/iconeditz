@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { getProducts } from '../utils/supabase';
 
 const Products = () => {
     const [products, setProducts] = useState([]);
@@ -8,9 +8,7 @@ const Products = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const { data, error } = await supabase
-                    .from('products')
-                    .select('title');
+                const { data, error } = await getProducts();
 
                 if (error) {
                     throw error;
@@ -37,7 +35,7 @@ const Products = () => {
         <div>
             <h2>Products</h2>
             <ul>
-                {products.map((product) => (
+                {(products ?? []).map((product) => (
                     <li key={product.id}>{product.title}</li>
                 ))}
             </ul>

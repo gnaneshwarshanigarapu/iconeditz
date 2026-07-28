@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { Resend } from 'resend';
-import { supabase } from '../src/utils/supabase.js';
+import { supabaseAdmin } from './lib/supabaseAdmin.js';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,7 +34,7 @@ export default async function handler(req, res) {
 
     // 2. Mark order as PAID in Supabase
     // If you need admin privileges, use SUPABASE_SERVICE_ROLE_KEY
-    const { error: dbError } = await supabase
+    const { error: dbError } = await supabaseAdmin
       .from('orders')
       .update({ payment_status: 'PAID' })
       .eq('id', orderId);

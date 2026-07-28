@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../utils/supabase'
+import { request } from '../utils/api'
 
 export const emptyHireUsContent = {
   hero: { backgroundImage: '', backgroundVideo: '', heading: 'Let’s create something iconic.', subtitle: 'Hire Icon Editz', description: 'Tell us your story and we will bring it to life.', ctaText: 'Start a project', ctaUrl: '#enquiry' },
@@ -18,18 +18,8 @@ export function useHireUsContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const results = await Promise.all([
-      supabase.from('hire_us_content').select('section, content'),
-      supabase.from('hire_us_features').select('*').order('sort_order'),
-      supabase.from('hire_us_services').select('*').order('sort_order'),
-      supabase.from('hire_us_gallery_items').select('*').order('sort_order'),
-      supabase.from('hire_us_faq_items').select('*').order('sort_order'),
-    ])
-    const issue = results.map(r => r.error).find(Boolean)
-    if (issue) { setError(issue); setLoading(false); return }
-    const staticSections = results[0].data.reduce((all, row) => ({ ...all, [row.section]: row.content }), {})
-    setContent({ ...emptyHireUsContent, ...staticSections, features: results[1].data || [], services: results[2].data || [], gallery: results[3].data || [], faq: results[4].data || [] })
-    setLoading(false)
+    try { const data = await request('/api/cms/hire-us', { token: null }); const staticSections = data.sections.reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
+    catch (issue) { setError(issue) } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -37,30 +27,10 @@ export function useHireUsContent() {
 
   const save = useCallback(async (published = false) => {
     setSaving(true); setError(null)
-    const staticSections = ['hero', 'enquiry_form', 'contact', 'social', 'seo'].map(section => ({ section, content: content[section], published_at: published ? new Date().toISOString() : null, updated_at: new Date().toISOString() }))
-    const dynamic = [
-      ['hire_us_features', content.features.map((v, i) => ({ ...v, id: typeof v.id === 'number' ? v.id : undefined, sort_order: i, published }))],
-      ['hire_us_services', content.services.map((v, i) => ({ ...v, id: typeof v.id === 'number' ? v.id : undefined, sort_order: i, published }))],
-      ['hire_us_gallery_items', content.gallery.map((v, i) => ({ ...v, id: typeof v.id === 'number' ? v.id : undefined, sort_order: i, published }))],
-      ['hire_us_faq_items', content.faq.map((v, i) => ({ ...v, id: typeof v.id === 'number' ? v.id : undefined, sort_order: i, published }))],
-    ]
-    // Remove only rows that were explicitly taken out in the editor, then upsert
-    // the remaining rows. This preserves generated database IDs and makes Delete real.
-    const tasks = [supabase.from('hire_us_content').upsert(staticSections)]
-    for (const [table, rows] of dynamic) {
-      const { data: existing, error: existingError } = await supabase.from(table).select('id')
-      if (existingError) { setError(existingError); setSaving(false); return false }
-      const kept = new Set(rows.filter(row => typeof row.id === 'number').map(row => row.id))
-      const removed = (existing || []).map(row => row.id).filter(id => !kept.has(id))
-      if (removed.length) tasks.push(supabase.from(table).delete().in('id', removed))
-      if (rows.length) tasks.push(supabase.from(table).upsert(rows))
-    }
-    const outcome = await Promise.all(tasks)
-    const issue = outcome.map(r => r.error).find(Boolean)
-    if (issue) setError(issue)
-    else await fetchData()
+    try { await request('/api/cms/hire-us', { method: 'PUT', body: { sections: ['hero','enquiry_form','contact','social','seo'].map(section => ({ section, content: content[section] })), features: content.features, services: content.services, gallery: content.gallery, faq: content.faq, published } }); await fetchData(); setSaving(false); return true }
+    catch (issue) { setError(issue) }
     setSaving(false)
-    return !issue
+    return false
   }, [content, fetchData])
 
   return { content, loading, error, saving, refetch: fetchData, updateSection, save }

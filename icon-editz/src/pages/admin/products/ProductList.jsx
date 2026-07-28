@@ -11,7 +11,7 @@ const statusStyles = {
 const formatStatus = (status) => status.charAt(0).toUpperCase() + status.slice(1)
 
 export default function ProductList() {
-  const { products, productCounts, deleteProduct, publishProduct, unpublishProduct, archiveProduct } = useProducts()
+  const { products = [], productCounts = { total: 0, published: 0, draft: 0, archived: 0 }, deleteProduct, publishProduct, unpublishProduct, archiveProduct } = useProducts()
 
   const handleDelete = (product) => {
     if (window.confirm(`Delete "${product.title}"?`)) deleteProduct(product.id)
@@ -32,8 +32,8 @@ export default function ProductList() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {products.length === 0 && <p className="rounded-lg border border-white/10 bg-white/[0.04] p-6 text-text-muted">No products yet.</p>}
-        {products.map((product) => (
+        {(products ?? []).length === 0 && <p className="rounded-lg border border-white/10 bg-white/[0.04] p-6 text-text-muted">No products yet.</p>}
+        {(products ?? []).map((product) => (
           <div
             key={product.id}
             className="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition-colors hover:bg-white/[0.065]"
