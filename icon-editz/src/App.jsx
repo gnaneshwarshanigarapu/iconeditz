@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import AboutPage from './pages/AboutPage'
@@ -19,11 +19,18 @@ import { AuthProvider } from './hooks/useAuth.jsx'
 import PageTransition from './components/ui/PageTransition'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import SkipLink from './components/ui/SkipLink'
+import { trackPageView } from './utils/tracking'
 import './styles/global.css'
+
+import Analytics from './components/Analytics'
 
 function AppChrome() {
   const location = useLocation()
   const isAdminRoute = location.pathname.startsWith('/admin')
+
+  useEffect(() => {
+    trackPageView(location.pathname + location.search)
+  }, [location])
 
   return (
     <div className="min-h-screen bg-background text-text">
@@ -50,7 +57,6 @@ function AppChrome() {
     </div>
   )
 }
-
 export default function App() {
   return (
     <Router>
@@ -58,6 +64,7 @@ export default function App() {
         <AuthProvider>
           <PaymentProvider>
             <ErrorBoundary>
+              <Analytics />
               <AppChrome />
             </ErrorBoundary>
           </PaymentProvider>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FiPlay, FiMousePointer, FiX } from 'react-icons/fi'
 import { FaInstagram, FaYoutube } from 'react-icons/fa'
 import { AiOutlineMail } from 'react-icons/ai'
+import Logo from './common/Logo';
 import { fadeInUp, staggerContainer } from '../utils/animations'
 import { scrollToSection } from '../utils/helpers'
 
@@ -183,13 +184,16 @@ export default function Hero() {
               <div className="absolute inset-0 scale-110 rounded-full bg-primary/40 blur-[80px]" />
               
               {/* Subtle floating animation on the image itself */}
-              <motion.img 
+              <motion.div 
                 animate={{ y: [-10, 10, -10] }}
                 transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-                src="/assets/logos/icon-editz.jpg" 
-                alt="Icon Editz Logo" 
-                className="relative z-10 w-64 md:w-80 lg:w-96 rounded-full shadow-[0_0_80px_rgba(157,92,255,0.4)] border-4 border-primary/20 object-cover aspect-square"
-              />
+              >
+                <Logo
+                  size="w-64 md:w-80 lg:w-96"
+                  showText={false}
+                  className="relative z-10 rounded-full shadow-[0_0_80px_rgba(157,92,255,0.4)] border-4 border-primary/20 object-cover aspect-square"
+                />
+              </motion.div>
             </div>
           </motion.div>
         </div>

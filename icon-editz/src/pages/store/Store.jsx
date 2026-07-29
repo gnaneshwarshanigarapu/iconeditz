@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ProductCard from '../../components/store/ProductCard'
 import { useProducts } from '../../hooks/useProducts'
+import { trackEvent } from '../../utils/tracking'
 
 const PAGE_SIZE = 12
 
@@ -91,6 +92,24 @@ export default function Store() {
     }
     fetchProducts()
   }, [getProducts, currentPage, selectedCategory, debouncedSearchQuery])
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const items = products.map(product => ({
+        item_id: product.id,
+        item_name: product.title,
+        item_category: product.category,
+        price: product.price,
+        discount: product.discountPrice,
+      }));
+
+      trackEvent('view_item_list', {
+        ecommerce: {
+          items,
+        },
+      });
+    }
+  }, [products]);
   
   const handleCategoryChange = (e) => {
     setSelectedCategory(e.target.value)

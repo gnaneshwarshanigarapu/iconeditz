@@ -13,6 +13,7 @@ const AddProduct = lazy(() => import('../pages/admin/products/AddProduct'))
 const EditProduct = lazy(() => import('../pages/admin/products/EditProduct'))
 const SiteContentAdmin = lazy(() => import('../components/admin/SiteContentAdmin'))
 const HireFromUsAdminPage = lazy(() => import('../pages/admin/HireFromUsAdminPage'))
+const Settings = lazy(() => import('../pages/admin/Settings'));
 
 function AdminPage({ title, children }) {
   return (
@@ -50,7 +51,7 @@ export default function AdminRoutes() {
         <Route path="/orders" element={<AdminPage title="Orders"><MockAdminSection title="Orders" /></AdminPage>} />
         <Route path="/customers" element={<AdminPage title="Customers"><MockAdminSection title="Customers" /></AdminPage>} />
         <Route path="/downloads" element={<AdminPage title="Downloads"><MockAdminSection title="Downloads" /></AdminPage>} />
-        <Route path="/settings" element={<AdminPage title="Settings"><MockAdminSection title="Settings" /></AdminPage>} />
+        <Route path="/settings" element={<AdminPage title="Settings"><Settings /></AdminPage>} />
       </Routes>
     </Suspense>
   )

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FaInstagram, FaYoutube } from 'react-icons/fa'
 import { AiOutlineMail } from 'react-icons/ai'
+import Logo from './common/Logo'
 import { fadeInUp } from '../utils/animations'
 
 export default function Footer() {
@@ -25,7 +26,7 @@ export default function Footer() {
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <motion.div whileHover={{ scale: 1.03 }} className="text-center md:text-left">
-            <h3 className="text-2xl font-bold text-gradient mb-2">Icon Editz</h3>
+            <Logo />
             <p className="text-text-muted">
               Premium video editing and motion graphics by Nani.
             </p>

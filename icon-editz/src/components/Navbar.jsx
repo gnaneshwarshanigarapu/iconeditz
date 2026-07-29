@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiMenu, FiX } from 'react-icons/fi'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import Logo from './common/Logo';
 import { scrollToSection, getActiveSection } from '../utils/helpers'
 
 export default function Navbar() {
@@ -60,23 +61,7 @@ export default function Navbar() {
       >
         <div className="px-4 md:px-8 py-3 flex items-center justify-between">
           {/* Left: Logo & Brand Name */}
-          <Link
-            to="/"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex min-w-0 items-center gap-3 group"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary rounded-full blur-md opacity-40 group-hover:opacity-70 transition-opacity duration-300" />
-              <img 
-                src="/assets/logos/icon-editz.jpg" 
-                alt="Icon Editz Logo" 
-                className="relative w-10 h-10 md:w-11 md:h-11 rounded-full object-cover border border-primary/40 group-hover:border-primary transition-colors duration-300"
-              />
-            </div>
-            <span className="font-bold text-lg md:text-xl lg:text-2xl text-text hidden sm:block tracking-wide group-hover:text-primary transition-colors duration-300">
-              Icon Editz
-            </span>
-          </Link>
+          <Logo />
 
           {/* Center: Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-6 xl:gap-8">

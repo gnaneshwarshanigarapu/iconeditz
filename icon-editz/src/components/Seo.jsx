@@ -1,73 +1,80 @@
-import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import { getPageMetadata, siteMetadata } from '../utils/seo'
+import React, { useEffect } from 'react';
 
-export default function Seo({ title, description, canonicalPath, image, type = 'website' }) {
-  const location = useLocation()
-
+const Seo = ({ title, description, keywords, openGraph, twitter, canonical, schema }) => {
   useEffect(() => {
-    if (typeof document === 'undefined') return
+    document.title = title || 'Icon Editz';
 
-    const metadata = getPageMetadata(title, description, canonicalPath || location.pathname)
-    const resolvedTitle = metadata.title || siteMetadata.title
-    const resolvedDescription = metadata.description || siteMetadata.description
-    const resolvedCanonical = metadata.canonical || siteMetadata.canonical
-    const resolvedImage = image || siteMetadata.ogImage
-
-    document.title = resolvedTitle
-
-    const setMetaTag = (attr, value, content) => {
-      const tag = document.querySelector(`meta[${attr}="${value}"]`)
-      if (tag) {
-        tag.setAttribute('content', content)
-        return tag
+    const setMeta = (name, content) => {
+      let element = document.querySelector(`meta[name="${name}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('name', name);
+        document.head.appendChild(element);
       }
+      element.setAttribute('content', content || '');
+    };
 
-      const meta = document.createElement('meta')
-      meta.setAttribute(attr, value)
-      meta.setAttribute('content', content)
-      document.head.appendChild(meta)
-      return meta
+    const setProperty = (property, content) => {
+      let element = document.querySelector(`meta[property="${property}"]`);
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute('property', property);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content || '');
+    };
+
+    const setLink = (rel, href) => {
+        let element = document.querySelector(`link[rel="${rel}"]`);
+        if (!element) {
+          element = document.createElement('link');
+          element.setAttribute('rel', rel);
+          document.head.appendChild(element);
+        }
+        element.setAttribute('href', href || '');
     }
 
-    setMetaTag('name', 'description', resolvedDescription)
-    setMetaTag('property', 'og:title', resolvedTitle)
-    setMetaTag('property', 'og:description', resolvedDescription)
-    setMetaTag('property', 'og:type', type)
-    setMetaTag('property', 'og:url', resolvedCanonical)
-    setMetaTag('property', 'og:image', resolvedImage)
-    setMetaTag('name', 'twitter:title', resolvedTitle)
-    setMetaTag('name', 'twitter:description', resolvedDescription)
-    setMetaTag('name', 'twitter:image', resolvedImage)
-    setMetaTag('name', 'twitter:card', 'summary_large_image')
-    setMetaTag('name', 'robots', 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1')
+    setMeta('description', description);
+    setMeta('keywords', keywords);
 
-    let canonicalTag = document.querySelector('link[rel="canonical"]')
-    if (!canonicalTag) {
-      canonicalTag = document.createElement('link')
-      canonicalTag.setAttribute('rel', 'canonical')
-      document.head.appendChild(canonicalTag)
+    // Open Graph
+    setProperty('og:title', openGraph?.title || title);
+    setProperty('og:description', openGraph?.description || description);
+    setProperty('og:image', openGraph?.image || '/assets/images/og-icon-editz.png');
+    setProperty('og:url', openGraph?.url || window.location.href);
+    setProperty('og:type', openGraph?.type || 'website');
+
+    // Twitter
+    setProperty('twitter:card', twitter?.card || 'summary_large_image');
+    setProperty('twitter:title', twitter?.title || title);
+    setProperty('twitter:description', twitter?.description || description);
+    setProperty('twitter:image', twitter?.image || '/assets/images/og-icon-editz.png');
+
+    // Canonical URL
+    if (canonical) {
+        setLink('canonical', canonical);
     }
-    canonicalTag.setAttribute('href', resolvedCanonical)
 
-    let structuredDataTag = document.getElementById('app-structured-data')
-    if (structuredDataTag) structuredDataTag.remove()
+    // JSON-LD Schema
+    const scripts = [];
+    if (schema) {
+      const schemas = Array.isArray(schema) ? schema : [schema];
+      schemas.forEach(s => {
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.text = JSON.stringify(s);
+        document.head.appendChild(script);
+        scripts.push(script);
+      });
+    }
 
-    structuredDataTag = document.createElement('script')
-    structuredDataTag.id = 'app-structured-data'
-    structuredDataTag.type = 'application/ld+json'
-    structuredDataTag.textContent = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'ProfessionalService',
-      name: 'Icon Editz',
-      founder: 'Nani',
-      description: resolvedDescription,
-      url: resolvedCanonical,
-      areaServed: 'Worldwide',
-      serviceType: ['Video Editing', 'Motion Graphics', 'Content Creation'],
-    })
-    document.head.appendChild(structuredDataTag)
-  }, [canonicalPath, description, image, location.pathname, title, type])
+    return () => {
+      scripts.forEach(s => document.head.removeChild(s));
+    }
 
-  return null
-}
+  }, [title, description, keywords, openGraph, twitter, canonical, schema]);
+
+  return null;
+};
+
+export default Seo;

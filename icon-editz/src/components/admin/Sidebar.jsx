@@ -13,6 +13,7 @@ import {
   FiBriefcase,
 } from 'react-icons/fi'
 import { useAuth } from '../../hooks/useAuth'
+import Logo from '../common/Logo'
 
 const navItems = [
   { label: 'Dashboard', to: '/admin', icon: FiBarChart2, end: true },
@@ -32,9 +33,8 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-[#0f0a1f]/90 px-4 py-5 text-text shadow-2xl shadow-black/30 backdrop-blur-2xl lg:flex lg:flex-col">
-      <div className="mb-8 rounded-xl border border-primary/20 bg-white/[0.04] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Icon Editz</p>
-        <h2 className="mt-2 text-xl font-bold text-white">Seller Admin</h2>
+      <div className="mb-8">
+        <Logo />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">
