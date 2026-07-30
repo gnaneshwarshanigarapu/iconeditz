@@ -12,12 +12,12 @@ const Logo = ({ size = 'w-10 h-10', variant = 'light', showText = true, classNam
         <img
           src="/assets/logos/icon-editz.jpg"
           alt="Icon Editz Logo"
-          className={`relative ${size} rounded-full object-cover border border-primary/40 group-hover:border-primary transition-colors duration-300`}
+          className={`relative ${size} rounded-full object-cover border-2 border-primary/30 group-hover:border-primary/70 transition-colors duration-300`}
         />
       </div>
       {showText && (
-        <span className="font-bold text-lg md:text-xl lg:text-2xl text-text hidden sm:block tracking-wide group-hover:text-primary transition-colors duration-300">
-          Icon Editz
+        <span className="font-bold text-[34px] text-text hidden sm:block tracking-wide group-hover:text-primary transition-colors duration-300">
+          ICON EDITZ
         </span>
       )}
     </Link>

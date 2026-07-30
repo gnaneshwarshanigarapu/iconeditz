@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiMenu, FiX } from 'react-icons/fi'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import Logo from './common/Logo';
+import { useLocation, useNavigate } from 'react-router-dom'
+import Logo from './common/Logo'
+import NavItem from './NavItem'
 import { scrollToSection, getActiveSection } from '../utils/helpers'
 
 export default function Navbar() {
@@ -16,146 +17,107 @@ export default function Navbar() {
     { label: 'About', id: 'about', path: '/about' },
     { label: 'Services', id: 'services', path: '/services' },
     { label: 'Projects', id: 'projects', path: '/projects' },
-    { label: 'Store', path: '/store' },
+    { label: 'Store', id: 'store', path: '/store' },
     { label: 'Contact', id: 'contact', path: '/contact' },
   ]
 
   useEffect(() => {
     if (location.pathname === '/') {
       const handleScroll = () => {
-        const currentSection = getActiveSection();
-        if (currentSection) {
-          setActiveSection(currentSection);
-        }
+        const currentSection = getActiveSection(navItems.map(i => i.id).filter(Boolean));
+        if (currentSection) setActiveSection(currentSection);
       }
       window.addEventListener('scroll', handleScroll, { passive: true });
-      
-      const searchParams = new URLSearchParams(location.search);
-      const scrollTo = searchParams.get('scrollTo');
-      if (scrollTo) {
-        setTimeout(() => scrollToSection(scrollTo), 100);
-        navigate('/', { replace: true });
-      }
-      
-      // Initial check
-      handleScroll();
-
-      return () => window.removeEventListener('scroll', handleScroll)
+      handleScroll(); // Initial check
+      return () => window.removeEventListener('scroll', handleScroll);
     } else {
-      const currentPath = location.pathname.substring(1);
-      const activeItem = navItems.find(item => location.pathname.startsWith(item.path) && item.path !== '/');
+      const activeItem = navItems.find(item => item.path !== '/' && location.pathname.startsWith(item.path));
       setActiveSection(activeItem ? activeItem.id || activeItem.label.toLowerCase() : '');
     }
-  }, [location, navigate, navItems])
+  }, [location.pathname]);
 
   const handleNavClick = (item) => {
-    if (item.path && item.path !== '/' && item.path.startsWith('/')) {
-      navigate(item.path)
-    } else if (location.pathname !== '/') {
-      navigate(`/?scrollTo=${item.id}`)
-    } else {
-      scrollToSection(item.id)
+    setIsOpen(false);
+    if (item.path && location.pathname !== item.path) {
+        if (item.path.startsWith('/')) {
+            navigate(item.path);
+        }
     }
-    setIsOpen(false)
-  }
+    if (item.id) {
+        if (location.pathname !== '/') {
+            navigate(`/?scrollTo=${item.id}`);
+        } else {
+            scrollToSection(item.id);
+        }
+    }
+  };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-[72px] flex justify-center px-4 md:px-6">
+    <>
       <motion.nav
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-7xl h-full rounded-full bg-black/50 backdrop-blur-lg border border-white/10 shadow-glow-navbar transition-shadow duration-300"
+        className="sticky top-[20px] z-[1000] w-[calc(100%-40px)] max-w-[1400px] h-[78px] mx-auto rounded-full bg-[rgba(12,10,20,0.88)] backdrop-blur-[20px] border border-[rgba(168,85,247,0.18)] shadow-navbar-shadow"
       >
         <div className="h-full flex items-center justify-between px-6">
-          {/* Left: Logo & Brand Name */}
           <Logo size="w-12 h-12" />
 
-          {/* Center: Desktop Navigation */}
-          <div className="hidden lg:flex items-center h-full gap-x-2">
-            {navItems.map((item) => {
-              const isActive = item.id ? activeSection === item.id : location.pathname.startsWith(item.path);
-              return (
-                <motion.button
-                  key={item.label}
-                  onClick={() => handleNavClick(item)}
-                  className={`relative h-full flex items-center px-4 text-sm font-medium transition-all duration-250 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-primary ${
-                    isActive
-                      ? 'text-white'
-                      : 'text-text-muted hover:text-white'
-                  }`}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span className="relative z-10">{item.label}</span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-nav-item"
-                      className="absolute inset-0 rounded-full bg-primary/15 border-2 border-[#A855F7]"
-                      style={{ borderRadius: 9999 }}
-                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-              )
-            })}
+          <div className="hidden lg:flex items-center gap-x-12">
+            {navItems.map((item) => (
+              <NavItem
+                key={item.label}
+                item={item}
+                isActive={activeSection === item.id}
+                onClick={handleNavClick}
+              />
+            ))}
           </div>
 
-          {/* Right: Hire Me Button & Mobile Toggle */}
-          <div className="flex items-center gap-4">
+          <div className="hidden lg:flex">
             <button
-              onClick={() => navigate('/contact')}
-              className="hidden md:block rounded-full bg-gradient-purple px-6 py-2.5 text-sm font-bold text-white transition-all duration-300 transform hover:scale-103 hover:shadow-glow-purple-lg whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-primary"
+              onClick={() => handleNavClick({ path: '/contact' })}
+              className="rounded-full px-[34px] py-[16px] text-white font-bold bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] shadow-hire-me-glow transition-transform duration-250 hover:scale-103"
             >
               Hire Me
             </button>
+          </div>
 
-            <button
-              className="lg:hidden rounded-full p-2.5 text-2xl text-text transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle navigation"
-            >
-              {isOpen ? <FiX /> : <FiMenu />}
+          <div className="lg:hidden">
+            <button onClick={() => setIsOpen(true)} className="p-2 text-white">
+              <FiMenu size={28} />
             </button>
           </div>
         </div>
       </motion.nav>
 
-      {/* Mobile Navigation Dropdown */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="absolute top-[84px] w-[calc(100%-2rem)] max-w-7xl rounded-2xl bg-black/70 backdrop-blur-xl border border-primary/20 shadow-glow-purple overflow-hidden lg:hidden"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed inset-0 z-[1100] bg-[rgba(12,10,20,0.95)] backdrop-blur-[15px] lg:hidden"
           >
-            <div className="p-4 flex flex-col gap-2">
-              {navItems.map((item) => {
-                const isActive = item.id ? activeSection === item.id : location.pathname.startsWith(item.path);
-                return (
-                  <motion.button
-                    key={item.label}
-                    onClick={() => handleNavClick(item)}
-                    className={`relative w-full text-left text-base font-medium transition-colors p-3 rounded-lg ${
-                      isActive
-                        ? 'text-white bg-primary/15'
-                        : 'text-text-muted hover:text-white hover:bg-white/5'
-                    }`}
-                    whileHover={{ x: 5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {item.label}
-                  </motion.button>
-                )
-              })}
-              <button
-                onClick={() => {
-                  navigate('/contact')
-                  setIsOpen(false)
-                }}
-                className="w-full rounded-lg bg-gradient-purple px-4 py-3.5 text-center text-white font-bold mt-2 shadow-glow-purple"
+            <div className="flex justify-end p-6">
+                <button onClick={() => setIsOpen(false)} className="p-2 text-white">
+                    <FiX size={32} />
+                </button>
+            </div>
+            <div className="flex flex-col items-center justify-center h-full -mt-16 gap-y-8">
+              {navItems.map((item) => (
+                <motion.button
+                  key={item.label}
+                  onClick={() => handleNavClick(item)}
+                  className={`text-4xl font-bold ${activeSection === item.id ? 'text-primary' : 'text-white'}`}
+                >
+                  {item.label}
+                </motion.button>
+              ))}
+               <button
+                onClick={() => handleNavClick({ path: '/contact' })}
+                className="mt-8 rounded-full px-[34px] py-[16px] text-white font-bold text-xl bg-gradient-to-r from-[#8B5CF6] to-[#A855F7] shadow-hire-me-glow"
               >
                 Hire Me
               </button>
@@ -163,6 +125,6 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
-  )
+    </>
+  );
 }
