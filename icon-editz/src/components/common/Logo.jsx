@@ -16,7 +16,7 @@ const Logo = ({ size = 'w-10 h-10', variant = 'light', showText = true, classNam
         />
       </div>
       {showText && (
-        <span className="font-bold text-[34px] text-text hidden sm:block tracking-wide group-hover:text-primary transition-colors duration-300">
+        <span className="font-bold text-[18px] text-text hidden sm:block tracking-wide group-hover:text-primary transition-colors duration-300">
           ICON EDITZ
         </span>
       )}

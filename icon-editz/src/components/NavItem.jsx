@@ -9,7 +9,7 @@ const NavItem = ({ item, isActive, onClick }) => {
       onClick={() => onClick(item)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative font-semibold text-[16px] tracking-[.2px] transition-colors duration-250 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+      className="relative font-semibold text-[16px] tracking-[.2px] transition-colors duration-250 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full select-none caret-transparent"
       animate={{
         color: isActive || isHovered ? '#FFFFFF' : '#EDEDED',
       }}

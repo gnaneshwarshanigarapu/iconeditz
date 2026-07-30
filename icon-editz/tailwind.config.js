@@ -25,7 +25,7 @@ export default {
         'glow-purple': '0 0 20px rgba(157, 92, 255, 0.5)',
         'glow-purple-lg': '0 0 40px rgba(157, 92, 255, 0.6)',
         'glow-purple-xl': '0 0 60px rgba(157, 92, 255, 0.7)',
-        'navbar-shadow': '0 10px 40px rgba(0,0,0,.45), 0 0 30px rgba(139,92,246,.12)',
+        'navbar-shadow': '0 10px 40px rgba(0,0,0,.45), 0 0 30px rgba(139,92,246,.06)',
         'hire-me-glow': '0 0 25px rgba(168,85,247,.25)',
       },
       backdropFilter: {
