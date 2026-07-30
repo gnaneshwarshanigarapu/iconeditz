@@ -11,12 +11,12 @@ const NavItem = ({ item, isActive, onClick }) => {
           className="absolute rounded-full"
           style={{
             // Use negative insets to expand the background beyond the text area, creating padding
-            top: '-14px',
-            bottom: '-14px',
-            left: '-28px',
-            right: '-28px',
+            top: '-12px',
+            bottom: '-12px',
+            left: '-26px',
+            right: '-26px',
             background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-            boxShadow: '0 0 25px rgba(168, 85, 247, 0.45)',
+            boxShadow: '0 0 25px rgba(168, 85, 247, 0.35)',
           }}
         />
       )}

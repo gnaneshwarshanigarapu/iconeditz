@@ -8,11 +8,9 @@ import { scrollToSection } from '../utils/helpers';
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
-  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Reduced the navItems to match the requested items
   const navItems = [
     { label: 'Home', id: 'hero' },
     { label: 'About', id: 'about' },
@@ -23,12 +21,6 @@ export default function Navbar() {
   ];
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20); // A small threshold
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    
     const sectionIds = navItems.map(item => item.id);
     const sections = sectionIds.map(id => document.getElementById(id)).filter(Boolean);
 
@@ -39,7 +31,6 @@ export default function Navbar() {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             let currentSectionId = entry.target.id;
-            // As per requirement, 'About' section also activates 'Home' nav item
             if (currentSectionId === 'about') {
               setActiveSection('hero');
             } else {
@@ -50,7 +41,7 @@ export default function Navbar() {
       },
       {
         root: null,
-        rootMargin: '-50% 0px -50% 0px', // Trigger when the middle of the section crosses the middle of the viewport
+        rootMargin: '-50% 0px -50% 0px',
         threshold: 0,
       }
     );
@@ -58,10 +49,9 @@ export default function Navbar() {
     sections.forEach(section => observer.observe(section));
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
       sections.forEach(section => observer.unobserve(section));
     };
-  }, []); // Empty dependency array to run only once on mount
+  }, []);
 
   const handleNavClick = (item) => {
     setIsOpen(false);
@@ -78,27 +68,21 @@ export default function Navbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
-        className={`fixed top-5 z-50 left-1/2 -translate-x-1/2 w-[92%] max-w-[1450px] h-[72px]
-                   rounded-full border 
-                   transition-all duration-300
-                   ${scrolled 
-                     ? 'bg-[rgba(18,12,28,.95)] border-[rgba(147,51,234,.35)] shadow-[0_15px_50px_rgba(124,58,237,.25)]'
-                     : 'bg-[rgba(18,12,28,.92)] border-[rgba(147,51,234,.28)] shadow-[0_10px_40px_rgba(124,58,237,.18)]'
-                   }`}
+        className="fixed top-5 left-1/2 -translate-x-1/2 w-[92%] max-w-[1400px] h-16 rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)]"
         style={{
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        <div className="flex items-center justify-between h-full">
-          {/* LOGO */}
-          <div className="flex items-center gap-x-4">
-            <img src="/apple-touch-icon.png" alt="Logo" className="w-[52px] h-[52px]" />
-            <span className="font-bold text-[20px] text-white tracking-wide">ICON EDITZ</span>
+        <div className="hidden lg:grid grid-cols-[280px_1fr_220px] items-center h-full px-6">
+          {/* LEFT: LOGO */}
+          <div className="flex items-center gap-x-3">
+            <img src="/apple-touch-icon.png" alt="Logo" className="w-12 h-12" />
+            <span className="font-bold text-[18px] text-white tracking-wide">ICON EDITZ</span>
           </div>
 
-          {/* MENU */}
-          <div className="hidden lg:flex items-center gap-x-12"> {/* 48px gap */}
+          {/* CENTER: MENU */}
+          <div className="flex items-center justify-center gap-x-[42px]">
             {navItems.map((item) => (
               <NavItem
                 key={item.id}
@@ -109,25 +93,30 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* CTA */}
-          <div className="hidden lg:flex">
+          {/* RIGHT: CTA */}
+          <div className="flex justify-end">
             <motion.button
               whileHover={{ scale: 1.04 }}
               onClick={() => scrollToSection('contact')}
-              className="h-[56px] px-[34px] text-white font-bold text-base rounded-full bg-gradient-to-r from-[#7c3aed] to-[#a855f7]
+              className="h-12 px-8 text-white font-bold text-base rounded-full bg-gradient-to-r from-[#7c3aed] to-[#a855f7]
                          shadow-[0_0_35px_rgba(168,85,247,.45)] transition-transform duration-200"
             >
               Hire Me
             </motion.button>
           </div>
-
-          {/* Mobile Menu Button */}
-          <div className="lg:hidden">
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-white">
-              {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-            </button>
-          </div>
         </div>
+
+        {/* Mobile Menu - Same as before, but ensure it's outside the grid */}
+        <div className="lg:hidden flex items-center justify-between h-full px-6">
+            <div className="flex items-center gap-x-3">
+                <img src="/apple-touch-icon.png" alt="Logo" className="w-10 h-10" />
+                 <span className="font-bold text-lg text-white">ICON EDITZ</span>
+            </div>
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-white">
+                {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+            </button>
+        </div>
+
       </motion.nav>
 
       {/* Mobile Drawer */}
