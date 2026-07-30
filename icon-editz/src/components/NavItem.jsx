@@ -1,41 +1,42 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 
 const NavItem = ({ item, isActive, onClick }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <motion.button
-      onClick={() => onClick(item)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="relative font-semibold text-[16px] tracking-[.2px] transition-colors duration-250 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full select-none caret-transparent"
-      animate={{
-        color: isActive || isHovered ? '#FFFFFF' : '#EDEDED',
-      }}
-      transition={{ duration: 0.25 }}
-    >
-      <motion.span
-        className="relative z-10 block px-[22px] py-[12px]"
-        animate={{ y: isHovered ? -2 : 0 }}
-        transition={{ duration: 0.25 }}
+    <div className="relative flex items-center justify-center">
+      {/* Active state background pill */}
+      {isActive && (
+        <motion.div
+          layoutId="active-pill"
+          className="absolute rounded-full"
+          style={{
+            // Use negative insets to expand the background beyond the text area, creating padding
+            top: '-14px',
+            bottom: '-14px',
+            left: '-28px',
+            right: '-28px',
+            background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+            boxShadow: '0 0 25px rgba(168, 85, 247, 0.45)',
+          }}
+        />
+      )}
+
+      {/* The actual button/text content */}
+      <motion.button
+        onClick={onClick}
+        className="relative z-10 focus:outline-none font-semibold"
+        style={{ fontSize: '17px' }}
+        animate={{ color: isActive ? '#FFFFFF' : 'rgba(255, 255, 255, 0.78)' }}
+        whileHover={{
+          // Only apply hover effects if the item is not already active
+          color: '#FFFFFF',
+          y: isActive ? 0 : -1,
+        }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       >
         {item.label}
-      </motion.span>
-
-      <AnimatePresence>
-        {(isActive || isHovered) && (
-          <motion.div
-            layoutId={isActive ? "active-nav-pill" : undefined}
-            className="absolute inset-0 bg-[rgba(168,85,247,0.18)] border border-[rgba(168,85,247,0.35)] rounded-full"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 30, duration: 0.25 }}
-          />
-        )}
-      </AnimatePresence>
-    </motion.button>
+      </motion.button>
+    </div>
   );
 };
 

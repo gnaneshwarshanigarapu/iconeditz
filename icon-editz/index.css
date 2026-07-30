@@ -440,3 +440,15 @@ footer a {
         padding: 15px;
     }
 }
+/* Navbar caret and focus fix */
+.navbar a,
+.navbar button,
+.nav-link {
+    caret-color: transparent;
+    user-select: none;
+}
+
+.navbar a:focus,
+.navbar button:focus {
+    outline: none;
+}

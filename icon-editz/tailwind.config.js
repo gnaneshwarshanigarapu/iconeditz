@@ -20,6 +20,7 @@ export default {
       backgroundImage: {
         'gradient-purple': 'linear-gradient(135deg, #9D5CFF 0%, #B388FF 100%)',
         'gradient-dark': 'linear-gradient(135deg, #000000 0%, #111111 100%)',
+        'active-nav-gradient': 'linear-gradient(135deg, #7c3aed, #a855f7)',
       },
       boxShadow: {
         'glow-purple': '0 0 20px rgba(157, 92, 255, 0.5)',
