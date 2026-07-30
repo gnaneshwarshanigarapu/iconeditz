@@ -23,22 +23,30 @@ export default function Navbar() {
   useEffect(() => {
     if (location.pathname === '/') {
       const handleScroll = () => {
-        setActiveSection(getActiveSection())
+        const currentSection = getActiveSection();
+        if (currentSection) {
+          setActiveSection(currentSection);
+        }
       }
-      window.addEventListener('scroll', handleScroll)
-      // Check if we need to scroll from navigation
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      
       const searchParams = new URLSearchParams(location.search);
       const scrollTo = searchParams.get('scrollTo');
       if (scrollTo) {
         setTimeout(() => scrollToSection(scrollTo), 100);
-        // Clean up URL
         navigate('/', { replace: true });
       }
+      
+      // Initial check
+      handleScroll();
+
       return () => window.removeEventListener('scroll', handleScroll)
     } else {
-      setActiveSection('')
+      const currentPath = location.pathname.substring(1);
+      const activeItem = navItems.find(item => location.pathname.startsWith(item.path) && item.path !== '/');
+      setActiveSection(activeItem ? activeItem.id || activeItem.label.toLowerCase() : '');
     }
-  }, [location, navigate])
+  }, [location, navigate, navItems])
 
   const handleNavClick = (item) => {
     if (item.path && item.path !== '/' && item.path.startsWith('/')) {
@@ -52,36 +60,40 @@ export default function Navbar() {
   }
 
   return (
-    <div className="fixed top-4 left-0 right-0 z-50 flex flex-col items-center px-4 md:px-6 pointer-events-none">
+    <header className="fixed top-0 left-0 right-0 z-50 h-[72px] flex justify-center px-4 md:px-6">
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-6xl rounded-full bg-black/60 backdrop-blur-md border border-primary/20 shadow-[0_0_15px_rgba(157,92,255,0.2)] hover:shadow-glow-purple transition-shadow duration-300 pointer-events-auto"
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="w-full max-w-7xl h-full rounded-full bg-black/50 backdrop-blur-lg border border-white/10 shadow-glow-navbar transition-shadow duration-300"
       >
-        <div className="px-4 md:px-8 py-3 flex items-center justify-between">
+        <div className="h-full flex items-center justify-between px-6">
           {/* Left: Logo & Brand Name */}
-          <Logo />
+          <Logo size="w-12 h-12" />
 
           {/* Center: Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6 xl:gap-8">
+          <div className="hidden lg:flex items-center h-full gap-x-2">
             {navItems.map((item) => {
-              const isActive = item.path === '/'
-                ? location.pathname === '/' && activeSection === item.id
-                : location.pathname.startsWith(item.path);
+              const isActive = item.id ? activeSection === item.id : location.pathname.startsWith(item.path);
               return (
                 <motion.button
                   key={item.label}
                   onClick={() => handleNavClick(item)}
-                  className={`relative rounded-full px-2 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${isActive ? 'text-primary' : 'text-text-muted hover:text-text'}`}
-                  whileHover={{ color: isActive ? '#9D5CFF' : '#ffffff' }}
+                  className={`relative h-full flex items-center px-4 text-sm font-medium transition-all duration-250 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-primary ${
+                    isActive
+                      ? 'text-white'
+                      : 'text-text-muted hover:text-white'
+                  }`}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  {item.label}
+                  <span className="relative z-10">{item.label}</span>
                   {isActive && (
                     <motion.div
-                      layoutId="nav-underline"
-                      className="absolute -bottom-[6px] left-0 right-0 h-[2px] bg-primary rounded-full shadow-[0_0_8px_rgba(157,92,255,0.8)]"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      layoutId="active-nav-item"
+                      className="absolute inset-0 rounded-full bg-primary/15 border-2 border-[#A855F7]"
+                      style={{ borderRadius: 9999 }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                     />
                   )}
                 </motion.button>
@@ -90,16 +102,16 @@ export default function Navbar() {
           </div>
 
           {/* Right: Hire Me Button & Mobile Toggle */}
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/contact')}
-              className="hidden md:block rounded-full bg-gradient-purple hover:bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all shadow-glow-purple hover:shadow-glow-purple-lg transform hover:-translate-y-0.5 whitespace-nowrap"
+              className="hidden md:block rounded-full bg-gradient-purple px-6 py-2.5 text-sm font-bold text-white transition-all duration-300 transform hover:scale-103 hover:shadow-glow-purple-lg whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-primary"
             >
               Hire Me
             </button>
 
             <button
-              className="lg:hidden rounded-full p-2.5 text-2xl text-text transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="lg:hidden rounded-full p-2.5 text-2xl text-text transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick={() => setIsOpen(!isOpen)}
               aria-label="Toggle navigation"
             >
@@ -116,20 +128,23 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="w-full max-w-6xl mt-3 rounded-3xl bg-black/80 backdrop-blur-xl border border-primary/20 shadow-glow-purple overflow-hidden pointer-events-auto lg:hidden"
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="absolute top-[84px] w-[calc(100%-2rem)] max-w-7xl rounded-2xl bg-black/70 backdrop-blur-xl border border-primary/20 shadow-glow-purple overflow-hidden lg:hidden"
           >
-            <div className="px-6 py-6 flex flex-col gap-4">
+            <div className="p-4 flex flex-col gap-2">
               {navItems.map((item) => {
-                const isActive = item.path === '/'
-                  ? location.pathname === '/' && activeSection === item.id
-                  : location.pathname.startsWith(item.path);
+                const isActive = item.id ? activeSection === item.id : location.pathname.startsWith(item.path);
                 return (
                   <motion.button
                     key={item.label}
                     onClick={() => handleNavClick(item)}
-                    className={`text-left text-base font-medium transition-colors py-2 border-b border-white/5 ${isActive ? 'text-primary' : 'text-text-muted hover:text-text'}`}
+                    className={`relative w-full text-left text-base font-medium transition-colors p-3 rounded-lg ${
+                      isActive
+                        ? 'text-white bg-primary/15'
+                        : 'text-text-muted hover:text-white hover:bg-white/5'
+                    }`}
                     whileHover={{ x: 5 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     {item.label}
                   </motion.button>
@@ -140,7 +155,7 @@ export default function Navbar() {
                   navigate('/contact')
                   setIsOpen(false)
                 }}
-                className="w-full rounded-full bg-gradient-purple px-4 py-3.5 text-center text-white font-bold mt-2 shadow-glow-purple md:hidden"
+                className="w-full rounded-lg bg-gradient-purple px-4 py-3.5 text-center text-white font-bold mt-2 shadow-glow-purple"
               >
                 Hire Me
               </button>
@@ -148,6 +163,6 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </header>
   )
 }
