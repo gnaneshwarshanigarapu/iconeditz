@@ -90,7 +90,7 @@ export default function Navbar() {
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        <div className="flex items-center justify-between h-full px-6">
+        <div className="flex items-center justify-between h-full">
           {/* LOGO */}
           <div className="flex items-center gap-x-4">
             <img src="/apple-touch-icon.png" alt="Logo" className="w-[52px] h-[52px]" />
