@@ -31,7 +31,7 @@ export const pushToDataLayer = (event, data) => {
       const fbp = getCookie('_fbp');
       const fbc = getCookie('_fbc');
   
-      await fetch('/api/capi', {
+      await fetch('/api/dashboard', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

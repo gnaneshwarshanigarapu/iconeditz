@@ -26,7 +26,9 @@ drop policy if exists "Products - admin insert" on products;
 drop policy if exists "Products - admin update" on products;
 drop policy if exists "Products - admin delete" on products;
 create policy "Products - public read" on products
-  for select using (true);
+  for select using (published = true);
+create policy "Products - admin read" on products
+  for select using (public.is_admin());
 create policy "Products - admin insert" on products
   for insert with check (public.is_admin());
 create policy "Products - admin update" on products
@@ -51,7 +53,7 @@ drop policy if exists "Orders - admin update" on orders;
 create policy "Orders - owner" on orders
   for select using (auth.uid() = user_id);
 create policy "Orders - customer insert" on orders
-  for insert with check (true);
+  for insert with check (auth.uid() = user_id);
 create policy "Orders - admin read" on orders
   for select using (public.is_admin());
 create policy "Orders - admin update" on orders

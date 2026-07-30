@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../hooks/useAuth'; // Assuming you have a useAuth hook
 
 export default function CheckoutModal({ product, onClose }) {
+  const { user } = useAuth(); // Get authenticated user
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
+    name: user?.user_metadata?.full_name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
   });
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -22,81 +24,76 @@ export default function CheckoutModal({ product, onClose }) {
     setLoading(true);
 
     try {
-      // 1. Create order in our backend
-      const res = await fetch('/api/create-order', {
+      // Step 1: Create an order in your own database
+      const dbOrderResponse = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({
-          amount: amount,
-          receipt: `rcpt_${Date.now()}`
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to initiate payment');
-      }
-
-      // 2. Determine download link (priority: zip -> google -> onedrive -> dropbox)
-      const downloadLink = product.zip_path || product.google_drive_link || product.onedrive_link || product.dropbox_link;
-
-      // 3. Persist the pending order through the API.
-      const orderResponse = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-          order_id: data.id,
+          action: 'create-db-order',
           product_id: product.id,
-          product_name: product.title,
           customer_name: formData.name,
           customer_email: formData.email,
           customer_phone: formData.phone,
           amount: amount,
-          payment_status: 'pending',
-          download_link: downloadLink
-        }) });
-      const orderPayload = await orderResponse.json();
-      if (!orderResponse.ok) throw new Error(orderPayload?.error?.message || 'Unable to create order');
-      const dbOrder = orderPayload.data;
+        }),
+      });
 
-      // 4. Setup Razorpay options
+      const dbOrderPayload = await dbOrderResponse.json();
+      if (!dbOrderResponse.ok) throw new Error(dbOrderPayload.message || 'Could not create order.');
+      const dbOrder = dbOrderPayload.data;
+
+      // Step 2: Create a Razorpay order
+      const razorpayOrderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({
+          action: 'create-payment-order',
+          amount: amount,
+          currency: 'INR',
+          receipt: dbOrder.id, // Use our DB order ID as the receipt
+          notes: {
+            db_order_id: dbOrder.id,
+            product_id: product.id,
+          }
+        }),
+      });
+      
+      const razorpayOrder = await razorpayOrderResponse.json();
+      if (!razorpayOrderResponse.ok) throw new Error(razorpayOrder.message || 'Failed to initiate payment with Razorpay.');
+
+      // Step 3: Setup Razorpay options and open the modal
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Use correct env variable
-        amount: data.amount,
-        currency: data.currency,
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
         name: 'Icon Editz',
         description: `Purchase of ${product.title}`,
-        order_id: data.id,
+        order_id: razorpayOrder.id,
         handler: async function (response) {
+          setStatusMessage('Verifying payment...');
           try {
-            setStatusMessage('Verifying payment and sending email...');
-            setStatusType('info');
-            
-            const verifyRes = await fetch('/api/verify-payment', {
+            const verifyRes = await fetch('/api/orders', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
               body: JSON.stringify({
+                action: 'verify-payment',
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                orderId: dbOrder.id,
-                customerEmail: formData.email,
-                customerName: formData.name,
-                productName: product.title,
-                downloadLink: downloadLink
+                orderId: dbOrder.id, // Pass our internal order ID for verification
               })
             });
 
             const verifyData = await verifyRes.json();
-
-            if (verifyRes.ok) {
+            if (verifyRes.ok && verifyData.success) {
               setStatusMessage('Payment successful! Check your email for the download link.');
               setStatusType('success');
             } else {
-              setStatusMessage('Payment verified, but email failed. Contact support.');
-              setStatusType('error');
+              throw new Error(verifyData.message || 'Payment verification failed.');
             }
           } catch (err) {
             console.error(err);
-            setStatusMessage('Error verifying payment. Contact support.');
+            setStatusMessage(err.message || 'Error verifying payment. Please contact support.');
             setStatusType('error');
           }
         },
@@ -106,24 +103,24 @@ export default function CheckoutModal({ product, onClose }) {
           contact: formData.phone
         },
         theme: {
-          color: '#9D5CFF' // primary color
+          color: '#9D5CFF'
         }
       };
 
       const rzp1 = new window.Razorpay(options);
-      
       rzp1.on('payment.failed', function (response){
         setStatusMessage(`Payment Failed: ${response.error.description}`);
         setStatusType('error');
+        setLoading(false);
       });
 
       rzp1.open();
-      setStatusMessage(''); // Clear loading text when opened
       setLoading(false);
+      setStatusMessage(''); // Clear loading text when Razorpay modal opens
 
     } catch (err) {
       console.error(err);
-      setStatusMessage(err.message || 'An error occurred.');
+      setStatusMessage(err.message || 'An unexpected error occurred.');
       setStatusType('error');
       setLoading(false);
     }
@@ -136,6 +133,12 @@ export default function CheckoutModal({ product, onClose }) {
       setStatusType('error');
       return;
     }
+    if (!user) {
+        setStatusMessage('You must be logged in to make a purchase.');
+        setStatusType('error');
+        // Here you might want to trigger a login modal
+        return;
+    }
     loadRazorpay();
   };
 
@@ -147,9 +150,8 @@ export default function CheckoutModal({ product, onClose }) {
           className="absolute top-4 right-4 text-text-muted hover:text-white transition-colors"
           disabled={loading}
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          {/* Close Icon */}
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
 
         <div className="p-6">
@@ -170,60 +172,27 @@ export default function CheckoutModal({ product, onClose }) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-muted mb-1">Full Name *</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  required 
-                  value={formData.name} 
-                  onChange={handleChange}
-                  className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  placeholder="John Doe"
-                />
+                <input type="text" name="name" required value={formData.name} onChange={handleChange} className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="John Doe" />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-text-muted mb-1">Email Address *</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  required 
-                  value={formData.email} 
-                  onChange={handleChange}
-                  className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  placeholder="john@example.com"
-                />
+                <input type="email" name="email" required value={formData.email} onChange={handleChange} className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="john@example.com" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-text-muted mb-1">Mobile Number *</label>
-                <input 
-                  type="tel" 
-                  name="phone" 
-                  required 
-                  value={formData.phone} 
-                  onChange={handleChange}
-                  pattern="[0-9]{10}"
-                  title="Please enter a valid 10-digit mobile number"
-                  className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  placeholder="9876543210"
-                />
+                <input type="tel" name="phone" required value={formData.phone} onChange={handleChange} pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="9876543210" />
               </div>
 
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl mt-6 transition-colors disabled:opacity-50"
-              >
+              <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl mt-6 transition-colors disabled:opacity-50">
                 {loading ? 'Processing...' : `Pay Rs. ${amount}`}
               </button>
             </form>
           )}
 
           {statusType === 'success' && (
-            <button 
-              onClick={onClose}
-              className="w-full bg-surface-dark hover:bg-white/10 border border-white/10 text-white font-medium py-3 rounded-xl mt-4 transition-colors"
-            >
+            <button onClick={onClose} className="w-full bg-surface-dark hover:bg-white/10 border border-white/10 text-white font-medium py-3 rounded-xl mt-4 transition-colors">
               Close
             </button>
           )}

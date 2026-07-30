@@ -1,286 +1,53 @@
-// API client utilities for future backend integration
-// This file handles all API calls to your backend
+export const getToken = () => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    return localStorage.getItem('token');
+};
 
-const API_URL = import.meta.env.VITE_API_URL || ''
-const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 30000
+export const request = async (endpoint, options = {}) => {
+    const { body, token, ...restOptions } = options;
+    const authToken = token === null ? null : token || getToken();
 
-export const request = async (path, { method = 'GET', body, token = localStorage.getItem('token'), headers = {} } = {}) => {
-  const response = await fetch(`${API_URL}${path}`, { method, headers: { ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers }, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(API_TIMEOUT) })
-  const payload = response.status === 204 ? null : await response.json().catch(() => null)
-  if (!response.ok) throw new Error(payload?.error?.message || payload?.message || 'Request failed')
-  return payload?.data ?? payload
-}
+    const headers = {
+        'Content-Type': 'application/json',
+        ...restOptions.headers,
+    };
 
-// Create request headers
-const getHeaders = (token = null) => {
-  const headers = {
-    'Content-Type': 'application/json',
-  }
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  
-  return headers
-}
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
 
-// Handle API errors
-const handleError = (error) => {
-  console.error('API Error:', error)
-  
-  if (error.response?.status === 401) {
-    // Handle unauthorized
-    localStorage.removeItem('token')
-    window.location.href = '/login'
-  }
-  
-  throw error
-}
+    const config = {
+        ...restOptions,
+        headers,
+    };
 
-// Main API client
-export const api = {
-  // Products API
-  products: {
-    getAll: async (category = null) => {
-      try {
-        const url = category
-          ? `${API_URL}/api/products?category=${category}`
-          : `${API_URL}/api/products`
-        
-        const response = await fetch(url, {
-          headers: getHeaders(),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Failed to fetch products')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
+    if (body) {
+        // FormData is sent as-is, without Content-Type
+        if (body instanceof FormData) {
+            delete headers['Content-Type'];
+            config.body = body;
+        } else {
+            config.body = JSON.stringify(body);
+        }
+    }
 
-    getById: async (productId) => {
-      try {
-        const response = await fetch(`${API_URL}/api/products?id=${encodeURIComponent(productId)}`, {
-          headers: getHeaders(),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Product not found')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
+    const response = await fetch(endpoint, config);
 
-    search: async (query) => {
-      try {
-        const response = await fetch(`${API_URL}/api/products?q=${encodeURIComponent(query)}`, {
-          headers: getHeaders(),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Search failed')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-  },
+    if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
+        const error = new Error(errorPayload.message);
+        error.status = response.status;
+        throw error;
+    }
 
-  // Orders API
-  orders: {
-    create: async (orderData, token) => {
-      try {
-        const response = await fetch(`${API_URL}/api/orders`, {
-          method: 'POST',
-          headers: getHeaders(token),
-          body: JSON.stringify(orderData),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Order creation failed')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
+    if (response.status === 204) {
+        return; // No content
+    }
 
-    getAll: async (token) => {
-      try {
-        const response = await fetch(`${API_URL}/api/orders`, {
-          headers: getHeaders(token),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Failed to fetch orders')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
+    return response.json();
+};
 
-    getById: async (orderId, token) => {
-      try {
-        const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
-          headers: getHeaders(token),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Order not found')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-  },
-
-  // Authentication API
-  auth: {
-    login: async (email, password) => {
-      try {
-        const response = await fetch(`${API_URL}/api/auth`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({ action: 'login', email, password }),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Login failed')
-        const data = await response.json()
-        localStorage.setItem('token', data.token)
-        return data
-      } catch (error) {
-        handleError(error)
-      }
-    },
-
-    register: async (userData) => {
-      try {
-        const response = await fetch(`${API_URL}/api/auth`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify({ action: 'register', ...userData }),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Registration failed')
-        const data = await response.json()
-        localStorage.setItem('token', data.token)
-        return data
-      } catch (error) {
-        handleError(error)
-      }
-    },
-
-    logout: () => {
-      localStorage.removeItem('token')
-    },
-
-    getCurrentUser: async (token) => {
-      try {
-        const response = await fetch(`${API_URL}/api/auth`, {
-          headers: getHeaders(token),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Failed to fetch user')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-  },
-
-  // Payment API
-  payment: {
-    createOrder: async (amount, token) => {
-      try {
-        const response = await fetch(`${API_URL}/api/payment/create-order`, {
-          method: 'POST',
-          headers: getHeaders(token),
-          body: JSON.stringify({ amount }),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Payment order creation failed')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-
-    verifyPayment: async (paymentData, token) => {
-      try {
-        const response = await fetch(`${API_URL}/api/payment/verify`, {
-          method: 'POST',
-          headers: getHeaders(token),
-          body: JSON.stringify(paymentData),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Payment verification failed')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-  },
-
-  // Contact API
-  contact: {
-    send: async (contactData) => {
-      try {
-        const response = await fetch(`${API_URL}/api/contact`, {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify(contactData),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Failed to send message')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-  },
-
-  // Blog API (Future)
-  blog: {
-    getPosts: async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/blog/posts`, {
-          headers: getHeaders(),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Failed to fetch posts')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-
-    getPost: async (postId) => {
-      try {
-        const response = await fetch(`${API_URL}/api/blog/posts/${postId}`, {
-          headers: getHeaders(),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-        })
-        
-        if (!response.ok) throw new Error('Post not found')
-        return await response.json()
-      } catch (error) {
-        handleError(error)
-      }
-    },
-  },
-}
-
-// Export helper for useApi hook
-export const getToken = () => localStorage.getItem('token')
-
-export const isAuthenticated = () => !!getToken()
-
-export default api
+// This is just to satisfy any lingering imports, though the files using it were deleted.
+export const api = {};

@@ -12,20 +12,31 @@ const tables = {
 
 export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
     if (req.method === 'POST') {
-        // This is for the contact form, which doesn't have a 'section'
-        const { name, email, subject, message } = req.body || {};
+        // SECURITY: Add rate limiting here to prevent abuse (see section 8)
+        const schema = z.object({
+            name: z.string().min(1, { message: 'Name is required' }),
+            email: z.string().email({ message: 'Please provide a valid email address' }),
+            subject: z.string().min(1, { message: 'Subject is required' }),
+            message: z.string().min(1, { message: 'Message is required' }),
+        });
 
-        if (name && email && subject && message) {
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
-                return res.status(400).json({ message: 'Please provide a valid email address.' });
-            }
-            // In a real app, you'd save this to the DB or send an email.
-            // For now, just returning success as per original contact.js
-            return res.status(200).json({
-                message: 'Thanks for reaching out. We will get back to you soon.',
-                success: true,
+        const parseResult = schema.safeParse(req.body);
+
+        if (!parseResult.success) {
+            return res.status(400).json({
+                message: parseResult.error.errors[0].message,
+                success: false,
             });
         }
+        
+        const { name, email, subject, message } = parseResult.data;
+
+        // In a real app, you'd save this to the DB or send an email.
+        // For now, just returning success as per original contact.js
+        return res.status(200).json({
+            message: 'Thanks for reaching out. We will get back to you soon.',
+            success: true,
+        });
     }
 
     const section = req.query.section || req.body?.section;
@@ -43,7 +54,13 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             authorizeAdmin(req);
             const { data, error } = await supabaseAdmin.from('settings').select('*');
             if (error) throw error;
-            return res.json({ data: data ?? [] });
+            
+            const settings = data.reduce((acc, { key, value }) => {
+              acc[key] = value;
+              return acc;
+            }, {});
+          
+            return res.json({ data: settings });
         }
         const [content, ...lists] = await Promise.all([
             supabaseAdmin.from('hire_us_content').select('section,content'),
@@ -73,10 +90,18 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             return res.json({ data });
         }
         if (section === 'settings') {
-            const body = z.object({ key: z.string().min(1), value: z.unknown() }).parse(req.body);
-            const { data, error } = await supabaseAdmin.from('settings').upsert({ key: body.key, value: body.value, updated_at: new Date().toISOString() }).select().single();
+            const { settings } = req.body;
+  
+            const updates = Object.entries(settings).map(([key, value]) =>
+              supabaseAdmin.from('settings').update({ value }).eq('key', key)
+            );
+          
+            const results = await Promise.all(updates);
+            const error = results.find(r => r.error);
+        
             if (error) throw error;
-            return res.json({ data });
+          
+            return res.json({ success: true });
         }
         
         // hire-us section

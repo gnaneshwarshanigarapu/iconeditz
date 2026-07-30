@@ -5,7 +5,7 @@ const Analytics = () => {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const response = await fetch('/api/settings');
+      const response = await fetch('/api/cms?section=settings');
       const { data } = await response.json();
       if (data) {
         setSettings(data.analytics);

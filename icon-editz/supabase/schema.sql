@@ -75,12 +75,12 @@ create table if not exists wishlist (
   created_at timestamptz default now()
 );
 
--- Reviews
-create table if not exists reviews (
-  id uuid primary key default gen_random_uuid(),
-  product_id uuid references products(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete set null,
-  rating int check (rating >=1 and rating <=5),
-  body text,
-  created_at timestamptz default now()
-);
+-- Enable Row Level Security (RLS) for all tables
+-- This is a critical security measure. Policies are defined in policies.sql.
+alter table profiles enable row level security;
+alter table categories enable row level security;
+alter table products enable row level security;
+alter table orders enable row level security;
+alter table downloads enable row level security;
+alter table wishlist enable row level security;
+alter table reviews enable row level security;

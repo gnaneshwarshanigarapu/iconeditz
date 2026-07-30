@@ -8,7 +8,7 @@ export const supabase = null
 export const getSession = async () => ({ data: { session: null }, error: null })
 export const signIn = async (email, password) => { const result = await request('/api/auth', { method: 'POST', body: { action: 'login', email, password }, token: null }); localStorage.setItem('token', result.token); return { data: { user: result.user, session: { access_token: result.token } }, error: null } }
 export const signOut = async () => { try { await request('/api/auth', { method: 'POST', body: { action: 'logout' } }) } finally { localStorage.removeItem('token') }; return { error: null } }
-export const sendPasswordResetEmail = async email => { await request('/api/auth/password/reset', { method: 'POST', body: { email }, token: null }); return { error: null } }
+export const sendPasswordResetEmail = async email => { await request('/api/auth', { method: 'POST', body: { action: 'request-password-reset', email }, token: null }); return { error: null } }
 export const updateUserPassword = async () => ({ error: new Error('Password updates must be completed through the account recovery flow.') })
 export const signInWithGoogle = async () => ({ data: null, error: new Error('Google OAuth must be configured as a backend callback.') })
 export const getProducts = async () => { try { const data = await request('/api/products', { token: null }); const products = Array.isArray(data) ? data : []; return { data: products, products, count: products.length, error: null } } catch (e) { console.error(e); return { data: [], products: [], count: 0, error: e } } }
@@ -25,4 +25,4 @@ export const getUserOrders = async () => request('/api/orders')
 export const getUserDownloads = async () => []
 export const getUserWishlist = async () => []
 export const updateUserProfile = async () => ({})
-export const resendVerificationEmail = email => request('/api/auth/password/reset', { method: 'POST', body: { email }, token: null })
+export const resendVerificationEmail = email => request('/api/auth', { method: 'POST', body: { action: 'request-password-reset', email }, token: null })
