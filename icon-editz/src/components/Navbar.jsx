@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiMenu, FiX } from 'react-icons/fi';
-import { useLocation, useNavigate } from 'react-router-dom';
-import NavItem from './NavItem';
+import { useNavigate } from 'react-router-dom';
 import { scrollToSection } from '../utils/helpers';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
-  const location = useLocation();
   const navigate = useNavigate();
 
   const navItems = [
@@ -30,12 +28,7 @@ export default function Navbar() {
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            let currentSectionId = entry.target.id;
-            if (currentSectionId === 'about') {
-              setActiveSection('hero');
-            } else {
-              setActiveSection(currentSectionId);
-            }
+            setActiveSection(entry.target.id);
           }
         });
       },
@@ -68,12 +61,15 @@ export default function Navbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
-        className="fixed top-5 left-1/2 -translate-x-1/2 w-[92%] max-w-[1400px] h-16 rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)]"
+        className="fixed top-[20px] left-1/2 -translate-x-1/2 w-[92%] max-w-[1400px] h-[64px] rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)] z-[9999]"
         style={{
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
+        {/* ================================================================================= */}
+        {/* ============================= DESKTOP NAVIGATION ================================ */}
+        {/* ================================================================================= */}
         <div className="hidden lg:grid grid-cols-[280px_1fr_220px] items-center h-full px-6">
           {/* LEFT: LOGO */}
           <div className="flex items-center gap-x-3">
@@ -83,14 +79,40 @@ export default function Navbar() {
 
           {/* CENTER: MENU */}
           <div className="flex items-center justify-center gap-x-[42px]">
-            {navItems.map((item) => (
-              <NavItem
-                key={item.id}
-                item={item}
-                isActive={activeSection === item.id}
-                onClick={() => handleNavClick(item)}
-              />
-            ))}
+            {navItems.map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <div key={item.id} className="relative">
+                  <motion.button
+                    onClick={() => handleNavClick(item)}
+                    className={`relative z-10 focus:outline-none font-semibold text-[17px] transition-colors duration-200 ${
+                      isActive ? 'text-white' : 'text-white/70 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </motion.button>
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background: 'linear-gradient(135deg, #7C3AED, #A855F7)',
+                        boxShadow: '0 0 25px rgba(168, 85, 247, 0.35)',
+                        padding: '12px 26px',
+                      }}
+                      initial={false}
+                      animate={{
+                        top: '-12px',
+                        bottom: '-12px',
+                        left: '-26px',
+                        right: '-26px',
+                      }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* RIGHT: CTA */}
@@ -106,20 +128,33 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Menu - Same as before, but ensure it's outside the grid */}
+        {/* ================================================================================= */}
+        {/* ============================= MOBILE NAVIGATION ================================= */}
+        {/* ================================================================================= */}
         <div className="lg:hidden flex items-center justify-between h-full px-6">
-            <div className="flex items-center gap-x-3">
-                <img src="/apple-touch-icon.png" alt="Logo" className="w-10 h-10" />
-                 <span className="font-bold text-lg text-white">ICON EDITZ</span>
-            </div>
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-white">
+          <div className="flex items-center gap-x-3">
+            <img src="/apple-touch-icon.png" alt="Logo" className="w-10 h-10" />
+            <span className="font-bold text-lg text-white">ICON EDITZ</span>
+          </div>
+          <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-white">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isOpen ? 'x' : 'menu'}
+                initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
+                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
+                transition={{ duration: 0.2 }}
+              >
                 {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-            </button>
+              </motion.div>
+            </AnimatePresence>
+          </button>
         </div>
-
       </motion.nav>
 
-      {/* Mobile Drawer */}
+      {/* ================================================================================= */}
+      {/* ============================= MOBILE DRAWER ===================================== */}
+      {/* ================================================================================= */}
       <AnimatePresence>
         {isOpen && (
           <motion.div

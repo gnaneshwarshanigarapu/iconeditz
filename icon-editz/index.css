@@ -25,53 +25,7 @@ body {
 .hero-3d-card:hover {
     transform: rotateY(0deg) rotateX(0deg) scale(1.02);
 }
-header{
-    background-color: #000000;
-    color: white;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-}
-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0px 20px;
-    width: 100%;
-}
-.navbar {
-    background-color: #000000; 
-    position: fixed;
-}
-.navbar-brand h1{
-    margin-left: 25px;
-    color: #9D98FF;
-    text-decoration: none;
-    font-size: 24px;
-}
-#navbarNav{
-    margin-right: 15px;
-}
-nav ul {
-    list-style-type: none;
-    display: flex;
-    gap: 20px;
-}
-nav ul li a {
-    color: white;
-    text-decoration: none;
-    padding: 10px;
-    display: block;
-}
-.nav-item a{
-    color: white;
-}
-.nav-item a:hover {
-    color: #6aff9b;
-}
-.nav-item a:focus {
-    color: #6aff9b;
-}
+
 section{
     padding: 100px 20px;
 }
@@ -327,18 +281,6 @@ footer a {
     body {
         background-color: #464E61; /* You can keep the same background for mobile */
     }
-    nav {
-        flex-direction: column;
-        /* padding: 10px; */
-    }
-    .nav-left a h1 {
-        font-size: 24px;
-    }
-    nav ul {
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 20px;
-    }
     section {
         padding: 100px 20px;
         padding-top: 50px;
@@ -440,15 +382,4 @@ footer a {
         padding: 15px;
     }
 }
-/* Navbar caret and focus fix */
-.navbar a,
-.navbar button,
-.nav-link {
-    caret-color: transparent;
-    user-select: none;
-}
 
-.navbar a:focus,
-.navbar button:focus {
-    outline: none;
-}

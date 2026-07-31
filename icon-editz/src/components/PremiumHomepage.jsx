@@ -79,9 +79,9 @@ export default function PremiumHomepage() {
   const visibleFaq = (content.faq.items || []).filter((item) => item.visible)
 
   return (
-    <div className="relative overflow-hidden bg-transparent">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(157,92,255,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(179,136,255,0.2),transparent_35%)]" />
-      <section id="hero" className="relative mx-auto flex min-h-screen max-w-7xl items-center px-4 py-24 sm:px-6 lg:px-8 lg:py-28">
+    <div className="relative bg-transparent">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(157,92,255,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(179,136,255,0.2),transparent_35%)]" />
+          <section id="hero" className="relative mx-auto flex min-h-screen max-w-7xl items-center px-4 pt-[110px] pb-24 sm:px-6 lg:px-8 lg:pb-28">
         <div className="absolute inset-0 -z-10 rounded-[2rem] border border-primary/10 bg-gradient-to-br from-white/5 via-black/20 to-primary/10" />
         <div className="grid w-full gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <motion.div initial={prefersReducedMotion ? false : { opacity: 0, x: -18 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} transition={{ duration: 0.24 }} className="max-w-2xl">
