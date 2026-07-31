@@ -33,28 +33,30 @@ function AppChrome() {
   }, [location])
 
   return (
-    <div className="min-h-screen bg-background text-text">
+    <>
       {!isAdminRoute && <SkipLink />}
       {!isAdminRoute && <Navbar />}
-      <main id="main-content" className="min-h-screen w-full">
-        <PageTransition>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/services" element={<ServicesPage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/hire-us" element={<HireFromUsPage />} />
-            <Route path="/store/*" element={<StoreRoutes />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/payments/*" element={<PaymentRoutes />} />
-            <Route path="/admin/*" element={<AdminRoutes />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </PageTransition>
-      </main>
-      {!isAdminRoute && <Footer />}
-    </div>
+      <div className="min-h-screen bg-background text-text">
+        <main id="main-content" className="min-h-screen w-full">
+          <PageTransition>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/hire-us" element={<HireFromUsPage />} />
+              <Route path="/store/*" element={<StoreRoutes />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/payments/*" element={<PaymentRoutes />} />
+              <Route path="/admin/*" element={<AdminRoutes />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </PageTransition>
+        </main>
+        {!isAdminRoute && <Footer />}
+      </div>
+    </>
   )
 }
 export default function App() {
