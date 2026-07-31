@@ -61,7 +61,7 @@ export default function Navbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
-        className="fixed top-[20px] left-1/2 -translate-x-1/2 w-[92%] max-w-7xl h-[64px] rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)] z-[9999]"
+        className="fixed top-[20px] left-1/2 -translate-x-1/2 w-[92%] max-w-[1400px] h-[64px] rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)] z-[9999]"
         style={{
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
@@ -70,15 +70,15 @@ export default function Navbar() {
         {/* ================================================================================= */}
         {/* ============================= DESKTOP NAVIGATION ================================ */}
         {/* ================================================================================= */}
-        <div className="hidden lg:grid grid-cols-[280px_1fr_220px] items-center h-full px-6">
+        <div className="hidden lg:flex items-center justify-between h-full px-6">
           {/* LEFT: LOGO */}
-          <div className="flex items-center gap-x-3">
+          <div className="flex items-center gap-x-3" style={{ width: '220px' }}>
             <img src="/apple-touch-icon.png" alt="Logo" className="w-12 h-12" />
             <span className="font-bold text-[18px] text-white tracking-wide">ICON EDITZ</span>
           </div>
 
           {/* CENTER: MENU */}
-          <div className="flex items-center justify-center gap-x-[42px]">
+          <nav className="flex items-center justify-center gap-8 flex-1">
             {navItems.map((item) => {
               const isActive = activeSection === item.id;
               return (
@@ -113,10 +113,10 @@ export default function Navbar() {
                 </div>
               );
             })}
-          </div>
+          </nav>
 
           {/* RIGHT: CTA */}
-          <div className="flex justify-end">
+          <div className="flex justify-end" style={{ width: '180px' }}>
             <motion.button
               whileHover={{ scale: 1.04 }}
               onClick={() => scrollToSection('contact')}
