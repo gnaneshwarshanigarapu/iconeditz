@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Play, Sparkles, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { defaultServicesPage } from '../data/defaultServicesPage'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import ImageWithFallback from './ui/ImageWithFallback'
 import VideoWithPlaceholder from './ui/VideoWithPlaceholder'
+import CmsCta from './CmsCta'
 
 const sectionMotion = {
   hidden: { opacity: 0, y: 24 },
@@ -42,33 +43,7 @@ function SectionShell({ eyebrow, title, description, children, id }) {
 export default function PremiumHomepage() {
   const { content } = useSiteContent()
   const [activeFaq, setActiveFaq] = useState(0)
-  const heroCardRef = useRef(null)
   const prefersReducedMotion = useReducedMotion()
-
-  useEffect(() => {
-    const card = heroCardRef.current
-    if (!card) return
-
-    const handleMove = (event) => {
-      const rect = card.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
-      const rotateY = ((x / rect.width) - 0.5) * 12
-      const rotateX = ((y / rect.height) - 0.5) * -10
-      card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`
-    }
-
-    const handleLeave = () => {
-      card.style.transform = 'rotateX(0deg) rotateY(0deg)'
-    }
-
-    card.addEventListener('mousemove', handleMove)
-    card.addEventListener('mouseleave', handleLeave)
-    return () => {
-      card.removeEventListener('mousemove', handleMove)
-      card.removeEventListener('mouseleave', handleLeave)
-    }
-  }, [])
 
   const heroBadges = content.hero.badges || []
   const servicesPage = { ...defaultServicesPage, ...(content.servicesPage || {}) }
@@ -81,7 +56,7 @@ export default function PremiumHomepage() {
   return (
     <div className="relative bg-transparent">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(157,92,255,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(179,136,255,0.2),transparent_35%)]" />
-          <section id="hero" className="relative mx-auto flex min-h-screen max-w-7xl items-center px-4 pt-[110px] pb-24 sm:px-6 lg:px-8 lg:pb-28">
+          <section id="hero" className="relative mx-auto flex min-h-screen max-w-7xl items-center px-6 pb-24 pt-[132px] lg:px-8 lg:pb-28">
         <div className="absolute inset-0 -z-10 rounded-[2rem] border border-primary/10 bg-gradient-to-br from-white/5 via-black/20 to-primary/10" />
         <div className="grid w-full gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <motion.div initial={prefersReducedMotion ? false : { opacity: 0, x: -18 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} transition={{ duration: 0.24 }} className="max-w-2xl">
@@ -90,12 +65,12 @@ export default function PremiumHomepage() {
             <p className="mt-5 text-base font-medium text-primary sm:text-lg">{content.hero.subtitle}</p>
             <p className="mt-6 max-w-xl text-base leading-8 text-text-muted sm:text-lg">{content.hero.description}</p>
             <div className="mt-8 flex flex-wrap gap-3 sm:gap-4">
-              <a href={content.hero.primaryHref || '/projects'} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(157,92,255,0.25)] transition hover:scale-[1.02]">
-                {content.hero.primaryCta} <ArrowRight className="h-4 w-4" />
-              </a>
-              <a href={content.hero.secondaryHref || '/contact'} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:border-primary hover:bg-primary/10">
-                {content.hero.secondaryCta}
-              </a>
+              <Link to="/projects" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.38)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_32px_rgba(168,85,247,0.62)]">
+                Explore Projects <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/hire" className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-[#150B25]/70 px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.03] hover:border-violet-400/60 hover:bg-violet-500/15">
+                Hire Me
+              </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               {heroBadges.map((badge) => (
@@ -104,37 +79,11 @@ export default function PremiumHomepage() {
             </div>
           </motion.div>
 
-          <motion.div ref={heroCardRef} initial={prefersReducedMotion ? false : { opacity: 0, x: 18 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} transition={{ duration: 0.24 }} className="relative mx-auto w-full max-w-xl perspective-[1400px]">
-            <div className="absolute inset-0 rounded-[2rem] bg-primary/20 blur-3xl" />
-            <div className="relative rounded-[2rem] border border-primary/20 bg-[#0d0718]/90 p-4 shadow-[0_30px_94px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-              <div className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-gradient-to-br from-primary/20 via-transparent to-white/5 p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.3em] text-primary">Studio Preview</p>
-                    <p className="text-sm text-text-muted">Lightweight, premium, motion-first</p>
-                  </div>
-                  <div className="rounded-full border border-primary/20 bg-primary/10 p-2 text-primary"><Sparkles className="h-4 w-4" /></div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[1.2rem] border border-white/10 bg-black/30 p-4">
-                    <div className="mb-4 aspect-video overflow-hidden rounded-[1rem] bg-gradient-to-br from-primary/40 to-transparent">
-                      <ImageWithFallback src={content.showreel.thumbnail || '/assets/images/og-icon-editz.png'} alt="Showreel preview" className="h-full w-full object-cover" loading="eager" />
-                    </div>
-                    <p className="text-lg font-semibold text-white">{content.showreel.title}</p>
-                    <p className="mt-2 text-sm leading-7 text-text-muted">{content.showreel.description}</p>
-                  </div>
-                  <div className="space-y-4">
-                    {(content.hero.previewCards || []).map((card, index) => (
-                      <motion.div key={card.title} initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }} transition={{ delay: prefersReducedMotion ? 0 : 0.1 * index }} className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4">
-                        <p className="text-sm uppercase tracking-[0.25em] text-primary">Card {index + 1}</p>
-                        <h3 className="mt-2 text-lg font-semibold text-white">{card.title}</h3>
-                        <p className="mt-2 text-sm leading-7 text-text-muted">{card.subtitle}</p>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+          <motion.div initial={prefersReducedMotion ? false : { opacity: 0, x: 18 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="relative mx-auto flex w-full justify-center">
+            <motion.div animate={prefersReducedMotion ? { y: 0 } : { y: [-10, 10, -10] }} transition={{ duration: 6, ease: 'easeInOut', repeat: Infinity }} whileHover={{ scale: 1.03 }} className="relative flex h-[min(420px,calc(100vw-3rem))] w-[min(420px,calc(100vw-3rem))] items-center justify-center rounded-3xl border border-violet-500/20 bg-white/5 shadow-[0_24px_70px_rgba(0,0,0,.32)] backdrop-blur-xl">
+              <div aria-hidden="true" className="absolute inset-10 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,.38),transparent_68%)] blur-2xl" />
+              <img src="/assets/logos/icon-editz.jpg" alt="ICON EDITZ" className="relative h-[min(260px,62vw)] w-[min(260px,62vw)] object-contain" />
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -246,18 +195,7 @@ export default function PremiumHomepage() {
         </div>
       </SectionShell>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:pb-24">
-        <motion.div initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/20 via-white/5 to-transparent p-8 shadow-[0_20px_80px_rgba(0,0,0,0.28)] sm:p-12">
-          <div className="max-w-2xl">
-            <p className="text-sm uppercase tracking-[0.36em] text-primary">Ready when you are</p>
-            <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Let&apos;s create your next standout project.</h2>
-            <p className="mt-4 text-lg leading-8 text-text-muted">Tell us what you&apos;re building and we&apos;ll take it from there.</p>
-          </div>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <a href="/contact" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary-light px-6 py-3 text-sm font-semibold text-white">Get in touch <ArrowRight className="h-4 w-4" /></a>
-          </div>
-        </motion.div>
-      </section>
+      <CmsCta />
     </div>
   )
 }

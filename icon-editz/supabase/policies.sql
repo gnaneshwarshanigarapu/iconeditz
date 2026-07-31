@@ -88,3 +88,7 @@ create policy "Reviews - author delete" on reviews
   for delete using (auth.uid() = user_id);
 create policy "Reviews - admin manage" on reviews
   for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "Hire requests - admins manage" on hire_requests;
+create policy "Hire requests - admins manage" on hire_requests
+  for all using (public.is_admin()) with check (public.is_admin());

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { FiBell, FiBox, FiExternalLink, FiGrid, FiPlusCircle, FiSearch } from 'react-icons/fi'
 import Sidebar from '../components/admin/Sidebar'
 
@@ -10,6 +10,8 @@ const mobileNav = [
 ]
 
 export default function AdminLayout({ children, title = 'Dashboard', eyebrow = 'Admin Console' }) {
+  const { pathname } = useLocation()
+  const crumbs = pathname.split('/').filter(Boolean).map((part) => ({ dashboard: 'Dashboard', products: 'Products', add: 'Add Product', categories: 'Categories', content: 'Homepage CMS', 'hire-us': 'Hire From Us', 'hire-requests': 'Hire Requests', orders: 'Orders', customers: 'Customers', downloads: 'Downloads', settings: 'Settings' }[part] || part.replaceAll('-', ' ')))
   return (
     <div className="min-h-screen bg-[#0b0717] text-text">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(157,92,255,0.22),transparent_30%),radial-gradient(circle_at_80%_10%,_rgba(255,255,255,0.08),transparent_24%)]" />
@@ -21,6 +23,7 @@ export default function AdminLayout({ children, title = 'Dashboard', eyebrow = '
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{eyebrow}</p>
+                <nav aria-label="Breadcrumb" className="mt-2 flex items-center gap-2 text-xs text-text-muted">{crumbs.map((crumb, index) => <React.Fragment key={`${crumb}-${index}`}><span className={index === crumbs.length - 1 ? 'text-white' : ''}>{crumb}</span>{index < crumbs.length - 1 && <span aria-hidden="true">›</span>}</React.Fragment>)}</nav>
                 <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">{title}</h1>
               </div>
 

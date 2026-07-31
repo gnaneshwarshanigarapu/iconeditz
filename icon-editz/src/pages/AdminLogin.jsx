@@ -8,30 +8,29 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
-  const { isAdmin, login } = useAuth()
+  const { isAdmin, isConfigured, configError, login } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (isAdmin) {
-      navigate('/admin', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     }
   }, [isAdmin, navigate])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
 
     try {
-      console.log('Login attempt:', email)
       await login(email, password)
-      navigate('/admin')
+      setSuccess('Login successful.')
+      window.setTimeout(() => navigate('/admin/dashboard', { replace: true }), 450)
     } catch (err) {
-      console.error('Supabase Auth Error:', err)
-      console.error('Auth error:', err)
-      console.error('[Admin Auth] login page caught error', err)
-      setError(err.message)
+      setError(err.message || 'Unable to sign in.')
     } finally {
       setLoading(false)
     }
@@ -48,6 +47,7 @@ export default function AdminLogin() {
           </p>
         </div>
 
+        {!isConfigured && <p className="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">{configError}</p>}
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
             <label className="mb-2 block text-sm font-medium text-text-muted">Email address</label>
@@ -84,11 +84,12 @@ export default function AdminLogin() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
+          {success && <p role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">{success}</p>}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !isConfigured}
             className="w-full rounded-2xl bg-gradient-purple px-6 py-3 text-base font-semibold text-white transition hover:shadow-glow-purple-lg disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'Sign In'}

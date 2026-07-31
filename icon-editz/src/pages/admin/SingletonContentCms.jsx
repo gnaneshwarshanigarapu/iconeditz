@@ -1,0 +1,29 @@
+import React, { useEffect } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { Save } from 'lucide-react'
+import { supabase } from '../../utils/supabase'
+
+const footerSchema = z.object({ brandName: z.string().min(1), logo: z.string().optional(), description: z.string().max(600).optional(), address: z.string().optional(), email: z.string().email().or(z.literal('')), phone: z.string().optional(), businessHours: z.string().optional(), newsletterTitle: z.string().optional(), newsletterDescription: z.string().optional(), newsletterButtonText: z.string().optional(), copyrightText: z.string().optional(), backgroundColor: z.string().optional(), accentColor: z.string().optional() })
+const ctaSchema = z.object({ heading: z.string().min(1), subheading: z.string().optional(), primaryButton: z.string().optional(), primaryButtonUrl: z.string().optional(), secondaryButton: z.string().optional(), secondaryButtonUrl: z.string().optional(), backgroundImage: z.string().optional(), backgroundGradient: z.string().optional(), visible: z.boolean() })
+const footerDefaults = { brandName: 'ICON EDITZ', logo: '', description: '', address: '', email: '', phone: '', businessHours: '', newsletterTitle: '', newsletterDescription: '', newsletterButtonText: '', copyrightText: '', backgroundColor: '#0f0a1f', accentColor: '#9d5cff' }
+const ctaDefaults = { heading: '', subheading: '', primaryButton: '', primaryButtonUrl: '', secondaryButton: '', secondaryButtonUrl: '', backgroundImage: '', backgroundGradient: '', visible: true }
+
+export default function SingletonContentCms({ table, title }) {
+  const isFooter = table === 'footer_content'; const defaults = isFooter ? footerDefaults : ctaDefaults; const schema = isFooter ? footerSchema : ctaSchema
+  const queryClient = useQueryClient()
+  const { data, isLoading, error } = useQuery({ queryKey: [table], queryFn: async () => { const { data: row, error: requestError } = await supabase.from(table).select('content').eq('id', true).maybeSingle(); if (requestError) throw requestError; return row?.content || defaults } })
+  const form = useForm({ resolver: zodResolver(schema), defaultValues: defaults })
+  useEffect(() => { if (data) form.reset({ ...defaults, ...data }) }, [data, form])
+  const save = useMutation({ mutationFn: async (content) => { const { error: requestError } = await supabase.from(table).upsert({ id: true, content, updated_at: new Date().toISOString() }); if (requestError) throw requestError }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [table] }) })
+  if (isLoading) return <p className="text-text-muted">Loading CMS content...</p>
+  if (error) return <p className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-red-200">{error.message}</p>
+  return <form onSubmit={form.handleSubmit((values) => save.mutate(values))} className="max-w-5xl space-y-6"><header className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold text-white">{title}</h2><p className="text-sm text-text-muted">Edit live content using structured fields.</p></div><button className="admin-button-primary" disabled={save.isPending}><Save className="h-4 w-4" />{save.isPending ? 'Saving...' : 'Save changes'}</button></header>{save.error && <p className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{save.error.message}</p>}{isFooter ? <FooterFields form={form} /> : <CtaFields form={form} />}</form>
+}
+
+function FooterFields({ form }) { return <div className="grid gap-5 rounded-2xl border border-white/10 bg-white/[.04] p-5 sm:grid-cols-2"><Field label="Brand name" register={form.register('brandName')} /><Field label="Logo URL" register={form.register('logo')} /><Area label="Description" register={form.register('description')} /><Field label="Address" register={form.register('address')} /><Field label="Email" register={form.register('email')} /><Field label="Phone" register={form.register('phone')} /><Field label="Business hours" register={form.register('businessHours')} /><Field label="Newsletter heading" register={form.register('newsletterTitle')} /><Area label="Newsletter description" register={form.register('newsletterDescription')} /><Field label="Newsletter button text" register={form.register('newsletterButtonText')} /><Field label="Copyright text" register={form.register('copyrightText')} /><Field label="Footer background color" register={form.register('backgroundColor')} /><Field label="Accent color" register={form.register('accentColor')} /></div> }
+function CtaFields({ form }) { return <div className="grid gap-5 rounded-2xl border border-white/10 bg-white/[.04] p-5 sm:grid-cols-2"><Field label="Heading" register={form.register('heading')} /><Field label="Background image URL" register={form.register('backgroundImage')} /><Area label="Subheading" register={form.register('subheading')} /><Field label="Background gradient" register={form.register('backgroundGradient')} /><Field label="Primary button" register={form.register('primaryButton')} /><Field label="Primary button URL" register={form.register('primaryButtonUrl')} /><Field label="Secondary button" register={form.register('secondaryButton')} /><Field label="Secondary button URL" register={form.register('secondaryButtonUrl')} /><label className="flex items-center gap-2 text-sm font-medium text-white"><input type="checkbox" {...form.register('visible')} />Show CTA</label></div> }
+function Field({ label, register }) { return <label className="block text-sm font-medium text-white/80">{label}<input {...register} className="admin-input mt-2" /></label> }
+function Area({ label, register }) { return <label className="block text-sm font-medium text-white/80">{label}<textarea {...register} className="admin-input mt-2 min-h-28" /></label> }

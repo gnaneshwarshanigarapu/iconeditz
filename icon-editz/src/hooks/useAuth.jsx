@@ -1,196 +1,39 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import {
-  getSession,
-  isSupabaseConfigured,
-  sendPasswordResetEmail,
-  signIn,
-  signInWithGoogle,
-  signOut,
-  supabase,
-  updateUserPassword,
-} from '../utils/supabase'
+import { getSession, isSupabaseConfigured, signIn, signOut, supabase, supabaseConfigError, sendPasswordResetEmail, updateUserPassword, signInWithGoogle } from '../utils/supabase'
 
-const AuthContext = createContext({
-  user: null,
-  loading: true,
-  isAdmin: false,
-  role: 'customer',
-  isConfigured: true,
-  login: async () => {},
-  logout: async () => {},
-  requestPasswordReset: async () => {},
-  resetPassword: async () => {},
-  loginWithGoogle: async () => {},
-})
-
-const toAuthUser = (authUser) => {
-  if (!authUser) return null
-  const appRole = authUser.app_metadata?.role
-  const userRole = authUser.user_metadata?.role
-
-  return {
-    id: authUser.id,
-    email: authUser.email,
-    role: appRole || userRole || 'customer',
-    appRole,
-    userRole,
-    user_metadata: authUser.user_metadata || {},
-    app_metadata: authUser.app_metadata || {},
-    email_confirmed_at: authUser.email_confirmed_at || null,
-  }
-}
-
-const hasAdminRole = (authUser) => Boolean(authUser && (authUser.appRole === 'admin' || authUser.userRole === 'admin'))
+const AuthContext = createContext(null)
+const toUser = (user) => user ? { ...user, role: user.app_metadata?.role || user.user_metadata?.role || 'customer' } : null
+const isAdminUser = (user) => user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let isMounted = true
-
-    const checkSession = async () => {
-      if (!isSupabaseConfigured() || !supabase) {
-        console.error('[Admin Auth] Supabase is not configured')
-        if (isMounted) setLoading(false)
-        return
-      }
-
-      const { data, error } = await getSession()
-      console.info('[Admin Auth] getSession response', {
-        sessionUserEmail: data?.session?.user?.email || null,
-        error: error || null,
-      })
-
-      if (error) console.error('[Admin Auth] getSession error', error)
-      if (isMounted) {
-        setUser(toAuthUser(data?.session?.user))
-        setLoading(false)
-      }
-    }
-
-    checkSession()
-
-    if (!supabase) return () => {
-      isMounted = false
-    }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.info('[Admin Auth] auth state changed', {
-        event,
-        sessionUserEmail: session?.user?.email || null,
-      })
-      setUser(toAuthUser(session?.user))
-      setLoading(false)
-    })
-
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
+    if (!isSupabaseConfigured() || !supabase) { setLoading(false); return undefined }
+    let mounted = true
+    getSession().then(({ data, error }) => { if (error) console.error(error); if (mounted) { setUser(toUser(data.session?.user)); setLoading(false) } }).catch((error) => { console.error(error); if (mounted) setLoading(false) })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { if (mounted) { setUser(toUser(session?.user)); setLoading(false) } })
+    return () => { mounted = false; subscription.unsubscribe() }
   }, [])
 
-  const value = useMemo(() => {
-    const isAdmin = hasAdminRole(user)
-    const role = isAdmin ? 'admin' : 'customer'
-
-    return {
-      user,
-      loading,
-      isAdmin,
-      role,
-      isConfigured: isSupabaseConfigured(),
-      login: async (emailAddress, password) => {
-        const submittedEmail = emailAddress.trim().toLowerCase()
-
-        console.groupCollapsed('[Admin Auth] signInWithPassword attempt')
-        console.log('Login attempt:', submittedEmail)
-        console.info('[Admin Auth] email submitted', submittedEmail)
-        
-        try {
-          const response = await signIn(submittedEmail, password)
-          const { data, error } = response
-
-          console.log('Auth response:', data)
-          console.info('[Admin Auth] auth response', {
-            user: data?.user
-              ? {
-                  id: data.user.id,
-                  email: data.user.email,
-                  appMetadata: data.user.app_metadata,
-                  userMetadata: data.user.user_metadata,
-                }
-              : null,
-            session: data?.session
-              ? {
-                  expiresAt: data.session.expires_at,
-                  tokenType: data.session.token_type,
-                }
-              : null,
-          })
-
-          if (error) {
-            console.error('Supabase Auth Error:', error)
-            console.error('Auth error:', error)
-            throw error
-          }
-
-          if (!data?.user) {
-            const missingUserError = new Error('Supabase did not return a user for this login attempt.')
-            console.error('[Admin Auth] auth error', missingUserError)
-            throw missingUserError
-          }
-
-          const adminUser = toAuthUser(data.user)
-          if (!hasAdminRole(adminUser)) {
-            await signOut()
-            throw new Error('This account is authenticated but is not authorized for admin access. Add role "admin" to the user metadata in Supabase.')
-          }
-
-          const {
-            data: { session },
-          } = await getSession()
-          console.log('Session:', session)
-
-          setUser(adminUser)
-          return adminUser
-        } catch (error) {
-          console.error('Auth error:', error)
-          console.error('[Admin Auth] auth error', error)
-          throw error
-        } finally {
-          console.groupEnd()
-        }
-      },
-      logout: async () => {
-        const { error } = await signOut()
-        if (error) {
-          console.error('[Admin Auth] signOut error', error)
-          throw error
-        }
-        setUser(null)
-      },
-      requestPasswordReset: async (emailAddress) => {
-        const { error } = await sendPasswordResetEmail(emailAddress)
-        if (error) throw error
-      },
-      resetPassword: async (password) => {
-        const { error } = await updateUserPassword(password)
-        if (error) throw error
-      },
-      loginWithGoogle: async () => {
-        const { data, error } = await signInWithGoogle()
-        if (error) throw error
-        return data
-      },
-    }
-  }, [loading, user])
+  const value = useMemo(() => ({
+    user, loading, isAdmin: isAdminUser(user), role: user?.role || 'customer', isConfigured: isSupabaseConfigured(), configError: supabaseConfigError,
+    login: async (email, password) => {
+      const { data, error } = await signIn(email.trim().toLowerCase(), password)
+      if (error) throw error
+      if (!data.user?.email_confirmed_at) { await signOut(); throw new Error('Please confirm your email.') }
+      if (!isAdminUser(data.user)) { await signOut(); throw new Error('This account is not authorized for admin access.') }
+      setUser(toUser(data.user))
+      return data.user
+    },
+    logout: async () => { const { error } = await signOut(); if (error) throw error; setUser(null) },
+    requestPasswordReset: async (email) => { const { error } = await sendPasswordResetEmail(email); if (error) throw error },
+    resetPassword: async (password) => { const { error } = await updateUserPassword(password); if (error) throw error },
+    loginWithGoogle: async () => { const { data, error } = await signInWithGoogle(); if (error) throw error; return data },
+  }), [loading, user])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
-  return useContext(AuthContext)
-}
+export function useAuth() { const context = useContext(AuthContext); if (!context) throw new Error('useAuth must be used within AuthProvider'); return context }

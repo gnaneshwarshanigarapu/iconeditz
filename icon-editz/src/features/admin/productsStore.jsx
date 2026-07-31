@@ -31,6 +31,9 @@ export function ProductsProvider({ children }) {
       
       // Data mutation
       upsertProduct,
+      addProduct: upsertProduct,
+      updateProduct: async (id, patch) => upsertProduct({ ...patch, id }),
+      archiveProduct: async (id) => toggleProductPublish(id, false),
       deleteProduct,
       toggleProductPublish,
       publishProduct,

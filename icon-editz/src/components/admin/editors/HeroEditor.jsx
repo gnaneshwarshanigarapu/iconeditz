@@ -54,10 +54,8 @@ export default function HeroEditor({ content, update, onSave }) {
             <FormInput
                 label="Badges (one per line)"
                 type="textarea"
-                value={(content.badges || []).join('
-')}
-                onChange={e => update(draft => { draft.badges = e.target.value.split('
-').filter(Boolean); })}
+                value={(content.badges || []).join('\n')}
+                onChange={e => update(draft => { draft.badges = e.target.value.split('\n').filter(Boolean); })}
             />
             <SaveButton onSave={onSave} />
         </div>

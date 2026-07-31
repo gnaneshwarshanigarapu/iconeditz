@@ -1,203 +1,95 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
 import ProductCard from '../../components/store/ProductCard'
 import { useProducts } from '../../hooks/useProducts'
-import { trackEvent } from '../../utils/tracking'
 
-const PAGE_SIZE = 12
-
-// A simple debounce hook to prevent API calls on every keystroke
-const useDebounce = (value, delay) => {
-  const [debouncedValue, setDebouncedValue] = useState(value)
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-  return debouncedValue
-}
-
-const ProductCardSkeleton = () => (
-  <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 animate-pulse">
-    <div className="aspect-video w-full rounded-lg bg-gray-600"></div>
-    <div className="mt-4 h-5 w-3/4 rounded bg-gray-500"></div>
-    <div className="mt-2 h-4 w-1/4 rounded bg-gray-600"></div>
-    <div className="mt-4 h-8 w-1/3 rounded bg-gray-500"></div>
-  </div>
-)
-
-const Pagination = ({ currentPage, totalPages, onPageChange }) => {
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
-  return (
-    <div className="flex justify-center items-center gap-2 mt-12">
-      {pages.map(page => (
-        <button
-          key={page}
-          onClick={() => onPageChange(page)}
-          className={`h-10 w-10 rounded-lg text-sm font-semibold transition-colors ${
-            currentPage === page
-              ? 'bg-primary text-white'
-              : 'bg-surface hover:bg-white/10 text-text-muted'
-          }`}
-        >
-          {page}
-        </button>
-      ))}
-    </div>
-  )
-}
+const categories = ['All Assets', 'PSD', 'Wedding Invitation', 'After Effects', 'Premiere Pro', 'Photoshop', 'LUTs', 'Sound Packs']
+const prices = ['All', 'Free', 'Paid']
+const sorts = ['Newest', 'Oldest', 'Price Low → High', 'Price High → Low']
+const initialFilters = { query: '', category: 'All Assets', price: 'All', sort: 'Newest' }
 
 export default function Store() {
   const { getProducts } = useProducts()
-  
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  
-  // Hardcoded categories for now, as we removed them from the old context
-  const publishedCategories = ['Preset', 'Template', 'LUTs', 'Editing Pack']
-  const debouncedSearchQuery = useDebounce(searchQuery, 300)
+  const [error, setError] = useState('')
+  const [filters, setFilters] = useState(initialFilters)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [draft, setDraft] = useState(initialFilters)
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true)
-      try {
-        const { products: fetchedProducts, count } = await getProducts({
-          publishedOnly: true,
-          page: currentPage,
-          pageSize: PAGE_SIZE,
-          category: selectedCategory,
-          searchQuery: debouncedSearchQuery,
-        })
-        const safeProducts = Array.isArray(fetchedProducts) ? fetchedProducts : []
-        setProducts(safeProducts)
-        setTotalPages(Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE)))
-      } catch (err) {
-        setError(err.message)
-        // Gracefully handle the missing FTS column error
-        if (err.message.includes('column "title_description_fts" does not exist')) {
-            console.warn("Full-text search is not configured in Supabase. Falling back to client-side search. Please run the recommended SQL to create the index for better performance.")
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchProducts()
-  }, [getProducts, currentPage, selectedCategory, debouncedSearchQuery])
+    getProducts().then(({ products: data }) => setProducts(data || [])).catch((err) => setError(err.message)).finally(() => setLoading(false))
+  }, [getProducts])
 
-  useEffect(() => {
-    if (products.length > 0) {
-      const items = products.map(product => ({
-        item_id: product.id,
-        item_name: product.title,
-        item_category: product.category,
-        price: product.price,
-        discount: product.discountPrice,
-      }));
+  const displayed = useMemo(() => [...products]
+    .filter((item) => {
+      const haystack = `${item.title} ${item.description} ${item.category}`.toLowerCase()
+      const itemPrice = Number(item.discountPrice ?? item.discount_price ?? item.price ?? 0)
+      return haystack.includes(filters.query.toLowerCase())
+        && (filters.category === 'All Assets' || item.category?.toLowerCase() === filters.category.toLowerCase())
+        && (filters.price === 'All' || (filters.price === 'Free' ? itemPrice === 0 : itemPrice > 0))
+    })
+    .sort((a, b) => {
+      const aPrice = Number(a.discountPrice ?? a.discount_price ?? a.price ?? 0)
+      const bPrice = Number(b.discountPrice ?? b.discount_price ?? b.price ?? 0)
+      if (filters.sort === 'Price Low → High') return aPrice - bPrice
+      if (filters.sort === 'Price High → Low') return bPrice - aPrice
+      const aDate = new Date(a.created_at || 0)
+      const bDate = new Date(b.created_at || 0)
+      return filters.sort === 'Oldest' ? aDate - bDate : bDate - aDate
+    }), [products, filters])
 
-      trackEvent('view_item_list', {
-        ecommerce: {
-          items,
-        },
-      });
-    }
-  }, [products]);
-  
-  const handleCategoryChange = (e) => {
-    setSelectedCategory(e.target.value)
-    setCurrentPage(1) // Reset to first page
-  }
-  
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1) // Reset to first page
-  }
+  const openDrawer = () => { setDraft(filters); setDrawerOpen(true) }
+  const applyFilters = () => { setFilters(draft); setDrawerOpen(false) }
+  const resetFilters = () => setDraft(initialFilters)
 
-  const handlePageChange = (page) => {
-    if (page !== currentPage) {
-      setCurrentPage(page)
-      window.scrollTo(0, 0) // Scroll to top on page change
-    }
-  }
+  return <main className="relative mx-auto max-w-7xl px-6 pb-24 pt-32 lg:px-8">
+    <header className="mb-10"><p className="text-sm font-semibold uppercase tracking-[.28em] text-violet-300">ICON EDITZ Marketplace</p><h1 className="mt-3 text-4xl font-semibold text-white sm:text-5xl">Premium creative assets.</h1><p className="mt-4 max-w-2xl text-white/60">Templates, edits, presets, and creative tools built to make your next project stand out.</p></header>
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-          Digital <span className="text-primary">Assets</span>
-        </h1>
-        <p className="text-xl text-text-muted max-w-2xl mx-auto">
-          Elevate your video editing with our premium presets, templates, and assets.
-        </p>
-      </div>
+    <button onClick={openDrawer} className="mb-6 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-500/15 px-4 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 backdrop-blur-xl transition hover:bg-violet-500/25 lg:hidden"><SlidersHorizontal className="h-5 w-5 text-violet-200" />Filter &amp; Categories</button>
 
-      <div className="flex flex-col md:flex-row gap-6 mb-12">
-        <div className="flex-grow">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search products..."
-              className="w-full bg-surface border border-white/10 text-white rounded-lg pl-4 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              disabled={loading}
-            />
-          </div>
-        </div>
-        
-        <div className="md:w-64 flex-shrink-0">
-          <select
-            className="w-full bg-surface border border-white/10 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
-            value={selectedCategory}
-            onChange={handleCategoryChange}
-            disabled={loading}
-          >
-            <option value="All">All Categories</option>
-            {publishedCategories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)}
-        </div>
-      ) : error ? (
-        <div className="text-center py-20 bg-surface rounded-xl border border-red-500/20 text-red-400">
-          <h3 className="text-xl font-medium text-white mb-2">Something went wrong</h3>
-          <p className="text-text-muted">{error}</p>
-        </div>
-      ) : (products ?? []).length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {(products ?? []).map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          {totalPages > 1 && (
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages} 
-              onPageChange={handlePageChange} 
-            />
-          )}
-        </>
-      ) : (
-        <div className="text-center py-20 bg-surface rounded-xl border border-white/5">
-          <h3 className="text-xl font-medium text-white mb-2">No products available</h3>
-          <p className="text-text-muted">Try again later or adjust your search or category filter.</p>
-        </div>
-      )}
+    <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="hidden h-fit rounded-[24px] border border-white/10 bg-white/[.055] p-5 shadow-xl backdrop-blur-xl lg:sticky lg:top-28 lg:block">
+        <FilterControls filters={filters} setFilters={setFilters} />
+      </aside>
+      <ProductResults loading={loading} error={error} products={displayed} />
     </div>
-  );
+
+    <AnimatePresence>
+      {drawerOpen && <MobileFilterDrawer draft={draft} setDraft={setDraft} onApply={applyFilters} onReset={resetFilters} onClose={() => setDrawerOpen(false)} />}
+    </AnimatePresence>
+  </main>
+}
+
+function FilterControls({ filters, setFilters }) {
+  const set = (field, value) => setFilters((current) => ({ ...current, [field]: value }))
+  return <>
+    <div className="flex items-center gap-2 text-sm font-semibold text-white"><SlidersHorizontal className="h-4 w-4 text-violet-300" />Browse assets</div>
+    <label className="relative mt-5 block"><Search className="absolute left-3 top-3 h-4 w-4 text-white/40" /><input value={filters.query} onChange={(event) => set('query', event.target.value)} placeholder="Search Assets" className="w-full rounded-xl border border-white/10 bg-black/20 py-2.5 pl-9 pr-3 text-sm text-white outline-none focus:border-violet-400/50" /></label>
+    <Filter title="Category Filter" options={categories} selected={filters.category} onChange={(value) => set('category', value)} />
+    <Filter title="Price Filter" options={prices} selected={filters.price} onChange={(value) => set('price', value)} />
+    <label className="mt-6 block text-sm font-semibold text-white">Sort<select value={filters.sort} onChange={(event) => set('sort', event.target.value)} className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none">{sorts.map((option) => <option key={option}>{option}</option>)}</select></label>
+  </>
+}
+
+function MobileFilterDrawer({ draft, setDraft, onApply, onReset, onClose }) {
+  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm lg:hidden" onClick={onClose}>
+    <motion.section initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 280 }} onClick={(event) => event.stopPropagation()} className="absolute inset-x-0 bottom-0 max-h-[86vh] overflow-y-auto rounded-t-[24px] border border-white/10 bg-[#140b22] p-6 shadow-2xl">
+      <div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-semibold text-white">Filter &amp; Categories</h2><button onClick={onClose} aria-label="Close filters" className="grid h-10 w-10 place-items-center rounded-full bg-white/5 text-white"><X className="h-5 w-5" /></button></div>
+      <FilterControls filters={draft} setFilters={setDraft} />
+      <div className="sticky bottom-0 mt-6 grid grid-cols-[1fr_auto] gap-3 border-t border-white/10 bg-[#140b22] pt-5"><button onClick={onApply} className="h-12 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 text-sm font-semibold text-white shadow-lg shadow-violet-950/40">Apply Filters</button><button onClick={onReset} className="h-12 rounded-xl border border-white/15 px-5 text-sm font-semibold text-white/80">Reset</button></div>
+    </motion.section>
+  </motion.div>
+}
+
+function ProductResults({ loading, error, products }) {
+  if (loading) return <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="aspect-[4/5] animate-pulse rounded-[24px] bg-white/10" />)}</section>
+  if (error) return <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-6 text-red-200">{error}</p>
+  if (!products.length) return <div className="rounded-[24px] border border-white/10 bg-white/[.04] p-12 text-center text-white/55">No assets match these filters.</div>
+  return <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.map((product) => <ProductCard key={product.id} product={product} />)}</section>
+}
+
+function Filter({ title, options, selected, onChange }) {
+  return <div className="mt-6"><p className="text-sm font-semibold text-white">{title}</p><div className="mt-3 space-y-1">{options.map((option) => <button key={option} type="button" onClick={() => onChange(option)} className={`block w-full rounded-xl px-3 py-2 text-left text-sm transition ${selected === option ? 'bg-violet-500/20 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white'}`}>{option}</button>)}</div></div>
 }

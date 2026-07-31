@@ -1,91 +1,13 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useProducts } from '../../../hooks/useProducts'
 
-const statusStyles = {
-  published: 'bg-green-500/15 text-green-300',
-  draft: 'bg-yellow-500/15 text-yellow-300',
-  archived: 'bg-slate-500/20 text-slate-300',
-}
-
-const formatStatus = (status) => status.charAt(0).toUpperCase() + status.slice(1)
-
 export default function ProductList() {
-  const { products = [], productCounts = { total: 0, published: 0, draft: 0, archived: 0 }, deleteProduct, publishProduct, unpublishProduct, archiveProduct } = useProducts()
-
-  const handleDelete = (product) => {
-    if (window.confirm(`Delete "${product.title}"?`)) deleteProduct(product.id)
-  }
-
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.055] p-5 shadow-xl shadow-black/20 backdrop-blur-xl">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Product Catalog</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Total {productCounts.total} - Published {productCounts.published} - Draft {productCounts.draft} - Archived {productCounts.archived}
-          </p>
-        </div>
-        <Link to="/admin/products/add" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
-          Add Product
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {(products ?? []).length === 0 && <p className="rounded-lg border border-white/10 bg-white/[0.04] p-6 text-text-muted">No products yet.</p>}
-        {(products ?? []).map((product) => (
-          <div
-            key={product.id}
-            className="rounded-lg border border-white/10 bg-white/[0.04] p-4 transition-colors hover:bg-white/[0.065]"
-          >
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-4">
-                <img
-                  src={product.image || "/assets/images/og-icon-editz.png"}
-                  alt={product.title}
-                  className="h-16 w-24 rounded-lg border border-white/10 object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = "/assets/images/og-icon-editz.png"
-                  }}
-                />
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="font-semibold text-white">{product.title}</h3>
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[product.status] || statusStyles.draft}`}>
-                      {formatStatus(product.status)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-text-muted">
-                    {product.category} - Rs.{product.discountPrice || product.price}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {product.status === 'published' ? (
-                  <button className="text-sm font-semibold text-yellow-300" onClick={() => unpublishProduct(product.id)}>
-                    Draft
-                  </button>
-                ) : (
-                  <button className="text-sm font-semibold text-green-300" onClick={() => publishProduct(product.id)}>
-                    Publish
-                  </button>
-                )}
-                {product.status !== 'archived' && (
-                  <button className="text-sm font-semibold text-slate-300" onClick={() => archiveProduct(product.id)}>
-                    Archive
-                  </button>
-                )}
-                <Link to={`/admin/products/${product.id}/edit`} className="text-sm font-semibold text-primary">
-                  Edit
-                </Link>
-                <button className="text-sm font-semibold text-red-300" onClick={() => handleDelete(product)}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  const { getProducts, deleteProduct, publishProduct, unpublishProduct } = useProducts()
+  const [items, setItems] = useState([]); const [query, setQuery] = useState(''); const [filter, setFilter] = useState('all'); const [sort, setSort] = useState('newest'); const [loading, setLoading] = useState(true); const [message, setMessage] = useState('')
+  const load = async () => { setLoading(true); setMessage(''); try { const { products } = await getProducts(); setItems(products) } catch (error) { setMessage(error.message) } finally { setLoading(false) } }
+  useEffect(() => { load() }, [])
+  const products = useMemo(() => items.filter((item) => `${item.title} ${item.category}`.toLowerCase().includes(query.toLowerCase()) && (filter === 'all' || (filter === 'published' ? item.published : !item.published))).sort((a, b) => sort === 'price' ? Number(a.price) - Number(b.price) : new Date(b.created_at) - new Date(a.created_at)), [items, query, filter, sort])
+  const mutate = async (action, success) => { try { await action(); await load(); setMessage(success) } catch (error) { setMessage(error.message) } }
+  return <div className="rounded-xl border border-white/10 bg-white/[.055] p-5 shadow-xl backdrop-blur-xl"><div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold text-white">Product Catalog</h2><p className="text-sm text-text-muted">{items.length} products</p></div><div className="flex gap-2"><button onClick={load} className="rounded-lg border border-white/10 px-3 py-2 text-sm">Refresh</button><Link to="/admin/products/add" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">Add Product</Link></div></div><div className="mb-5 grid gap-3 md:grid-cols-3"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products" className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"/><select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft</option></select><select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"><option value="newest">Newest</option><option value="price">Price low to high</option></select></div>{message && <p className="mb-4 rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-white">{message}</p>}{loading ? <p className="p-6 text-text-muted">Loading products…</p> : !products.length ? <p className="rounded-lg border border-white/10 p-6 text-text-muted">No products found.</p> : <div className="space-y-3">{products.map((product) => <div key={product.id} className="flex flex-col gap-4 rounded-lg border border-white/10 bg-black/15 p-4 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-4"><img src={product.thumbnail || '/assets/images/og-icon-editz.png'} alt="" className="h-16 w-24 rounded-lg object-cover"/><div><p className="font-semibold text-white">{product.title}</p><p className="text-sm text-text-muted">{product.category || 'Uncategorized'} · ₹{product.discountPrice ?? product.price}</p></div></div><div className="flex gap-3"><button onClick={() => mutate(() => product.published ? unpublishProduct(product.id) : publishProduct(product.id), 'Product status updated.')} className="text-sm text-primary">{product.published ? 'Draft' : 'Publish'}</button><Link to={`/admin/products/${product.id}/edit`} className="text-sm text-primary">Edit</Link><button onClick={() => window.confirm(`Delete “${product.title}”?`) && mutate(() => deleteProduct(product.id), 'Product deleted.')} className="text-sm text-red-300">Delete</button></div></div>)}</div>}</div>
 }

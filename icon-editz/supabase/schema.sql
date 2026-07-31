@@ -84,3 +84,13 @@ alter table orders enable row level security;
 alter table downloads enable row level security;
 alter table wishlist enable row level security;
 alter table reviews enable row level security;
+
+create table if not exists hire_requests (
+  id uuid primary key default gen_random_uuid(), created_at timestamptz not null default now(),
+  client_name text not null, email text not null, phone text not null, company text,
+  project_type text not null, budget text not null, deadline date not null, location text not null,
+  service text not null, message text not null, reference_link text, preferred_contact text not null,
+  attachments jsonb not null default '[]'::jsonb,
+  status text not null default 'Pending' check (status in ('Pending', 'Contacted', 'In Progress', 'Completed', 'Cancelled'))
+);
+alter table hire_requests enable row level security;

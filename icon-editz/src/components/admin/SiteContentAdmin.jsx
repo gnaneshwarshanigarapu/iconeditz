@@ -31,15 +31,10 @@ export default function SiteContentAdmin() {
   const sections = useMemo(
     () => [
       { id: 'hero', label: 'Hero' },
-      { id: 'showreel', label: 'Showreel' },
-      { id: 'services', label: 'Services' },
-      { id: 'servicesPage', label: 'Services Page' },
-      { id: 'projects', label: 'Projects' },
-      { id: 'tools', label: 'Tools' },
+      { id: 'services', label: 'Featured Services' },
+      { id: 'projects', label: 'Featured Projects' },
       { id: 'testimonials', label: 'Testimonials' },
-      { id: 'faq', label: 'FAQ' },
       { id: 'cta', label: 'CTA' },
-      { id: 'site', label: 'Site Settings' },
     ],
     [],
   )

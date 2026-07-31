@@ -1,73 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import {
-  FiBarChart2,
-  FiBox,
-  FiDownload,
-  FiEdit,
-  FiLogOut,
-  FiPlusCircle,
-  FiSettings,
-  FiShoppingBag,
-  FiUsers,
-  FiBriefcase,
-} from 'react-icons/fi'
+import { FiBarChart2, FiBox, FiChevronDown, FiDownload, FiEdit, FiFolder, FiLogOut, FiPlusCircle, FiSettings, FiShoppingBag, FiUsers, FiBriefcase } from 'react-icons/fi'
 import { useAuth } from '../../hooks/useAuth'
 import Logo from '../common/Logo'
 
-const navItems = [
-  { label: 'Dashboard', to: '/admin', icon: FiBarChart2, end: true },
-  { label: 'Products', to: '/admin/products', icon: FiBox },
-  { label: 'Add Product', to: '/admin/products/add', icon: FiPlusCircle },
-  { label: 'Homepage Content', to: '/admin/content', icon: FiEdit },
-  { label: 'Hire From Us CMS', to: '/admin/hire-us', icon: FiBriefcase },
-  { label: 'Orders', to: '/admin/orders', icon: FiShoppingBag },
-  { label: 'Customers', to: '/admin/customers', icon: FiUsers },
-  { label: 'Downloads', to: '/admin/downloads', icon: FiDownload },
-  { label: 'Settings', to: '/admin/settings', icon: FiSettings },
-]
+const mainClass = ({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${isActive ? 'bg-primary/20 text-white' : 'text-text-muted hover:bg-white/[.06] hover:text-white'}`
+const subClass = ({ isActive }) => `ml-5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-primary/15 text-white' : 'text-text-muted hover:bg-white/[.05] hover:text-white'}`
+function Group({ label, icon: Icon, children }) { const [open, setOpen] = useState(true); return <div><button onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/[.06] hover:text-white"><Icon className="text-lg"/><span className="flex-1 text-left">{label}</span><FiChevronDown className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} /></button><div className={`grid transition-[grid-template-rows] duration-200 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}><div className="overflow-hidden space-y-1">{children}</div></div></div> }
 
-export default function Sidebar() {
-  const { logout } = useAuth()
-
-
-  return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-[#0f0a1f]/90 px-4 py-5 text-text shadow-2xl shadow-black/30 backdrop-blur-2xl lg:flex lg:flex-col">
-      <div className="mb-8">
-        <Logo />
-      </div>
-
-      <nav className="flex flex-1 flex-col gap-1">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          return (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold transition-all ${
-                  isActive
-                    ? 'border border-primary/30 bg-primary/20 text-white shadow-lg shadow-primary/10'
-                    : 'text-text-muted hover:bg-white/[0.06] hover:text-white'
-                }`
-              }
-            >
-              <Icon className="text-lg" />
-              <span>{item.label}</span>
-            </NavLink>
-          )
-        })}
-      </nav>
-
-      <button
-        type="button"
-        onClick={logout}
-        className="mt-6 flex items-center gap-3 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-3 text-left text-sm font-semibold text-red-200 transition-colors hover:bg-red-500/20"
-      >
-        <FiLogOut className="text-lg" />
-        <span>Logout</span>
-      </button>
-    </aside>
-  )
-}
+export default function Sidebar() { const { logout } = useAuth(); return <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-[#0f0a1f]/90 px-4 py-5 text-text shadow-2xl backdrop-blur-2xl lg:flex lg:flex-col"><div className="mb-8"><Logo /></div><nav className="flex flex-1 flex-col gap-1"><NavLink to="/admin/dashboard" className={mainClass}><FiBarChart2 />Dashboard</NavLink><Group label="Products" icon={FiBox}><NavLink to="/admin/products" className={subClass}><FiBox />All Products</NavLink><NavLink to="/admin/products/add" className={subClass}><FiPlusCircle />Add Product</NavLink><NavLink to="/admin/categories" className={subClass}><FiFolder />Categories</NavLink></Group><Group label="Content Management" icon={FiEdit}><NavLink to="/admin/content/homepage" className={subClass}>Homepage</NavLink><NavLink to="/admin/content/about" className={subClass}>About Page</NavLink><NavLink to="/admin/content/services" className={subClass}>Services Page</NavLink><NavLink to="/admin/content/projects" className={subClass}>Projects Page</NavLink><NavLink to="/admin/content/store" className={subClass}>Store Page</NavLink><NavLink to="/admin/content/hire-from-us" className={subClass}>Hire From Us Page</NavLink><NavLink to="/admin/content/footer" className={subClass}>Footer</NavLink><NavLink to="/admin/content/cta" className={subClass}>CTA</NavLink><NavLink to="/admin/content/legal" className={subClass}>Legal Pages</NavLink></Group><Group label="Hire Management" icon={FiBriefcase}><NavLink to="/admin/hire-requests" className={subClass}>Hire Requests</NavLink><NavLink to="/admin/newsletter-subscribers" className={subClass}>Newsletter Subscribers</NavLink></Group><NavLink to="/admin/orders" className={mainClass}><FiShoppingBag />Orders</NavLink><NavLink to="/admin/customers" className={mainClass}><FiUsers />Customers</NavLink><NavLink to="/admin/downloads" className={mainClass}><FiDownload />Downloads</NavLink><NavLink to="/admin/settings" className={mainClass}><FiSettings />Settings</NavLink></nav><button onClick={logout} className="mt-6 flex items-center gap-3 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-3 text-sm font-semibold text-red-200"><FiLogOut />Logout</button></aside> }

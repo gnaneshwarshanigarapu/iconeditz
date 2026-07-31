@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ProductForm from '../../../components/admin/ProductForm'
 import { useProducts } from '../../../hooks/useProducts'
@@ -13,13 +13,17 @@ const parseList = (value) =>
 
 export default function EditProduct() {
   const { id } = useParams()
-  const { products, updateProduct } = useProducts()
+  const { getProducts, updateProduct } = useProducts()
   const navigate = useNavigate()
-  const product = products.find((p) => p.id === id)
+  const [product, setProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  if (!product) return <div className="rounded-xl border border-white/10 bg-white/[0.055] p-8 text-text-muted">Product not found.</div>
+  useEffect(() => { getProducts().then(({ products }) => setProduct(products.find((item) => String(item.id) === String(id)) || null)).catch((err) => setError(err.message)).finally(() => setLoading(false)) }, [getProducts, id])
+
+  if (loading) return <div className="rounded-xl border border-white/10 bg-white/[0.055] p-8 text-text-muted">Loading product…</div>
+  if (!product) return <div className="rounded-xl border border-white/10 bg-white/[0.055] p-8 text-text-muted">{error || 'Product not found.'}</div>
 
   const onSubmit = async (data) => {
     setError('')

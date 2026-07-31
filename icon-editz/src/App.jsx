@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import AboutPage from './pages/AboutPage'
 import ServicesPage from './pages/ServicesPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProductsPage from './pages/ProductsPage'
-import ContactPage from './pages/ContactPage'
 import HireFromUsPage from './pages/HireFromUsPage'
+import LegalPage from './pages/LegalPage'
 import NotFoundPage from './pages/NotFoundPage'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -23,6 +24,8 @@ import { trackPageView } from './utils/tracking'
 import './styles/global.css'
 
 import Analytics from './components/Analytics'
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } } })
 
 function AppChrome() {
   const location = useLocation()
@@ -45,9 +48,9 @@ function AppChrome() {
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/products" element={<ProductsPage />} />
-              <Route path="/hire-us" element={<HireFromUsPage />} />
+              <Route path="/hire" element={<HireFromUsPage />} />
+              <Route path="/legal/:slug" element={<LegalPage />} />
               <Route path="/store/*" element={<StoreRoutes />} />
-              <Route path="/contact" element={<ContactPage />} />
               <Route path="/payments/*" element={<PaymentRoutes />} />
               <Route path="/admin/*" element={<AdminRoutes />} />
               <Route path="*" element={<NotFoundPage />} />
@@ -61,6 +64,7 @@ function AppChrome() {
 }
 export default function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <Router>
       <ProductsProvider>
         <AuthProvider>
@@ -73,5 +77,6 @@ export default function App() {
         </AuthProvider>
       </ProductsProvider>
     </Router>
+    </QueryClientProvider>
   )
 }

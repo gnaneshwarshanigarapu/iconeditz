@@ -6,7 +6,7 @@ export const defaultServicesPage = {
     label: 'SERVICES',
     heading: 'Creative Services That Help Brands Stand Out',
     description: 'I create premium video editing, motion graphics, branding, social media creatives, logo animations and digital content that help businesses and creators grow.',
-    primaryCta: 'Hire Me', primaryHref: '/contact', secondaryCta: 'View Projects', secondaryHref: '/projects', visible: true, status: 'published',
+    primaryCta: 'Hire From Us', primaryHref: '/hire', secondaryCta: 'View Projects', secondaryHref: '/projects', visible: true, status: 'published',
   },
   services: [
     item('video-editing', 'Video Editing', 'Cinematic stories with confident pacing and polished finishing.', { features: ['Cinematic editing', 'Reels, YouTube & corporate'], price: 'From ₹1,999', delivery: '2–5 Days', bestFor: 'Brands, creators & weddings', icon: 'Film', featured: true }),
@@ -47,5 +47,5 @@ export const defaultServicesPage = {
   ],
   faq: [item('timeline', 'How long does a project take?', 'Timelines depend on scope, but every package includes a clear delivery estimate.'), item('revisions', 'Can I request revisions?', 'Yes. We refine the work until it is aligned with your creative direction.'), item('files', 'Which formats do you deliver?', 'You receive platform-ready, high-resolution exports for the channels you need.')],
   testimonials: [item('client-1', 'Sai Kumar', 'Music Creator', { review: 'Every frame felt intentional. The pacing and polish were exactly what we needed.', rating: 5 }), item('client-2', 'Harika & Arun', 'Wedding Client', { review: 'The edit felt cinematic, warm, and beautifully balanced.', rating: 5 }), item('client-3', 'Rohit', 'Brand Studio', { review: 'The motion graphics elevated the entire campaign instantly.', rating: 5 })],
-  cta: { heading: 'Ready to bring your ideas to life?', description: 'Let’s create something memorable for your next launch, campaign, or story.', primaryCta: 'Hire Me', primaryHref: '/contact', secondaryCta: 'Contact Me', secondaryHref: '/contact', visible: true, status: 'published' },
+  cta: { heading: 'Ready to bring your ideas to life?', description: 'Let’s create something memorable for your next launch, campaign, or story.', primaryCta: 'Hire From Us', primaryHref: '/hire', secondaryCta: 'Start a project', secondaryHref: '/hire', visible: true, status: 'published' },
 }
