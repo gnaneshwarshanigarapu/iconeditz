@@ -61,7 +61,7 @@ export default function Navbar() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
-        className="fixed top-[20px] left-1/2 -translate-x-1/2 w-[92%] max-w-[1400px] h-[64px] rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)] z-[9999]"
+        className="fixed top-[20px] left-1/2 -translate-x-1/2 w-[92%] max-w-7xl h-[64px] rounded-full border bg-[rgba(16,10,24,.92)] border-[rgba(168,85,247,.18)] shadow-[0_12px_35px_rgba(124,58,237,.18)] z-[9999]"
         style={{
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
