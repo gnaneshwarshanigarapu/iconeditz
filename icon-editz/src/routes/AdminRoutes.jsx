@@ -20,6 +20,7 @@ const PageContentCms = lazy(() => import('../pages/admin/PageContentCms'))
 const SingletonContentCms = lazy(() => import('../pages/admin/SingletonContentCms'))
 const NewsletterSubscribersPage = lazy(() => import('../pages/admin/NewsletterSubscribersPage'))
 const LegalPagesAdmin = lazy(() => import('../pages/admin/LegalPagesAdmin'))
+const DatabaseHealthPage = lazy(() => import('../pages/admin/DatabaseHealthPage'))
 
 function AdminPage({ title, children }) {
   return (
@@ -50,6 +51,7 @@ export default function AdminRoutes() {
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/dashboard" element={<AdminPage title="Dashboard"><AdminDashboard /></AdminPage>} />
+        <Route path="/health" element={<AdminPage title="Database Health"><DatabaseHealthPage /></AdminPage>} />
         <Route path="/products" element={<AdminPage title="Products"><ProductList /></AdminPage>} />
         <Route path="/products/add" element={<AdminPage title="Add Product"><AddProduct /></AdminPage>} />
         <Route path="/products/:id/edit" element={<AdminPage title="Edit Product"><EditProduct /></AdminPage>} />

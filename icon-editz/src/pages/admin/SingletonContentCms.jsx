@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Save } from 'lucide-react'
 import { supabase } from '../../utils/supabase'
+import DatabaseSetupNotice from '../../components/admin/DatabaseSetupNotice'
 
 const footerSchema = z.object({ brandName: z.string().min(1), logo: z.string().optional(), description: z.string().max(600).optional(), address: z.string().optional(), email: z.string().email().or(z.literal('')), phone: z.string().optional(), businessHours: z.string().optional(), newsletterTitle: z.string().optional(), newsletterDescription: z.string().optional(), newsletterButtonText: z.string().optional(), copyrightText: z.string().optional(), backgroundColor: z.string().optional(), accentColor: z.string().optional() })
 const ctaSchema = z.object({ heading: z.string().min(1), subheading: z.string().optional(), primaryButton: z.string().optional(), primaryButtonUrl: z.string().optional(), secondaryButton: z.string().optional(), secondaryButtonUrl: z.string().optional(), backgroundImage: z.string().optional(), backgroundGradient: z.string().optional(), visible: z.boolean() })
@@ -19,7 +20,7 @@ export default function SingletonContentCms({ table, title }) {
   useEffect(() => { if (data) form.reset({ ...defaults, ...data }) }, [data, form])
   const save = useMutation({ mutationFn: async (content) => { const { error: requestError } = await supabase.from(table).upsert({ id: true, content, updated_at: new Date().toISOString() }); if (requestError) throw requestError }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [table] }) })
   if (isLoading) return <p className="text-text-muted">Loading CMS content...</p>
-  if (error) return <p className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-red-200">{error.message}</p>
+  if (error) return <DatabaseSetupNotice error={error} onRetry={() => queryClient.invalidateQueries({ queryKey: [table] })} />
   return <form onSubmit={form.handleSubmit((values) => save.mutate(values))} className="max-w-5xl space-y-6"><header className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold text-white">{title}</h2><p className="text-sm text-text-muted">Edit live content using structured fields.</p></div><button className="admin-button-primary" disabled={save.isPending}><Save className="h-4 w-4" />{save.isPending ? 'Saving...' : 'Save changes'}</button></header>{save.error && <p className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{save.error.message}</p>}{isFooter ? <FooterFields form={form} /> : <CtaFields form={form} />}</form>
 }
 
