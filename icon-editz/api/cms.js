@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { supabaseAdmin } from './lib/supabaseAdmin.js';
-import { authorizeAdmin } from './lib/auth.js';
-import { withApi } from './lib/handler.js'
+import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
+import { authorizeAdmin } from '../server/lib/auth.js';
+import { withApi } from '../server/lib/handler.js'
 
 const HIRE_PAGE = 'Hire From Us'
 const hireSection = (section, content, published) => ({ page: HIRE_PAGE, section_key: section, content, status: published ? 'published' : 'draft' })
@@ -114,5 +114,5 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
     }
 
     // If we reach here, method is not handled for the given section
-    res.status(405).json({ message: 'Method Not Allowed' });
+    return res.status(405).json({ success: false, message: 'Method Not Allowed' });
 });

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { supabaseAdmin } from './lib/supabaseAdmin.js';
-import { authorizeAdmin, tryAuthenticate } from './lib/auth.js';
-import { withApi } from './lib/handler.js';
+import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
+import { authorizeAdmin, tryAuthenticate } from '../server/lib/auth.js';
+import { withApi } from '../server/lib/handler.js';
 
 const productSchema = z.object({
     id: z.union([z.string(), z.number()]).optional(),
@@ -52,11 +52,11 @@ async function handleAdminProductActions(req, res) {
             if (!id) throw Object.assign(new Error('Product ID is required for deletion'), { status: 400 });
             const { error } = await supabaseAdmin.from('products').delete().eq('id', id);
             if (error) throw error;
-            return res.status(204).end();
+            return res.json({ success: true });
         }
         default:
             res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
-            return res.status(405).end(`Method ${req.method} Not Allowed`);
+            return res.status(405).json({ success: false, message: `Method ${req.method} Not Allowed` });
     }
 }
 

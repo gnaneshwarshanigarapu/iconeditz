@@ -1,0 +1,1 @@
+export const getIpAddress = (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || ''

@@ -70,9 +70,9 @@ export default function CheckoutModal({ product, onClose }) {
           customer_phone: formData.phone,
         }),
       }
-      const razorpayOrderResponse = await fetch('/api/create-order', createOrderRequest)
+      const razorpayOrderResponse = await fetch('/api/orders', createOrderRequest)
       
-      const razorpayOrder = await readApiResponse(razorpayOrderResponse, { url: '/api/create-order', ...createOrderRequest })
+      const razorpayOrder = await readApiResponse(razorpayOrderResponse, { url: '/api/orders', ...createOrderRequest })
       if (!razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
 
       // Step 3: Setup Razorpay options and open the modal
@@ -89,7 +89,7 @@ export default function CheckoutModal({ product, onClose }) {
           setStatusMessage('Verifying payment...');
           try {
             const verifyRequest = {
-              method: 'POST',
+              method: 'PUT',
               headers: authHeaders,
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
@@ -97,9 +97,9 @@ export default function CheckoutModal({ product, onClose }) {
                 razorpay_signature: response.razorpay_signature,
               })
             }
-            const verifyRes = await fetch('/api/verify-payment', verifyRequest)
+            const verifyRes = await fetch('/api/orders', verifyRequest)
 
-            const verifyData = await readApiResponse(verifyRes, { url: '/api/verify-payment', ...verifyRequest })
+            const verifyData = await readApiResponse(verifyRes, { url: '/api/orders', ...verifyRequest })
             if (verifyData.success) {
               setStatusMessage('Payment successful! Check your email for the download link.');
               setStatusType('success');

@@ -1,8 +1,8 @@
 import multer from 'multer'
 import crypto from 'node:crypto'
-import { supabaseAdmin } from './lib/supabaseAdmin.js'
-import { authorizeAdmin } from './lib/auth.js'
-import { withApi } from './lib/handler.js'
+import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
+import { authorizeAdmin } from '../server/lib/auth.js'
+import { withApi } from '../server/lib/handler.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -57,5 +57,5 @@ export default withApi(['GET', 'POST', 'PATCH', 'DELETE'], async (req, res) => {
   }
   const { error } = await supabaseAdmin.from('hire_requests').delete().eq('id', id)
   if (error) throw error
-  return res.status(204).end()
+  return res.json({ success: true })
 })

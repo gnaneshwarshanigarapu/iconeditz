@@ -1,17 +1,17 @@
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from './lib/supabaseAdmin.js';
-import { authenticate } from './lib/auth.js';
-import { withApi } from './lib/handler.js';
+import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
+import { authenticate } from '../server/lib/auth.js';
+import { withApi } from '../server/lib/handler.js';
 
-// This public client is used for user authentication (signInWithPassword).
-// It uses the public-facing 'anon' key.
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-
-console.log('Supabase URL:', process.env.SUPABASE_URL);
-console.log('Supabase Auth Client uses ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'Yes' : 'No');
-const projectRef = process.env.SUPABASE_URL ? process.env.SUPABASE_URL.split('.')[0].split('//')[1] : 'Not found';
-console.log('Supabase Project Ref:', projectRef);
+let publicSupabase
+const getPublicSupabase = () => {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+        throw Object.assign(new Error('Supabase public authentication is not configured'), { status: 500 });
+    }
+    publicSupabase ||= createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    return publicSupabase;
+};
 
 const credentialsSchema = z.object({
     email: z.string().email(),
@@ -41,12 +41,12 @@ async function handleAuth(req, res) {
             await authenticate(req); // Ensure user is logged in to log out
             // In a real scenario, you might want to manage token blacklisting.
             // For this setup, we just acknowledge the client will discard the token.
-            return res.status(204).end();
+            return res.json({ success: true, message: 'Logged out' });
         }
 
         if (action === 'login') {
             const { email, password } = credentialsSchema.parse(req.body);
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await getPublicSupabase().auth.signInWithPassword({ email, password });
             if (error || !data.user) {
                 throw Object.assign(new Error('Invalid email or password'), { status: 401 });
             }
@@ -58,7 +58,7 @@ async function handleAuth(req, res) {
             
             // Note: We use the public client here because the user is not authenticated.
             // RLS policies should be in place on the 'users' table if you store public-facing user data.
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            const { error } = await getPublicSupabase().auth.resetPasswordForEmail(email, {
                 redirectTo: `${process.env.BASE_URL}/password-reset`, // URL to your password reset page
             });
 

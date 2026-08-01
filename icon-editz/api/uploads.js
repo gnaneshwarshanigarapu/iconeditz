@@ -1,7 +1,7 @@
 import multer from 'multer';
-import { uploadToR2 } from './lib/r2.js';
-import { authorizeAdmin } from './lib/auth.js';
-import { withApi } from './lib/handler.js';
+import { uploadToR2 } from '../server/lib/r2.js';
+import { authorizeAdmin } from '../server/lib/auth.js';
+import { withApi } from '../server/lib/handler.js';
 
 const ALLOWED_MIME_TYPES = [
     'image/jpeg',
@@ -51,5 +51,5 @@ export default withApi(['POST'], async (req, res) => {
 
     const uploadResult = await uploadToR2(req.file, req.body.folder || 'uploads');
     
-    res.status(201).json({ data: uploadResult });
+    return res.status(201).json({ success: true, data: uploadResult });
 });

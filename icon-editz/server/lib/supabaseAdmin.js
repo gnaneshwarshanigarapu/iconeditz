@@ -10,7 +10,6 @@ export const getSupabaseAdmin = () => {
   return client
 }
 
-// Keep existing route imports compatible while deferring configuration errors until withApi can return JSON.
 export const supabaseAdmin = new Proxy({}, {
   get(_target, property) {
     const value = getSupabaseAdmin()[property]
