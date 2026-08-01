@@ -105,8 +105,47 @@ insert into public.page_content(page,section,content,status,sort_order) values (
 insert into public.profiles(id,display_name,status) select id, coalesce(raw_user_meta_data->>'full_name', email), 'active' from auth.users order by created_at limit 1 on conflict (id) do nothing;
 insert into public.admins(user_id,role,status) select id,'admin','active' from auth.users order by created_at limit 1 on conflict (user_id) do nothing;
 
+-- Database-owned CMS bootstrap. These functions are safe to invoke repeatedly.
+create or replace function public.seed_default_content() returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.settings(key,value,status) values
+    ('site', '{"siteName":"ICON EDITZ","currency":"INR"}', 'published'),
+    ('analytics','{}','published'),
+    ('admin_setup','{"instructions":"Create an Auth user, then insert its id into public.admins."}','published')
+  on conflict (key) do nothing;
+  insert into public.footer_content(id,content,status) values (true,'{"brandName":"ICON EDITZ","description":"Creative editing, motion, and digital assets.","quickLinks":[],"socialLinks":{}}','published') on conflict (id) do nothing;
+  insert into public.cta_content(id,content,status) values (true,'{"heading":"Let us build your next creative project.","visible":true}','published') on conflict (id) do nothing;
+  insert into public.page_content(page,section,content,status,sort_order) values
+    ('Homepage','Hero','{}','published',0),('Homepage','Featured Services','{}','published',1),('Homepage','Featured Projects','{}','published',2),('Homepage','Featured Products','{}','published',3),('Homepage','Testimonials','{}','published',4),('Homepage','CTA','{}','published',5),('Homepage','SEO','{}','published',6),
+    ('About Page','Hero','{}','published',0),('About Page','Story','{}','published',1),('About Page','Skills','{}','published',2),('About Page','Timeline','{}','published',3),('About Page','Team','{}','published',4),('About Page','CTA','{}','published',5),('About Page','SEO','{}','published',6),
+    ('Services Page','Hero','{}','published',0),('Services Page','Services','{}','published',1),('Services Page','Pricing','{}','published',2),('Services Page','FAQ','{}','published',3),('Services Page','CTA','{}','published',4),('Services Page','SEO','{}','published',5),
+    ('Projects Page','Hero','{}','published',0),('Projects Page','Categories','{}','published',1),('Projects Page','Portfolio','{}','published',2),('Projects Page','Filters','{}','published',3),('Projects Page','CTA','{}','published',4),('Projects Page','SEO','{}','published',5),
+    ('Store Page','Hero','{}','published',0),('Store Page','Categories','{}','published',1),('Store Page','Featured Products','{}','published',2),('Store Page','Banner','{}','published',3),('Store Page','SEO','{}','published',4),
+    ('Hire From Us Page','Hero','{}','published',0),('Hire From Us Page','Features','{}','published',1),('Hire From Us Page','Enquiry Form','{}','published',2),('Hire From Us Page','CTA','{}','published',3),('Hire From Us Page','SEO','{}','published',4)
+  on conflict (page,section) do nothing;
+  insert into public.website_sections(page,section_key,content,status,sort_order) values
+    ('Hire From Us','hero','{}','published',0),('Hire From Us','enquiry_form','{}','published',1),('Hire From Us','contact','{}','published',2),('Hire From Us','social','{}','published',3),('Hire From Us','seo','{}','published',4),('Hire From Us','features','{"items":[]}','published',5),('Hire From Us','services','{"items":[]}','published',6),('Hire From Us','gallery','{"items":[]}','published',7),('Hire From Us','faq','{"items":[]}','published',8)
+  on conflict (page,section_key) do nothing;
+  return jsonb_build_object('seeded', true);
+end $$;
+
+create or replace function public.initialize_default_cms() returns jsonb language plpgsql security definer set search_path = public as $$ begin return public.seed_default_content(); end $$;
+create or replace function public.repair_database() returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Admin access required'; end if;
+  perform public.seed_default_content();
+  insert into storage.buckets (id, name, public) values ('icon-editz-assets', 'icon-editz-assets', false), ('hire-request-files', 'hire-request-files', false) on conflict (id) do nothing;
+  return jsonb_build_object('repaired', true);
+end $$;
+grant execute on function public.seed_default_content() to authenticated;
+grant execute on function public.initialize_default_cms() to authenticated;
+grant execute on function public.repair_database() to authenticated;
+
+-- Compatibility read model for the requested newsletter name; application writes remain normalized in newsletter_subscribers.
+create or replace view public.newsletter as select id, email, status, created_at, updated_at, deleted_at from public.newsletter_subscribers;
+
 create or replace function public.admin_health_check() returns jsonb language plpgsql security definer set search_path = public, storage as $$
-declare required text[] := array['profiles','admins','settings','page_content','website_sections','products','product_images','product_gallery','categories','orders','order_items','customers','downloads','media_library','services','projects','testimonials','coupons','analytics','enquiries','newsletter_subscribers','activity_logs','r2_buckets','r2_objects']; t text; c text; result jsonb := '{}'::jsonb; missing_tables jsonb := '[]'::jsonb; missing_columns jsonb := '[]'::jsonb; missing_policies jsonb := '[]'::jsonb;
+declare required text[] := array['profiles','admins','settings','page_content','website_sections','products','product_images','product_gallery','categories','orders','order_items','customers','downloads','media_library','services','projects','testimonials','coupons','analytics','enquiries','newsletter_subscribers','activity_logs','r2_buckets','r2_objects']; expected_indexes text[] := array['products_status_idx','products_category_idx','product_images_product_idx','order_items_order_idx','orders_customer_idx','page_content_page_order_idx','website_sections_page_order_idx','r2_objects_bucket_key_idx','activity_logs_actor_created_idx']; expected_functions text[] := array['admin_health_check','initialize_default_cms','seed_default_content','repair_database']; t text; c text; result jsonb := '{}'::jsonb; missing_tables jsonb := '[]'::jsonb; missing_columns jsonb := '[]'::jsonb; missing_policies jsonb := '[]'::jsonb; missing_indexes jsonb := '[]'::jsonb; missing_functions jsonb := '[]'::jsonb; rls_disabled jsonb := '[]'::jsonb;
 begin
   if not public.is_admin() then raise exception 'Admin access required'; end if;
   foreach t in array required loop
@@ -117,8 +156,11 @@ begin
       end loop;
     end if;
     if not exists (select 1 from pg_policies p where p.schemaname='public' and p.tablename=t) then missing_policies := missing_policies || jsonb_build_array(t); end if;
+    if not exists (select 1 from pg_class cl join pg_namespace ns on ns.oid=cl.relnamespace where cl.relname=t and ns.nspname='public' and cl.relrowsecurity) then rls_disabled := rls_disabled || jsonb_build_array(t); end if;
   end loop;
-  result := jsonb_build_object('missing_tables',missing_tables,'missing_columns',missing_columns,'missing_policies',missing_policies,'missing_storage_buckets',(select coalesce(jsonb_agg(bucket), '[]'::jsonb) from (select unnest(array['icon-editz-assets','hire-request-files']) as bucket) required_buckets where not exists (select 1 from storage.buckets b where b.id = required_buckets.bucket)),'missing_seed_data',case when exists(select 1 from public.page_content where page='Homepage') and exists(select 1 from public.settings where key='site') then '[]'::jsonb else jsonb_build_array('default CMS content or settings') end);
+  foreach t in array expected_indexes loop if not exists (select 1 from pg_indexes where schemaname='public' and indexname=t) then missing_indexes := missing_indexes || jsonb_build_array(t); end if; end loop;
+  foreach t in array expected_functions loop if not exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname=t) then missing_functions := missing_functions || jsonb_build_array(t); end if; end loop;
+  result := jsonb_build_object('missing_tables',missing_tables,'missing_columns',missing_columns,'missing_indexes',missing_indexes,'missing_policies',missing_policies,'rls_disabled',rls_disabled,'missing_storage_buckets',(select coalesce(jsonb_agg(bucket), '[]'::jsonb) from (select unnest(array['icon-editz-assets','hire-request-files']) as bucket) required_buckets where not exists (select 1 from storage.buckets b where b.id = required_buckets.bucket)),'missing_seed_data',case when exists(select 1 from public.page_content where page='Homepage') and exists(select 1 from public.settings where key='site') and exists(select 1 from public.website_sections where page='Hire From Us') then '[]'::jsonb else jsonb_build_array('default CMS content or settings') end,'missing_rpc_functions',missing_functions);
   return result;
 end $$;
 grant execute on function public.admin_health_check() to authenticated;

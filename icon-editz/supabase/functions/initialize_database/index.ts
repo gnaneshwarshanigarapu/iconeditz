@@ -7,9 +7,15 @@ const requiredTables = [
   'coupons', 'analytics', 'enquiries', 'newsletter_subscribers', 'activity_logs',
 ]
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+}
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', ...corsHeaders },
 })
 
 const managementQuery = async (query: string, readOnly = false) => {
@@ -26,7 +32,8 @@ const managementQuery = async (query: string, readOnly = false) => {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders })
+  if (!['GET', 'POST'].includes(request.method)) return json({ error: 'Method not allowed' }, 405)
 
   const authorization = request.headers.get('Authorization')
   if (!authorization) return json({ error: 'Authentication required' }, 401)
@@ -44,6 +51,15 @@ Deno.serve(async (request) => {
   const { data: adminRecord } = metadataAdmin ? { data: null } : await adminClient
     .from('admins').select('id').eq('user_id', user.id).eq('status', 'active').is('deleted_at', null).maybeSingle()
   if (!metadataAdmin && !adminRecord) return json({ error: 'Admin access required' }, 403)
+
+  if (request.method === 'GET') {
+    return json({
+      ok: true,
+      function: 'initialize_database',
+      configured: Boolean(Deno.env.get('SUPABASE_MANAGEMENT_API_TOKEN') && Deno.env.get('SUPABASE_PROJECT_REF') && Deno.env.get('INITIALIZATION_SQL')),
+      capabilities: ['tables', 'columns', 'indexes', 'policies', 'storage_buckets', 'seed_content', 'rpc_functions'],
+    })
+  }
 
   try {
     const progress = ['Checking database schema']
