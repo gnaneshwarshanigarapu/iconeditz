@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import Razorpay from "razorpay"
+import { createRequire } from 'node:module'
 import { z } from 'zod'
 import { authenticate } from '../server/lib/auth.js'
 import { withApi } from '../server/lib/handler.js'
@@ -20,9 +20,17 @@ const verificationSchema = z.object({
 
 const httpError = (message, status) => Object.assign(new Error(message), { status })
 
+const require = createRequire(import.meta.url)
+const Razorpay = require("razorpay")
+let razorpayClient
+
 const getRazorpay = () => {
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) throw httpError('Razorpay is not configured', 500)
-  return new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET })
+  razorpayClient ||= new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  })
+  return razorpayClient
 }
 
 async function listOrders(req, res) {
@@ -45,11 +53,7 @@ async function createOrder(req, res) {
   }
   const parsed = checkoutSchema.safeParse(req.body)
   if (!parsed.success) throw httpError('Invalid checkout request', 400)
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) throw httpError('Razorpay is not configured', 500)
-  const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  })
+  const razorpay = getRazorpay()
 
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
@@ -62,6 +66,9 @@ async function createOrder(req, res) {
   if (!product.published || product.status !== 'published') throw httpError('Product is not published', 400)
 
   const amount = Math.round(Number(product.discount_price ?? product.price) * 100)
+  if (!amount || amount < 100) {
+    return res.status(400).json({ success: false, error: 'The payment amount must be at least 100 paise' })
+  }
   if (!Number.isSafeInteger(amount) || amount < 100) throw httpError('The payment amount must be at least 100 paise', 400)
 
   console.log(req.body)
@@ -88,10 +95,9 @@ async function createOrder(req, res) {
   }
 
   console.info(JSON.stringify({ event: 'razorpay_order_create', productId: product.id, amount, userId: user.sub }))
-  console.log({
-    keyPresent: !!process.env.RAZORPAY_KEY_ID,
-    secretPresent: !!process.env.RAZORPAY_KEY_SECRET,
-  })
+  console.log("KEY_ID:", process.env.RAZORPAY_KEY_ID)
+  console.log("SECRET EXISTS:", !!process.env.RAZORPAY_KEY_SECRET)
+  console.log("SECRET PREFIX:", process.env.RAZORPAY_KEY_SECRET?.substring(0, 4))
   const receipt = databaseOrder.id
   let razorpayOrder
   try {
@@ -101,15 +107,21 @@ async function createOrder(req, res) {
       receipt,
     })
     razorpayOrder = order
-  } catch (err) {
-    console.error("FULL RAZORPAY ERROR", err)
+  } catch (error) {
+    console.error("RAZORPAY ERROR")
+    console.error(error)
+    console.error(error.statusCode)
+    console.error(error.error)
+    console.error(error.response)
+    console.error(error.message)
 
     return res.status(500).json({
       success: false,
       source: "razorpay",
-      message: err.message,
-      stack: err.stack,
-      raw: JSON.stringify(err, Object.getOwnPropertyNames(err))
+      statusCode: error.statusCode,
+      message: error.message,
+      error: error.error,
+      response: error.response,
     })
   }
   if (!razorpayOrder?.id) throw new Error('Razorpay returned an invalid order response')
