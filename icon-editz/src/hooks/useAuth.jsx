@@ -2,7 +2,13 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { getSession, isSupabaseConfigured, signIn, signOut, supabase, supabaseConfigError, sendPasswordResetEmail, updateUserPassword, signInWithGoogle } from '../utils/supabase'
 
 const AuthContext = createContext(null)
-const toUser = (user) => user ? { ...user, role: user.app_metadata?.role || user.user_metadata?.role || 'customer' } : null
+const toUser = async (user) => {
+  if (!user) return null
+  const metadataRole = user.app_metadata?.role || user.user_metadata?.role
+  if (metadataRole) return { ...user, role: metadataRole }
+  const { data } = await supabase.from('admins').select('id').eq('user_id', user.id).eq('status', 'active').is('deleted_at', null).maybeSingle()
+  return { ...user, role: data ? 'admin' : 'customer' }
+}
 const isAdminUser = (user) => user?.app_metadata?.role === 'admin' || user?.user_metadata?.role === 'admin'
 
 export function AuthProvider({ children }) {
@@ -12,8 +18,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase) { setLoading(false); return undefined }
     let mounted = true
-    getSession().then(({ data, error }) => { if (error) console.error(error); if (mounted) { setUser(toUser(data.session?.user)); setLoading(false) } }).catch((error) => { console.error(error); if (mounted) setLoading(false) })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { if (mounted) { setUser(toUser(session?.user)); setLoading(false) } })
+    getSession().then(async ({ data, error }) => { if (error) console.error(error); const nextUser = await toUser(data.session?.user); if (mounted) { setUser(nextUser); setLoading(false) } }).catch((error) => { console.error(error); if (mounted) setLoading(false) })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => { const nextUser = await toUser(session?.user); if (mounted) { setUser(nextUser); setLoading(false) } })
     return () => { mounted = false; subscription.unsubscribe() }
   }, [])
 
@@ -24,7 +30,7 @@ export function AuthProvider({ children }) {
       if (error) throw error
       if (!data.user?.email_confirmed_at) { await signOut(); throw new Error('Please confirm your email.') }
       if (!isAdminUser(data.user)) { await signOut(); throw new Error('This account is not authorized for admin access.') }
-      setUser(toUser(data.user))
+      setUser(await toUser(data.user))
       return data.user
     },
     logout: async () => { const { error } = await signOut(); if (error) throw error; setUser(null) },

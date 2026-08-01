@@ -30,7 +30,7 @@ const upload = multer({
 export const config = { api: { bodyParser: false } };
 
 export default withApi(['POST'], async (req, res) => {
-    authorizeAdmin(req);
+    await authorizeAdmin(req);
     
     await new Promise((resolve, reject) => {
         upload.single('file')(req, res, (error) => {
@@ -53,4 +53,3 @@ export default withApi(['POST'], async (req, res) => {
     
     res.status(201).json({ data: uploadResult });
 });
-

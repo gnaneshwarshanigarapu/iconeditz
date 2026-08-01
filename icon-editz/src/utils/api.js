@@ -1,13 +1,15 @@
-export const getToken = () => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-    return localStorage.getItem('token');
+import { supabase } from './supabase'
+
+// API routes use Supabase access tokens, never a second browser-managed JWT.
+export const getToken = async () => {
+    if (!supabase) return null
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token || null
 };
 
 export const request = async (endpoint, options = {}) => {
     const { body, token, ...restOptions } = options;
-    const authToken = token === null ? null : token || getToken();
+    const authToken = token === null ? null : token || await getToken();
 
     const headers = {
         'Content-Type': 'application/json',

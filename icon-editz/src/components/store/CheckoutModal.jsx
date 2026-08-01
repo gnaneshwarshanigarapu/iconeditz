@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth'; // Assuming you have a useAuth hook
+import { getToken } from '../../utils/api'
 
 export default function CheckoutModal({ product, onClose }) {
   const { user } = useAuth(); // Get authenticated user
@@ -24,10 +25,13 @@ export default function CheckoutModal({ product, onClose }) {
     setLoading(true);
 
     try {
+      const accessToken = await getToken()
+      if (!accessToken) throw new Error('Your session has expired. Please sign in again.')
+      const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` }
       // Step 1: Create an order in your own database
       const dbOrderResponse = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        headers: authHeaders,
         body: JSON.stringify({
           action: 'create-db-order',
           product_id: product.id,
@@ -45,7 +49,7 @@ export default function CheckoutModal({ product, onClose }) {
       // Step 2: Create a Razorpay order
       const razorpayOrderResponse = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        headers: authHeaders,
         body: JSON.stringify({
           action: 'create-payment-order',
           amount: amount,
@@ -74,7 +78,7 @@ export default function CheckoutModal({ product, onClose }) {
           try {
             const verifyRes = await fetch('/api/orders', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+              headers: authHeaders,
               body: JSON.stringify({
                 action: 'verify-payment',
                 razorpay_order_id: response.razorpay_order_id,

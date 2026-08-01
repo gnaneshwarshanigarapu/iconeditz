@@ -18,7 +18,7 @@ export function useHireUsContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    try { const data = await request('/api/cms?section=hire-us', { token: null }); const staticSections = (data.sections ?? []).reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
+    try { const response = await request('/api/cms?section=hire-us', { token: null }); const data = response.data || {}; const staticSections = (data.sections ?? []).reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
     catch (issue) { setError(issue) } finally { setLoading(false) }
   }, [])
 

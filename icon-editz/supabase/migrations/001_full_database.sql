@@ -86,10 +86,18 @@ drop policy if exists public_read_footer on public.footer_content; create policy
 drop policy if exists public_read_cta on public.cta_content; create policy public_read_cta on public.cta_content for select to anon, authenticated using (status = 'published' and deleted_at is null);
 drop policy if exists public_read_legal on public.legal_pages; create policy public_read_legal on public.legal_pages for select to anon, authenticated using (published and status = 'published' and deleted_at is null);
 drop policy if exists public_subscribe on public.newsletter_subscribers; create policy public_subscribe on public.newsletter_subscribers for insert to anon, authenticated with check (status = 'active');
+drop policy if exists profiles_read_own on public.profiles; create policy profiles_read_own on public.profiles for select to authenticated using (id = auth.uid());
+drop policy if exists profiles_insert_own on public.profiles; create policy profiles_insert_own on public.profiles for insert to authenticated with check (id = auth.uid());
+drop policy if exists profiles_update_own on public.profiles; create policy profiles_update_own on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+drop policy if exists admins_read_own on public.admins; create policy admins_read_own on public.admins for select to authenticated using (user_id = auth.uid() and status = 'active' and deleted_at is null);
 
 -- Seed records use stable natural keys and never overwrite an editor's work.
 insert into public.settings(key,value,status) values ('site', '{"siteName":"ICON EDITZ","currency":"INR"}', 'published'), ('analytics','{}','published'), ('admin_setup','{"instructions":"Create an Auth user, then insert its id into public.admins."}','published') on conflict (key) do nothing;
 insert into public.r2_buckets(bucket_name,status) values ('icon-editz-assets','active') on conflict (bucket_name) do nothing;
+-- These are actual Supabase Storage buckets used by the deployed application.
+insert into storage.buckets (id, name, public) values ('icon-editz-assets', 'icon-editz-assets', false) on conflict (id) do nothing;
+insert into storage.buckets (id, name, public) values ('hire-request-files', 'hire-request-files', false) on conflict (id) do nothing;
+drop policy if exists storage_admin_manage on storage.objects; create policy storage_admin_manage on storage.objects for all to authenticated using (public.is_admin()) with check (public.is_admin());
 insert into public.footer_content(id,content,status) values (true,'{"brandName":"ICON EDITZ","description":"Creative editing, motion, and digital assets.","quickLinks":[],"socialLinks":{}}','published') on conflict (id) do nothing;
 insert into public.cta_content(id,content,status) values (true,'{"heading":"Let us build your next creative project.","visible":true}','published') on conflict (id) do nothing;
 insert into public.page_content(page,section,content,status,sort_order) values ('Homepage','Hero','{}','published',0),('Homepage','About','{}','published',1),('Homepage','Services','{}','published',2),('Homepage','Projects','{}','published',3),('Homepage','Store','{}','published',4),('Homepage','Footer','{}','published',5),('Homepage','CTA','{}','published',6),('Homepage','Legal','{}','published',7),('About','Hero','{}','published',0),('Services','Hero','{}','published',0),('Projects','Hero','{}','published',0),('Store','Hero','{}','published',0) on conflict (page,section) do nothing;
@@ -110,7 +118,7 @@ begin
     end if;
     if not exists (select 1 from pg_policies p where p.schemaname='public' and p.tablename=t) then missing_policies := missing_policies || jsonb_build_array(t); end if;
   end loop;
-  result := jsonb_build_object('missing_tables',missing_tables,'missing_columns',missing_columns,'missing_policies',missing_policies,'missing_storage_buckets',case when exists(select 1 from public.r2_buckets where deleted_at is null) then '[]'::jsonb else jsonb_build_array('icon-editz-assets') end,'missing_seed_data',case when exists(select 1 from public.page_content where page='Homepage') and exists(select 1 from public.settings where key='site') then '[]'::jsonb else jsonb_build_array('default CMS content or settings') end);
+  result := jsonb_build_object('missing_tables',missing_tables,'missing_columns',missing_columns,'missing_policies',missing_policies,'missing_storage_buckets',(select coalesce(jsonb_agg(bucket), '[]'::jsonb) from (select unnest(array['icon-editz-assets','hire-request-files']) as bucket) required_buckets where not exists (select 1 from storage.buckets b where b.id = required_buckets.bucket)),'missing_seed_data',case when exists(select 1 from public.page_content where page='Homepage') and exists(select 1 from public.settings where key='site') then '[]'::jsonb else jsonb_build_array('default CMS content or settings') end);
   return result;
 end $$;
 grant execute on function public.admin_health_check() to authenticated;

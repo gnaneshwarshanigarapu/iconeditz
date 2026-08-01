@@ -36,7 +36,7 @@ export default withApi(['GET', 'POST', 'PATCH', 'DELETE'], async (req, res) => {
     return res.status(201).json({ data })
   }
 
-  authorizeAdmin(req)
+  await authorizeAdmin(req)
   const id = req.query.id
   if (req.method === 'GET') {
     let query = supabaseAdmin.from('hire_requests').select('*').order('created_at', { ascending: false })

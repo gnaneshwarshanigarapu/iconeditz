@@ -3,12 +3,8 @@ import { supabaseAdmin } from './lib/supabaseAdmin.js';
 import { authorizeAdmin } from './lib/auth.js';
 import { withApi } from './lib/handler.js'
 
-const tables = {
-    features: 'hire_us_features',
-    services: 'hire_us_services',
-    gallery: 'hire_us_gallery_items',
-    faq: 'hire_us_faq_items'
-};
+const HIRE_PAGE = 'Hire From Us'
+const hireSection = (section, content, published) => ({ page: HIRE_PAGE, section_key: section, content, status: published ? 'published' : 'draft' })
 
 export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
     if (req.method === 'POST') {
@@ -46,13 +42,12 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
 
     if (req.method === 'GET') {
         if (section === 'homepage') {
-            const { data, error } = await supabaseAdmin.from('homepage_content').select('*');
+            const { data, error } = await supabaseAdmin.from('page_content').select('id,section,content,updated_at,status').eq('page', 'Homepage').is('deleted_at', null);
             if (error) throw error;
             return res.json({ data: data ?? [] });
         }
         if (section === 'settings') {
-            authorizeAdmin(req);
-            const { data, error } = await supabaseAdmin.from('settings').select('*');
+            const { data, error } = await supabaseAdmin.from('settings').select('key,value').eq('key', 'analytics').is('deleted_at', null);
             if (error) throw error;
             
             const settings = data.reduce((acc, { key, value }) => {
@@ -62,30 +57,27 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
           
             return res.json({ data: settings });
         }
-        const [content, ...lists] = await Promise.all([
-            supabaseAdmin.from('hire_us_content').select('section,content'),
-            ...Object.values(tables).map(t => supabaseAdmin.from(t).select('*').order('sort_order'))
-        ]);
-        const error = [content, ...lists].map(x => x.error).find(Boolean);
+        const content = await supabaseAdmin.from('website_sections').select('section_key,content,status').eq('page', HIRE_PAGE).is('deleted_at', null).order('sort_order')
+        const error = content.error;
         if (error) throw error;
         return res.json({
             data: {
-                sections: content.data ?? [],
-                features: lists[0].data ?? [],
-                services: lists[1].data ?? [],
-                gallery: lists[2].data ?? [],
-                faq: lists[3].data ?? []
+                sections: (content.data ?? []).filter((row) => !['features', 'services', 'gallery', 'faq'].includes(row.section_key)).map((row) => ({ section: row.section_key, content: row.content })),
+                features: content.data?.find((row) => row.section_key === 'features')?.content?.items ?? [],
+                services: content.data?.find((row) => row.section_key === 'services')?.content?.items ?? [],
+                gallery: content.data?.find((row) => row.section_key === 'gallery')?.content?.items ?? [],
+                faq: content.data?.find((row) => row.section_key === 'faq')?.content?.items ?? []
             }
         });
     }
 
     // All methods below are admin-only
-    authorizeAdmin(req);
+    await authorizeAdmin(req);
 
     if (req.method === 'PUT') {
         if (section === 'homepage') {
             const body = z.object({ content: z.record(z.any()), contentSection: z.string() }).parse(req.body);
-            const { data, error } = await supabaseAdmin.from('homepage_content').upsert({ section: body.contentSection, content: body.content, updated_at: new Date().toISOString() }).select().single();
+            const { data, error } = await supabaseAdmin.from('page_content').upsert({ page: 'Homepage', section: body.contentSection, content: body.content, status: 'published' }, { onConflict: 'page,section' }).select().single();
             if (error) throw error;
             return res.json({ data });
         }
@@ -114,22 +106,8 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             published: z.boolean().optional()
         }).parse(req.body);
         
-        const ops = [
-            supabaseAdmin.from('hire_us_content').upsert(body.sections.map(x => ({ ...x, published_at: body.published ? new Date().toISOString() : null, updated_at: new Date().toISOString() })))
-        ];
-
-        for (const [key, table] of Object.entries(tables)) {
-            const rows = body[key].map((x, i) => ({ ...x, sort_order: i, published: !!body.published }));
-            const { data: old, error } = await supabaseAdmin.from(table).select('id');
-            if (error) throw error;
-            const keep = new Set(rows.filter(x => typeof x.id === 'number').map(x => x.id));
-            const remove = (old ?? []).filter(x => !keep.has(x.id)).map(x => x.id);
-            if (remove.length) ops.push(supabaseAdmin.from(table).delete().in('id', remove));
-            if (rows.length) ops.push(supabaseAdmin.from(table).upsert(rows));
-        }
-
-        const results = await Promise.all(ops);
-        const errorResult = results.map(x => x.error).find(Boolean);
+        const rows = [...body.sections.map((row) => hireSection(row.section, row.content, body.published)), ...['features', 'services', 'gallery', 'faq'].map((key) => hireSection(key, { items: body[key] }, body.published))]
+        const { error: errorResult } = await supabaseAdmin.from('website_sections').upsert(rows, { onConflict: 'page,section_key' })
         if (errorResult) throw errorResult;
         
         return res.json({ ok: true });

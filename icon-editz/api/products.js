@@ -14,7 +14,7 @@ const productSchema = z.object({
 
 async function handleGetProducts(req, res) {
     try {
-        const user = tryAuthenticate(req);
+        const user = await tryAuthenticate(req);
         let query = supabaseAdmin.from('products').select('*').order('created_at', { ascending: false });
 
         if (user?.role !== 'admin') {
@@ -38,7 +38,7 @@ async function handleGetProducts(req, res) {
 
 async function handleAdminProductActions(req, res) {
     // All methods here are admin-only
-    authorizeAdmin(req);
+    await authorizeAdmin(req);
 
     const body = req.method !== 'DELETE' ? productSchema.parse(req.body) : {};
     const id = req.query.id || body.id;

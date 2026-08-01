@@ -32,7 +32,7 @@ const verifyPaymentSchema = z.object({
 });
 
 async function handleGetOrders(req, res) {
-    const user = authenticate(req);
+    const user = await authenticate(req);
     let query = supabaseAdmin.from('orders').select('*, products(*)').order('created_at', { ascending: false });
 
     if (user.role !== 'admin') {
@@ -46,7 +46,7 @@ async function handleGetOrders(req, res) {
 }
 
 async function handlePostOrders(req, res) {
-    const user = authenticate(req);
+    const user = await authenticate(req);
     if (!user.sub) throw Object.assign(new Error('Authentication required for this action'), { status: 401 });
 
     const { action, ...body } = req.body;

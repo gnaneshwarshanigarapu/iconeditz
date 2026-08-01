@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from './lib/supabaseAdmin.js';
-import { authenticate, issueToken } from './lib/auth.js';
+import { authenticate } from './lib/auth.js';
 import { withApi } from './lib/handler.js';
 
 // This public client is used for user authentication (signInWithPassword).
@@ -28,7 +28,7 @@ const safeUser = (user) => ({
 
 async function handleAuth(req, res) {
     if (req.method === 'GET') {
-        const user = authenticate(req);
+        const user = await authenticate(req);
         const { data, error } = await supabaseAdmin.auth.admin.getUserById(user.sub);
         if (error) throw error;
         return res.json({ user: safeUser(data.user) });
@@ -38,7 +38,7 @@ async function handleAuth(req, res) {
         const { action } = req.body;
 
         if (action === 'logout') {
-            authenticate(req); // Ensure user is logged in to log out
+            await authenticate(req); // Ensure user is logged in to log out
             // In a real scenario, you might want to manage token blacklisting.
             // For this setup, we just acknowledge the client will discard the token.
             return res.status(204).end();
@@ -50,10 +50,7 @@ async function handleAuth(req, res) {
             if (error || !data.user) {
                 throw Object.assign(new Error('Invalid email or password'), { status: 401 });
             }
-            return res.json({
-                token: issueToken(data.user),
-                user: safeUser(data.user)
-            });
+            return res.json({ user: safeUser(data.user) });
         }
 
         if (action === 'request-password-reset') {

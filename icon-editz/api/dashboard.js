@@ -7,7 +7,7 @@ import crypto from 'crypto';
 const hash = (value) => value ? crypto.createHash('sha256').update(String(value).toLowerCase()).digest('hex') : undefined;
 
 async function getDashboardData(req, res) {
-    authorizeAdmin(req);
+    await authorizeAdmin(req);
     const [
         { count: products, error: p },
         { count: orders, error: o },
