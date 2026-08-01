@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Copy, Eye, GripVertical, Save, Trash2 } from 'lucide-react'
 import { supabase } from '../../utils/supabase'
-import DatabaseSetupNotice from './DatabaseSetupNotice'
+import DatabaseSetupNotice, { isMissingSchemaError } from './DatabaseSetupNotice'
 
 const sectionSchema = z.object({
   eyebrow: z.string().max(80).optional(), heading: z.string().max(160).optional(), description: z.string().max(2000).optional(),
@@ -42,4 +42,4 @@ function Input({ label, registration, type = 'text' }) { return <label className
 function TextArea({ label, registration }) { return <label className="block text-sm font-medium text-white/80">{label}<textarea {...registration} className="admin-input mt-2 min-h-32" /></label> }
 function Select({ label, registration, options }) { return <label className="block text-sm font-medium text-white/80">{label}<select {...registration} className="admin-input mt-2">{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label> }
 function MediaField({ label, value, onChange }) { return <label className="block text-sm font-medium text-white/80">{label} URL<input value={value || ''} onChange={(event) => onChange(event.target.value)} className="admin-input mt-2" placeholder="Upload integration ready" /></label> }
-function FormError({ message }) { return message ? <p className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{message}</p> : null }
+function FormError({ message }) { return message ? <p className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{isMissingSchemaError(message) ? 'This CMS section is not initialized yet. Run the database migration from Database Health.' : 'Could not save this section. Please try again.'}</p> : null }
