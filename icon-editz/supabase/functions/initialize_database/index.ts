@@ -19,8 +19,8 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 })
 
 const managementQuery = async (query: string, readOnly = false) => {
-  const token = Deno.env.get('SUPABASE_MANAGEMENT_API_TOKEN')
-  const projectRef = Deno.env.get('SUPABASE_PROJECT_REF')
+  const token = Deno.env.get('MANAGEMENT_API_TOKEN')
+  const projectRef = Deno.env.get('PROJECT_REF')
   if (!token || !projectRef) throw new Error('Database initialization is not configured on this Edge Function.')
   const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query${readOnly ? '/read-only' : ''}`, {
     method: 'POST',
@@ -56,7 +56,11 @@ Deno.serve(async (request) => {
     return json({
       ok: true,
       function: 'initialize_database',
-      configured: Boolean(Deno.env.get('SUPABASE_MANAGEMENT_API_TOKEN') && Deno.env.get('SUPABASE_PROJECT_REF') && Deno.env.get('INITIALIZATION_SQL')),
+      configured: Boolean(
+  Deno.env.get('MANAGEMENT_API_TOKEN') &&
+  Deno.env.get('PROJECT_REF') &&
+  Deno.env.get('INITIALIZATION_SQL')
+),
       capabilities: ['tables', 'columns', 'indexes', 'policies', 'storage_buckets', 'seed_content', 'rpc_functions'],
     })
   }
