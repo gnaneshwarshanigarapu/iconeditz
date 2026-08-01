@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import Razorpay from 'razorpay'
+import Razorpay from "razorpay"
 import { z } from 'zod'
 import { authenticate } from '../server/lib/auth.js'
 import { withApi } from '../server/lib/handler.js'
@@ -45,7 +45,11 @@ async function createOrder(req, res) {
   }
   const parsed = checkoutSchema.safeParse(req.body)
   if (!parsed.success) throw httpError('Invalid checkout request', 400)
-  const razorpay = getRazorpay()
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) throw httpError('Razorpay is not configured', 500)
+  const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  })
 
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
@@ -84,17 +88,29 @@ async function createOrder(req, res) {
   }
 
   console.info(JSON.stringify({ event: 'razorpay_order_create', productId: product.id, amount, userId: user.sub }))
+  console.log({
+    keyPresent: !!process.env.RAZORPAY_KEY_ID,
+    secretPresent: !!process.env.RAZORPAY_KEY_SECRET,
+  })
+  const receipt = databaseOrder.id
   let razorpayOrder
   try {
-    razorpayOrder = await razorpay.orders.create({
+    const order = await razorpay.orders.create({
       amount,
-      currency: 'INR',
-      receipt: databaseOrder.id,
-      notes: { database_order_id: databaseOrder.id, product_id: product.id },
+      currency: "INR",
+      receipt,
     })
-  } catch (error) {
-    await supabaseAdmin.from('orders').update({ status: 'payment_creation_failed' }).eq('id', databaseOrder.id).then(() => undefined).catch(() => undefined)
-    throw new Error(`Razorpay order creation failed: ${error.message}`)
+    razorpayOrder = order
+  } catch (err) {
+    console.error("FULL RAZORPAY ERROR", err)
+
+    return res.status(500).json({
+      success: false,
+      source: "razorpay",
+      message: err.message,
+      stack: err.stack,
+      raw: JSON.stringify(err, Object.getOwnPropertyNames(err))
+    })
   }
   if (!razorpayOrder?.id) throw new Error('Razorpay returned an invalid order response')
 
