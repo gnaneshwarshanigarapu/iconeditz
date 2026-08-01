@@ -7,6 +7,8 @@ const HIRE_PAGE = 'Hire From Us'
 const hireSection = (section, content, published) => ({ page: HIRE_PAGE, section_key: section, content, status: published ? 'published' : 'draft' })
 
 export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
+    const section = req.query.section || req.query.page || req.body?.section;
+    console.log('CMS REQUEST', section);
     if (req.method === 'POST') {
         // SECURITY: Add rate limiting here to prevent abuse (see section 8)
         const schema = z.object({
@@ -35,16 +37,26 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
         });
     }
 
-    const section = req.query.section || req.body?.section;
-    if (!['homepage', 'hire-us', 'settings'].includes(section)) {
-        throw Object.assign(new Error('Valid CMS section is required'), { status: 400 });
-    }
-
     if (req.method === 'GET') {
-        if (section === 'homepage') {
-            const { data, error } = await supabaseAdmin.from('page_content').select('id,section,content,updated_at,status').eq('page', 'Homepage').is('deleted_at', null);
+        if (req.query.page) {
+            const { data, error } = await supabaseAdmin
+                .from('page_content')
+                .select('id,page,section,content,updated_at,status,sort_order')
+                .eq('page', req.query.page)
+                .eq('status', 'published')
+                .is('deleted_at', null)
+                .order('sort_order');
             if (error) throw error;
-            return res.json({ data: data ?? [] });
+            const response = { success: true, data: data ?? [] };
+            console.log('CMS RESPONSE', response.data);
+            return res.json(response);
+        }
+        if (section === 'homepage') {
+            const { data, error } = await supabaseAdmin.from('page_content').select('id,section,content,updated_at,status,sort_order').eq('page', 'Homepage').eq('status', 'published').is('deleted_at', null).order('sort_order');
+            if (error) throw error;
+            const response = { success: true, data: data ?? [] };
+            console.log('CMS RESPONSE', response.data);
+            return res.json(response);
         }
         if (section === 'settings') {
             const { data, error } = await supabaseAdmin.from('settings').select('key,value').eq('key', 'analytics').is('deleted_at', null);
@@ -55,20 +67,43 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
               return acc;
             }, {});
           
-            return res.json({ data: settings });
+            const response = { success: true, data: settings };
+            console.log('CMS RESPONSE', response.data);
+            return res.json(response);
         }
+        if (section === 'footer' || section === 'cta') {
+            const table = section === 'footer' ? 'footer_content' : 'cta_content';
+            const { data, error } = await supabaseAdmin.from(table).select('content').eq('id', true).eq('status', 'published').is('deleted_at', null).maybeSingle();
+            if (error) throw error;
+            const response = { success: true, data: data?.content ?? {} };
+            console.log('CMS RESPONSE', response.data);
+            return res.json(response);
+        }
+        if (section === 'legal') {
+            const slug = req.query.slug;
+            if (!slug) return res.status(400).json({ success: false, error: 'Legal page slug is required' });
+            const { data, error } = await supabaseAdmin.from('legal_pages').select('title,content,seo_title,seo_description,updated_at,slug').eq('slug', slug).eq('published', true).eq('status', 'published').is('deleted_at', null).maybeSingle();
+            if (error) throw error;
+            const response = { success: true, data: data ?? {} };
+            console.log('CMS RESPONSE', response.data);
+            return res.json(response);
+        }
+        if (section !== 'hire-us') return res.status(400).json({ success: false, error: 'Valid CMS section or page is required' });
         const content = await supabaseAdmin.from('website_sections').select('section_key,content,status').eq('page', HIRE_PAGE).is('deleted_at', null).order('sort_order')
         const error = content.error;
         if (error) throw error;
-        return res.json({
+        const response = {
+            success: true,
             data: {
                 sections: (content.data ?? []).filter((row) => !['features', 'services', 'gallery', 'faq'].includes(row.section_key)).map((row) => ({ section: row.section_key, content: row.content })),
                 features: content.data?.find((row) => row.section_key === 'features')?.content?.items ?? [],
                 services: content.data?.find((row) => row.section_key === 'services')?.content?.items ?? [],
                 gallery: content.data?.find((row) => row.section_key === 'gallery')?.content?.items ?? [],
                 faq: content.data?.find((row) => row.section_key === 'faq')?.content?.items ?? []
-            }
-        });
+            },
+        };
+        console.log('CMS RESPONSE', response.data);
+        return res.json(response);
     }
 
     // All methods below are admin-only

@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { getCms } from '../services/cms';
 
 const Analytics = () => {
   const [settings, setSettings] = useState(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const response = await fetch('/api/cms?section=settings');
-      const { data } = await response.json();
-      if (data) {
-        setSettings(data.analytics);
+      try {
+        const data = await getCms({ section: 'settings' });
+        if (data) setSettings(data.analytics);
+      } catch (error) {
+        console.warn('CMS analytics settings unavailable; using no analytics settings.', error);
       }
     };
     fetchSettings();

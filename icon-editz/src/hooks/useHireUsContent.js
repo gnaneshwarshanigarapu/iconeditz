@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { request } from '../utils/api'
+import { getCms } from '../services/cms'
 
 export const emptyHireUsContent = {
   hero: { backgroundImage: '', backgroundVideo: '', heading: 'Let’s create something iconic.', subtitle: 'Hire Icon Editz', description: 'Tell us your story and we will bring it to life.', ctaText: 'Start a project', ctaUrl: '#enquiry' },
@@ -18,7 +19,7 @@ export function useHireUsContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    try { const response = await request('/api/cms?section=hire-us', { token: null }); const data = response.data || {}; const staticSections = (data.sections ?? []).reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
+    try { const data = await getCms({ section: 'hire-us' }); const staticSections = (data.sections ?? []).reduce((all, row) => ({ ...all, [row.section]: row.content }), {}); setContent({ ...emptyHireUsContent, ...staticSections, features: data.features || [], services: data.services || [], gallery: data.gallery || [], faq: data.faq || [] }) }
     catch (issue) { setError(issue) } finally { setLoading(false) }
   }, [])
 

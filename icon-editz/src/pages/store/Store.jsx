@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import ProductCard from '../../components/store/ProductCard'
 import { useProducts } from '../../hooks/useProducts'
+import CmsPageContent from '../../components/CmsPageContent'
 
 const categories = ['All Assets', 'PSD', 'Wedding Invitation', 'After Effects', 'Premiere Pro', 'Photoshop', 'LUTs', 'Sound Packs']
 const prices = ['All', 'Free', 'Paid']
@@ -44,7 +45,7 @@ export default function Store() {
   const applyFilters = () => { setFilters(draft); setDrawerOpen(false) }
   const resetFilters = () => setDraft(initialFilters)
 
-  return <main className="relative mx-auto max-w-7xl px-6 pb-24 pt-32 lg:px-8">
+  return <><CmsPageContent page="Store Page" fallbackTitle="Store" fallbackDescription="Premium creative assets." /><main className="relative mx-auto max-w-7xl px-6 pb-24 pt-32 lg:px-8">
     <header className="mb-10"><p className="text-sm font-semibold uppercase tracking-[.28em] text-violet-300">ICON EDITZ Marketplace</p><h1 className="mt-3 text-4xl font-semibold text-white sm:text-5xl">Premium creative assets.</h1><p className="mt-4 max-w-2xl text-white/60">Templates, edits, presets, and creative tools built to make your next project stand out.</p></header>
 
     <button onClick={openDrawer} className="mb-6 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-500/15 px-4 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 backdrop-blur-xl transition hover:bg-violet-500/25 lg:hidden"><SlidersHorizontal className="h-5 w-5 text-violet-200" />Filter &amp; Categories</button>
@@ -59,7 +60,7 @@ export default function Store() {
     <AnimatePresence>
       {drawerOpen && <MobileFilterDrawer draft={draft} setDraft={setDraft} onApply={applyFilters} onReset={resetFilters} onClose={() => setDrawerOpen(false)} />}
     </AnimatePresence>
-  </main>
+  </main></>
 }
 
 function FilterControls({ filters, setFilters }) {

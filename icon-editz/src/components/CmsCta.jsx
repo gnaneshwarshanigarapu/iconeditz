@@ -1,18 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../utils/supabase'
+import { useCmsSingleton } from '../services/cms'
 
 export default function CmsCta() {
-  const [content, setContent] = useState(null)
+  const content = useCmsSingleton('cta', { heading: 'Let us build your next creative project.', visible: true })
 
-  useEffect(() => {
-    if (!supabase) return
-    supabase.from('cta_content').select('content').eq('id', true).single()
-      .then(({ data }) => setContent(data?.content || null))
-  }, [])
-
-  if (!content || content.visible === false) return null
+  if (content.visible === false) return null
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:pb-24">

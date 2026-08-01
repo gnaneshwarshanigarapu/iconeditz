@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Loader2 } from 'lucide-react'
 import { request } from '../utils/api'
+import CmsPageContent from '../components/CmsPageContent'
 
 const services = ['Video Editing', 'Motion Graphics', 'Branding', 'Logo Design', 'YouTube Editing', 'Instagram Reels', 'Wedding Editing', 'Commercial Ads', 'Other']
 const initialForm = { client_name: '', email: '', phone: '', company: '', project_type: '', budget: '', deadline: '', location: '', service: '', message: '', reference_link: '', preferred_contact: 'Email' }
@@ -31,7 +32,7 @@ export default function HireFromUsPage() {
     } catch (error) { setNotice(error.message || 'Unable to send your enquiry. Please try again.') } finally { setSubmitting(false) }
   }
 
-  return <div className="relative overflow-hidden bg-[#0b0717] py-32 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(124,58,237,.25),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(192,38,211,.16),transparent_30%)]" />
+  return <><CmsPageContent page="Hire From Us Page" fallbackTitle="Hire From Us" fallbackDescription="Tell us about your project." /><div className="relative overflow-hidden bg-[#0b0717] py-32 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(124,58,237,.25),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(192,38,211,.16),transparent_30%)]" />
     <div className="relative mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-[.82fr_1fr] lg:px-8">
       <motion.section initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="self-center">
         <span className="inline-flex rounded-full border border-violet-400/30 bg-violet-500/10 px-4 py-2 text-xs font-semibold tracking-[.18em] text-violet-100">BOOK ICON EDITZ</span>
@@ -60,7 +61,7 @@ export default function HireFromUsPage() {
         <button disabled={submitting} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-6 py-4 font-semibold shadow-[0_0_28px_rgba(139,92,246,.45)] transition hover:scale-[1.01] disabled:opacity-60">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}Send Project Enquiry</button>
       </motion.form>
     </div>
-  </div>
+  </div></>
 }
 
 function Field({ label, type = 'text', required, value, onChange, placeholder }) { return <label className="block"><span className="text-sm font-medium text-white/80">{label}</span><input required={required} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={fieldClass} /></label> }
