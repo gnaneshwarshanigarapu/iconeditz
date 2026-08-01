@@ -1,7 +1,23 @@
-# Supabase initialization
+# Supabase migrations
 
-For a brand-new Supabase project, open **SQL Editor**, paste and run exactly [`migrations/001_full_database.sql`](migrations/001_full_database.sql), then refresh the admin Database Health page.
+The database is owned exclusively by the ordered files in `migrations/`:
 
-The migration is idempotent: it can be run again safely to create missing objects, policies, indexes, R2 metadata, and default CMS records without replacing edited content.
+1. `001_create_tables.sql`
+2. `002_upgrade_existing_tables.sql`
+3. `003_indexes.sql`
+4. `004_rls.sql`
+5. `005_storage.sql`
+6. `006_seed_data.sql`
+7. `007_rpc_functions.sql`
+8. `008_health_checks.sql`
 
-To bootstrap an administrator, create the Auth user before running the migration; the first existing Auth user receives a profile and `admins` record. Existing installations using the `admin` JWT role remain compatible. Never place a service-role key in the frontend.
+For a new or existing project:
+
+```sh
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Do not run SQL Editor snippets or browser-based repair tools. Migrations create missing objects and make only additive upgrades. Seed records use natural-key existence checks and never replace editor content. Existing relationships are added as `NOT VALID` foreign keys, preserving historical rows while enforcing future writes.
+
+Set `VITE_SUPABASE_STORAGE_BUCKET=icon-editz-assets` and `SUPABASE_HIRE_REQUESTS_BUCKET=hire-request-files`. Create the initial administrator in Supabase Auth, then grant the user `app_metadata.role = admin` (or add their ID to `public.admins`). Never expose a service-role key to the browser.

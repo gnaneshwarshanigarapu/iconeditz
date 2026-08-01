@@ -1,160 +1,58 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useProducts } from '../../hooks/useProducts'
 import CheckoutModal from '../../components/store/CheckoutModal'
 
+const fallbackImage = '/assets/images/og-icon-editz.png'
+
+function NotFound({ reason }) {
+  return <div className="mx-auto max-w-7xl px-4 py-32 text-center sm:px-6 lg:px-8"><h2 className="mb-4 text-3xl font-bold text-white">Product Not Found</h2><p className="mb-8 text-text-muted">{reason || 'The product does not exist or is not published.'}</p><Link to="/store" className="rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary-hover">Back to Store</Link></div>
+}
+
 export default function ProductDetail() {
+  // This name intentionally matches StoreRoutes: /store/:productId.
   const { productId } = useParams()
   const { getProduct } = useProducts()
-  const product = getProduct(productId)
+  const [product, setProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [notFoundReason, setNotFoundReason] = useState('')
   const [isPlaying, setIsPlaying] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
 
-  if (!product) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center">
-        <h2 className="text-3xl font-bold text-white mb-4">Product Not Found</h2>
-        <p className="text-text-muted mb-8">The product you&apos;re looking for doesn&apos;t exist or is not published.</p>
-        <Link to="/store" className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-lg font-medium transition-colors">
-          Back to Store
-        </Link>
-      </div>
-    )
-  }
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setNotFound(false)
+    setNotFoundReason('')
+    setProduct(null)
+    if (!productId) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
+    if (import.meta.env.DEV) console.debug('[ProductDetail] loading product', { productId, query: 'products.id + published + status + deleted_at' })
+    getProduct(productId)
+      .then((item) => { if (import.meta.env.DEV) console.debug('[ProductDetail] query result', { productId, data: item }); if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('No published product matches this ID.') } })
+      .catch((error) => { if (import.meta.env.DEV) console.debug('[ProductDetail] query error', { productId, error }); if (active) { setNotFound(true); setNotFoundReason('The product could not be loaded. Please try again.') } })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [getProduct, productId])
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-      <div className="mb-8">
-        <Link to="/store" className="text-primary hover:text-primary-hover inline-flex items-center transition-colors">
-          <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Store
-        </Link>
-      </div>
+  if (loading) return <div className="mx-auto max-w-7xl px-4 py-32 text-center text-text-muted sm:px-6 lg:px-8">Loading product…</div>
+  if (notFound || !product) return <NotFound reason={notFoundReason} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div>
-          <div className="bg-surface-dark rounded-xl overflow-hidden border border-white/10 aspect-video relative group">
-            {isPlaying && product.demoVideo ? (
-              <video
-                src={product.demoVideo}
-                className="w-full h-full object-cover"
-                controls
-                autoPlay
-                onEnded={() => setIsPlaying(false)}
-              />
-            ) : (
-              <>
-                <img
-                  src={product.image || "/assets/images/og-icon-editz.png"}
-                  alt={product.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = "/assets/images/og-icon-editz.png"
-                  }}
-                />
-                {product.demoVideo && (
-                  <button
-                    onClick={() => setIsPlaying(true)}
-                    className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/20 transition-colors"
-                    aria-label="Play demo video"
-                  >
-                    <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
-                      <svg className="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+  const title = product.title || 'Untitled product'
+  const image = product.thumbnail_path || product.thumbnail || product.image || fallbackImage
+  const demoVideo = product.demo_video || product.demoVideo
+  const features = Array.isArray(product.features) && product.features.length ? product.features : ['Instant download', 'Detailed tutorial included', 'Lifetime access']
+  const tags = Array.isArray(product.tags) ? product.tags : []
+  const screenshots = Array.isArray(product.screenshots) ? product.screenshots.filter(Boolean) : []
+  const price = Number(product.price || 0)
+  const discountPrice = product.discount_price ?? product.discountPrice
+  const payablePrice = Number(discountPrice ?? price)
 
-          <div className="mt-8 bg-surface rounded-xl p-6 border border-white/5">
-            <h3 className="text-xl font-bold text-white mb-4">Features</h3>
-            <ul className="space-y-3 text-text-muted">
-              {(product.features?.length ? product.features : ['Instant download', 'Detailed tutorial included', 'Lifetime access']).map((feature) => (
-                <li key={feature} className="flex items-center">
-                  <svg className="w-5 h-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="flex flex-col">
-          <div className="mb-2">
-            <span className="bg-primary/20 text-primary text-sm font-medium px-3 py-1 rounded-full border border-primary/20">
-              {product.category}
-            </span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-4">{product.title}</h1>
-          <p className="text-lg text-text-muted mb-8 leading-relaxed">{product.description}</p>
-
-          <div className="mb-8">
-            <h3 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Tags</h3>
-            <div className="flex flex-wrap gap-2">
-              {product.tags?.map((tag) => (
-                <span key={tag} className="bg-surface-dark text-text-muted border border-white/10 px-3 py-1 rounded-md text-sm">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-auto bg-surface rounded-xl p-6 border border-white/10 shadow-xl">
-            <div className="flex items-center justify-between gap-6 mb-6">
-              <span className="text-text-muted text-lg">Price</span>
-              <div className="text-right">
-                {product.discountPrice && <span className="block text-lg text-text-muted line-through">Rs.{product.price}</span>}
-                <span className="text-4xl font-bold text-white">Rs.{product.discountPrice || product.price}</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setShowCheckout(true)}
-              className="w-full bg-primary hover:bg-primary-hover text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all transform hover:-translate-y-1 active:translate-y-0"
-            >
-              Buy Now
-            </button>
-            <p className="text-center text-text-muted text-sm mt-4">Secure payment via Razorpay</p>
-          </div>
-        </div>
-      </div>
-
-      {product.screenshots?.length > 0 && (
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-white mb-6">Screenshots</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {product.screenshots.map((screenshot) => (
-              <img
-                key={screenshot}
-                src={screenshot}
-                alt={`${product.title} screenshot`}
-                className="aspect-video rounded-xl border border-white/10 object-cover bg-surface"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none'
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {showCheckout && (
-        <CheckoutModal 
-          product={product} 
-          onClose={() => setShowCheckout(false)} 
-        />
-      )}
-    </div>
-  )
+  return <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+    <div className="mb-8"><Link to="/store" className="inline-flex items-center text-primary transition-colors hover:text-primary-hover"><svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Back to Store</Link></div>
+    <div className="grid grid-cols-1 gap-12 lg:grid-cols-2"><div><div className="group relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-surface-dark">{isPlaying && demoVideo ? <video src={demoVideo} className="h-full w-full object-cover" controls autoPlay onEnded={() => setIsPlaying(false)} /> : <><img src={image} alt={title} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.src = fallbackImage }} />{demoVideo && <button onClick={() => setIsPlaying(true)} className="absolute inset-0 flex items-center justify-center bg-black/40 transition-colors group-hover:bg-black/20" aria-label="Play demo video"><span className="grid h-16 w-16 place-items-center rounded-full bg-primary text-white shadow-lg">▶</span></button>}</>}</div><div className="mt-8 rounded-xl border border-white/5 bg-surface p-6"><h3 className="mb-4 text-xl font-bold text-white">Features</h3><ul className="space-y-3 text-text-muted">{features.map((feature, index) => <li key={`${feature}-${index}`} className="flex items-center"><span className="mr-3 text-primary">✓</span>{String(feature)}</li>)}</ul></div></div>
+      <div className="flex flex-col"><div className="mb-2"><span className="rounded-full border border-primary/20 bg-primary/20 px-3 py-1 text-sm font-medium text-primary">{product.category || 'Creative asset'}</span></div><h1 className="mb-4 text-3xl font-extrabold text-white md:text-4xl">{title}</h1><p className="mb-8 text-lg leading-relaxed text-text-muted">{product.description || 'Premium creative asset for your next project.'}</p><div className="mb-8"><h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-text-muted">Tags</h3><div className="flex flex-wrap gap-2">{tags.length ? tags.map((tag, index) => <span key={`${tag}-${index}`} className="rounded-md border border-white/10 bg-surface-dark px-3 py-1 text-sm text-text-muted">#{String(tag)}</span>) : <span className="text-sm text-text-muted">No tags added.</span>}</div></div><div className="mt-auto rounded-xl border border-white/10 bg-surface p-6 shadow-xl"><div className="mb-6 flex items-center justify-between gap-6"><span className="text-lg text-text-muted">Price</span><div className="text-right">{discountPrice != null && <span className="block text-lg text-text-muted line-through">Rs.{price}</span>}<span className="text-4xl font-bold text-white">Rs.{payablePrice}</span></div></div><button onClick={() => setShowCheckout(true)} className="w-full rounded-xl bg-primary py-4 text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover">Buy Now</button><p className="mt-4 text-center text-sm text-text-muted">Secure payment via Razorpay</p></div></div></div>
+    {screenshots.length > 0 && <div className="mt-16"><h2 className="mb-6 text-2xl font-bold text-white">Screenshots</h2><div className="grid grid-cols-1 gap-6 md:grid-cols-3">{screenshots.map((screenshot, index) => <img key={`${screenshot}-${index}`} src={screenshot} alt={`${title} screenshot ${index + 1}`} className="aspect-video rounded-xl border border-white/10 bg-surface object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />)}</div></div>}
+    {showCheckout && <CheckoutModal product={product} onClose={() => setShowCheckout(false)} />}
+  </div>
 }

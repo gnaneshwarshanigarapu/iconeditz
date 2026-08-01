@@ -21,7 +21,17 @@ export default function VisualPageCms({ page, sections }) {
   const { data: rows = [], isLoading, error } = useQuery({ queryKey: ['page-content', page], queryFn: async () => {
     const { data, error: requestError } = await supabase.from('page_content').select('id,section,content,updated_at').eq('page', page)
     if (requestError) throw requestError
-    return data || []
+    const current = data || []
+    const existing = new Set(current.map((item) => item.section))
+    const defaults = sections.filter((section) => !existing.has(section)).map((section, sortOrder) => ({ page, section, content: { ...emptySection, sortOrder: sections.indexOf(section) }, status: 'published', sort_order: sortOrder }))
+    if (defaults.length) {
+      const { error: seedError } = await supabase.from('page_content').upsert(defaults, { onConflict: 'page,section' })
+      if (seedError) throw seedError
+      const { data: seeded, error: reloadError } = await supabase.from('page_content').select('id,section,content,updated_at').eq('page', page)
+      if (reloadError) throw reloadError
+      return seeded || []
+    }
+    return current
   } })
   const row = rows.find((item) => item.section === active)
   const defaults = useMemo(() => ({ ...emptySection, sortOrder: sections.indexOf(active), ...(row?.content || {}) }), [row, active, sections])

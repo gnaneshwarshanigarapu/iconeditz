@@ -15,7 +15,7 @@ const ctaDefaults = { heading: '', subheading: '', primaryButton: '', primaryBut
 export default function SingletonContentCms({ table, title }) {
   const isFooter = table === 'footer_content'; const defaults = isFooter ? footerDefaults : ctaDefaults; const schema = isFooter ? footerSchema : ctaSchema
   const queryClient = useQueryClient()
-  const { data, isLoading, error } = useQuery({ queryKey: [table], queryFn: async () => { const { data: row, error: requestError } = await supabase.from(table).select('content').eq('id', true).maybeSingle(); if (requestError) throw requestError; return row?.content || defaults } })
+  const { data, isLoading, error } = useQuery({ queryKey: [table], queryFn: async () => { const { data: row, error: requestError } = await supabase.from(table).select('content').eq('id', true).maybeSingle(); if (requestError) throw requestError; if (row) return row.content; const { error: seedError } = await supabase.from(table).upsert({ id: true, content: defaults, status: 'published' }); if (seedError) throw seedError; return defaults } })
   const form = useForm({ resolver: zodResolver(schema), defaultValues: defaults })
   useEffect(() => { if (data) form.reset({ ...defaults, ...data }) }, [data, form])
   const save = useMutation({ mutationFn: async (content) => { const { error: requestError } = await supabase.from(table).upsert({ id: true, content, updated_at: new Date().toISOString() }); if (requestError) throw requestError }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [table] }) })

@@ -32,13 +32,35 @@ export const getProducts = async () => {
   const products = (data || []).map(toProduct)
   return { data: products, products, count: count || 0, error: null }
 }
+export const getPublishedProducts = async () => {
+  const { data, error } = await requireClient().from('products')
+    .select('*')
+    .eq('published', true)
+    .eq('status', 'published')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(toProduct)
+}
+export const getProduct = async (id) => {
+  if (!id) return null
+  const { data, error } = await requireClient().from('products')
+    .select('*')
+    .eq('id', id)
+    .eq('published', true)
+    .eq('status', 'published')
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) throw error
+  return data ? toProduct(data) : null
+}
 export const upsertProduct = async (product) => {
   const payload = toProductRecord(product)
   const query = product.id ? requireClient().from('products').update(payload).eq('id', product.id) : requireClient().from('products').insert(payload)
   const { data, error } = await query.select().single(); if (error) throw error; return { data: toProduct(data), error: null }
 }
 export const deleteProduct = async (id) => { const { error } = await requireClient().from('products').delete().eq('id', id); if (error) throw error; return { data: null, error: null } }
-export const toggleProductPublish = async (id, published) => { const { data, error } = await requireClient().from('products').update({ published }).eq('id', id).select().single(); if (error) throw error; return { data, error: null } }
+export const toggleProductPublish = async (id, published) => { const { data, error } = await requireClient().from('products').update({ published, status: published ? 'published' : 'draft' }).eq('id', id).select().single(); if (error) throw error; return { data, error: null } }
 export const getDashboardSummary = async () => {
   const client = requireClient()
   const [{ count: totalProducts, error: productError }, { count: publishedProducts, error: publishedError }, { data: orders, error: ordersError }] = await Promise.all([
@@ -62,10 +84,11 @@ export const updateUserProfile = async (profile) => { const { data: { user } } =
 export const resendVerificationEmail = (email) => requireClient().auth.resend({ type: 'signup', email })
 
 function toProduct(record) {
-  return { ...record, thumbnail: record.thumbnail_path, image: record.thumbnail_path, demoVideo: record.demo_video, discountPrice: record.discount_price, published: Boolean(record.published), status: record.published ? 'published' : 'draft' }
+  return { ...record, thumbnail: record.thumbnail_path, image: record.thumbnail_path, demoVideo: record.demo_video, discountPrice: record.discount_price, published: Boolean(record.published), status: record.status || 'draft' }
 }
 
 function toProductRecord(product) {
   const slugBase = String(product.slug || product.title || 'product').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-  return { title: product.title, slug: product.slug || `${slugBase}-${product.id || crypto.randomUUID().slice(0, 8)}`, category: product.category || null, thumbnail_path: product.thumbnail || product.image || null, demo_video: product.demoVideo || null, description: product.description || null, features: product.features || [], tags: product.tags || [], price: Number(product.price || 0), discount_price: product.discountPrice == null || product.discountPrice === '' ? null : Number(product.discountPrice), screenshots: product.screenshots || [], published: product.published ?? product.status === 'published' }
+  const status = product.status || (product.published ? 'published' : 'draft')
+  return { title: product.title, slug: product.slug || `${slugBase}-${product.id || crypto.randomUUID().slice(0, 8)}`, category: product.category || null, thumbnail_path: product.thumbnail || product.image || null, demo_video: product.demoVideo || null, description: product.description || null, features: product.features || [], tags: product.tags || [], price: Number(product.price || 0), discount_price: product.discountPrice == null || product.discountPrice === '' ? null : Number(product.discountPrice), screenshots: product.screenshots || [], status, published: status === 'published' }
 }

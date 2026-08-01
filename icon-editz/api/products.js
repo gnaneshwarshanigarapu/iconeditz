@@ -13,7 +13,6 @@ const productSchema = z.object({
 }).passthrough();
 
 async function handleGetProducts(req, res) {
-    try {
         const user = await tryAuthenticate(req);
         let query = supabaseAdmin.from('products').select('*').order('created_at', { ascending: false });
 
@@ -28,12 +27,6 @@ async function handleGetProducts(req, res) {
         const { data, error } = await query;
         if (error) throw error;
         return res.json({ data: data ?? [] });
-
-    } catch (error) {
-        console.error('Products query failed', error);
-        // In production, you might want a more generic error message
-        return res.status(500).json({ error: 'An error occurred while fetching products.' });
-    }
 }
 
 async function handleAdminProductActions(req, res) {

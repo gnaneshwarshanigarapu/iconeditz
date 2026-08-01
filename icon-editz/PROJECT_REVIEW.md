@@ -39,7 +39,7 @@ The application builds, but it is **not production-ready for payments, private f
 4. **Unprotected dashboard POST handler** — `api/dashboard.js` routes `POST` to `handleCapi` with no authentication, CSRF-like origin defense, rate limit, schema validation, or external delivery. It accepts arbitrary payloads and logs hashed personal identifiers, allowing log abuse/cost amplification.
 5. **Stored script injection surface in analytics** — `src/components/Analytics.jsx` inserts values from database settings into `innerHTML` script and HTML strings without identifier validation. A compromised admin/settings write path can inject executable script into every visitor session. Strictly validate provider IDs and use DOM APIs/nonces rather than interpolating scripts.
 6. **Database CMS does not power most public content** — `PremiumHomepage` and the legacy `SiteContentAdmin` use `useSiteContent`, which reads/writes browser `localStorage`; public pages do not consume the `page_content` records edited by `VisualPageCms`. Only footer/CTA clearly read the database. CMS edits therefore do not reliably affect the site.
-7. **One-click initializer has an extremely privileged Management API capability without operational controls** — the Edge Function intentionally executes the `INITIALIZATION_SQL` secret via a database-write Management API token. It correctly keeps secrets off the browser, but has no rate limit, audit log, single-use bootstrap lock, environment guard, or migration checksum/version check. Restrict invocation to a dedicated bootstrap role, audit each attempt, and remove/disable the token/function after initialization.
+7. **Historical finding resolved** — the Management API Edge initializer was removed; normal Supabase migrations are now the only schema deployment mechanism.
 8. **Hard-coded administrator password appears in an executable helper** — `supabase/admin-auth-debug.sql` documents `icon@123`. Even as a debug script, retaining a known credential pattern in source is unsafe and encourages insecure setup.
 
 ### Medium
@@ -185,7 +185,7 @@ Do not remove a package solely from this report without a lockfile/build verific
 
 ### Edge-only initialization
 
-`SUPABASE_PROJECT_REF`, `SUPABASE_MANAGEMENT_API_TOKEN`, `INITIALIZATION_SQL`, plus the Supabase runtime URL/anon/service-role secrets.
+No Edge Function secrets are required for database initialization. Schema deployment is performed by normal Supabase migrations.
 
 ### Documentation inconsistency
 

@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useMemo } from 'react'
 import { 
   getProducts, 
+  getPublishedProducts,
+  getProduct,
   upsertProduct, 
   deleteProduct, 
   toggleProductPublish,
@@ -26,6 +28,8 @@ export function ProductsProvider({ children }) {
     return {
       // Data fetching
       getProducts,
+      getPublishedProducts,
+      getProduct,
       getDashboardSummary,
       getRecentProducts,
       

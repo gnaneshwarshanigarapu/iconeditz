@@ -11,7 +11,6 @@ const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'))
 const ProductList = lazy(() => import('../pages/admin/products/ProductList'))
 const AddProduct = lazy(() => import('../pages/admin/products/AddProduct'))
 const EditProduct = lazy(() => import('../pages/admin/products/EditProduct'))
-const SiteContentAdmin = lazy(() => import('../components/admin/SiteContentAdmin'))
 const HireFromUsAdminPage = lazy(() => import('../pages/admin/HireFromUsAdminPage'))
 const HireRequestsPage = lazy(() => import('../pages/admin/HireRequestsPage'))
 const Settings = lazy(() => import('../pages/admin/Settings'));

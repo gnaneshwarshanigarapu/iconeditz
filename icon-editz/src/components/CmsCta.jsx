@@ -7,6 +7,7 @@ export default function CmsCta() {
   const [content, setContent] = useState(null)
 
   useEffect(() => {
+    if (!supabase) return
     supabase.from('cta_content').select('content').eq('id', true).single()
       .then(({ data }) => setContent(data?.content || null))
   }, [])

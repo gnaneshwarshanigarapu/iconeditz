@@ -8,6 +8,7 @@ export default function LegalPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!supabase) { setError('Content is unavailable until Supabase is configured.'); return }
     supabase.from('legal_pages').select('title, content, seo_title, seo_description, updated_at')
       .eq('slug', slug).eq('published', true).single()
       .then(({ data, error: requestError }) => {

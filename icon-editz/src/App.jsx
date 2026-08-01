@@ -14,7 +14,6 @@ import Footer from './components/Footer'
 import StoreRoutes from './routes/StoreRoutes'
 import AdminRoutes from './routes/AdminRoutes'
 import PaymentRoutes from './routes/PaymentRoutes'
-import PaymentProvider from './features/payments/PaymentProvider'
 import { ProductsProvider } from './features/admin/productsStore.jsx'
 import { AuthProvider } from './hooks/useAuth.jsx'
 import PageTransition from './components/ui/PageTransition'
@@ -68,12 +67,10 @@ export default function App() {
     <Router>
       <ProductsProvider>
         <AuthProvider>
-          <PaymentProvider>
-            <ErrorBoundary>
-              <Analytics />
-              <AppChrome />
-            </ErrorBoundary>
-          </PaymentProvider>
+          <ErrorBoundary>
+            <Analytics />
+            <AppChrome />
+          </ErrorBoundary>
         </AuthProvider>
       </ProductsProvider>
     </Router>

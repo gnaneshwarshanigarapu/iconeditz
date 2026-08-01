@@ -10,7 +10,7 @@ const sorts = ['Newest', 'Oldest', 'Price Low → High', 'Price High → Low']
 const initialFilters = { query: '', category: 'All Assets', price: 'All', sort: 'Newest' }
 
 export default function Store() {
-  const { getProducts } = useProducts()
+  const { getPublishedProducts } = useProducts()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -19,8 +19,8 @@ export default function Store() {
   const [draft, setDraft] = useState(initialFilters)
 
   useEffect(() => {
-    getProducts().then(({ products: data }) => setProducts(data || [])).catch((err) => setError(err.message)).finally(() => setLoading(false))
-  }, [getProducts])
+    getPublishedProducts().then((data) => setProducts(data || [])).catch((err) => setError(err.message)).finally(() => setLoading(false))
+  }, [getPublishedProducts])
 
   const displayed = useMemo(() => [...products]
     .filter((item) => {

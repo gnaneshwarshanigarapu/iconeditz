@@ -71,7 +71,6 @@ icon-editz/
 │   │   ├── projects.js
 │   │   └── tools.js
 │   ├── hooks/                # Custom React hooks
-│   │   ├── useThreeBackground.js
 │   │   └── useAnimation.js
 │   ├── utils/                # Utility functions
 │   │   ├── helpers.js
@@ -190,7 +189,7 @@ The interactive 3D background uses Three.js and includes:
 - Smooth animations
 - Performance optimized
 
-Located in `src/hooks/useThreeBackground.js`
+The active 3D background is implemented in `src/three/BackgroundScene.jsx`.
 
 ## 📊 Project Management
 

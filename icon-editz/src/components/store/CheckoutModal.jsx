@@ -2,6 +2,34 @@ import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth'; // Assuming you have a useAuth hook
 import { getToken } from '../../utils/api'
 
+async function readApiResponse(response, request) {
+  const text = await response.text()
+  const headers = Object.fromEntries(response.headers.entries())
+  let data = {}
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = {}
+    }
+  }
+
+  if (import.meta.env.DEV) {
+    console.debug('[Checkout API]', {
+      url: request.url,
+      method: request.method,
+      body: request.body,
+      status: response.status,
+      headers,
+      text,
+      data,
+    })
+  }
+
+  if (!response.ok) throw new Error(data.error?.message || data.message || text || `Server error (${response.status})`)
+  return data
+}
+
 export default function CheckoutModal({ product, onClose }) {
   const { user } = useAuth(); // Get authenticated user
   const [formData, setFormData] = useState({
@@ -28,68 +56,51 @@ export default function CheckoutModal({ product, onClose }) {
       const accessToken = await getToken()
       if (!accessToken) throw new Error('Your session has expired. Please sign in again.')
       const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` }
-      // Step 1: Create an order in your own database
-      const dbOrderResponse = await fetch('/api/orders', {
+      if (!import.meta.env.VITE_RAZORPAY_KEY_ID) throw new Error('Payments are not configured. Please contact support.')
+      if (!window.Razorpay) throw new Error('Razorpay Checkout could not be loaded. Please refresh and try again.')
+
+      // The server calculates the product price and creates both the local and Razorpay orders.
+      const createOrderRequest = {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
-          action: 'create-db-order',
           product_id: product.id,
           customer_name: formData.name,
           customer_email: formData.email,
           customer_phone: formData.phone,
-          amount: amount,
         }),
-      });
-
-      const dbOrderPayload = await dbOrderResponse.json();
-      if (!dbOrderResponse.ok) throw new Error(dbOrderPayload.message || 'Could not create order.');
-      const dbOrder = dbOrderPayload.data;
-
-      // Step 2: Create a Razorpay order
-      const razorpayOrderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          action: 'create-payment-order',
-          amount: amount,
-          currency: 'INR',
-          receipt: dbOrder.id, // Use our DB order ID as the receipt
-          notes: {
-            db_order_id: dbOrder.id,
-            product_id: product.id,
-          }
-        }),
-      });
+      }
+      const razorpayOrderResponse = await fetch('/api/create-order', createOrderRequest)
       
-      const razorpayOrder = await razorpayOrderResponse.json();
-      if (!razorpayOrderResponse.ok) throw new Error(razorpayOrder.message || 'Failed to initiate payment with Razorpay.');
+      const razorpayOrder = await readApiResponse(razorpayOrderResponse, { url: '/api/create-order', ...createOrderRequest })
+      if (!razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
 
       // Step 3: Setup Razorpay options and open the modal
+      let paymentReceived = false;
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         name: 'Icon Editz',
         description: `Purchase of ${product.title}`,
-        order_id: razorpayOrder.id,
+        order_id: razorpayOrder.order_id,
         handler: async function (response) {
+          paymentReceived = true;
           setStatusMessage('Verifying payment...');
           try {
-            const verifyRes = await fetch('/api/orders', {
+            const verifyRequest = {
               method: 'POST',
               headers: authHeaders,
               body: JSON.stringify({
-                action: 'verify-payment',
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                orderId: dbOrder.id, // Pass our internal order ID for verification
               })
-            });
+            }
+            const verifyRes = await fetch('/api/verify-payment', verifyRequest)
 
-            const verifyData = await verifyRes.json();
-            if (verifyRes.ok && verifyData.success) {
+            const verifyData = await readApiResponse(verifyRes, { url: '/api/verify-payment', ...verifyRequest })
+            if (verifyData.success) {
               setStatusMessage('Payment successful! Check your email for the download link.');
               setStatusType('success');
             } else {
@@ -108,7 +119,15 @@ export default function CheckoutModal({ product, onClose }) {
         },
         theme: {
           color: '#9D5CFF'
-        }
+        },
+        modal: {
+          ondismiss: () => {
+            if (paymentReceived) return;
+            setLoading(false);
+            setStatusMessage('Payment cancelled. Your order has not been charged.');
+            setStatusType('info');
+          },
+        },
       };
 
       const rzp1 = new window.Razorpay(options);
