@@ -6,10 +6,10 @@ import { withApi } from '../server/lib/handler.js'
 import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
 
 const checkoutSchema = z.object({
-  product_id: z.string().uuid(),
-  customer_name: z.string().trim().min(1).max(120),
-  customer_email: z.string().trim().email(),
-  customer_phone: z.string().trim().min(7).max(20),
+  productId: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email(),
+  phone: z.string().trim().min(7).max(20),
 })
 
 const verificationSchema = z.object({
@@ -36,6 +36,13 @@ async function listOrders(req, res) {
 
 async function createOrder(req, res) {
   const user = await authenticate(req)
+  const { productId, name, email, phone } = req.body || {}
+  if (!phone) {
+    return res.status(400).json({
+      success: false,
+      error: 'Phone number is required',
+    })
+  }
   const parsed = checkoutSchema.safeParse(req.body)
   if (!parsed.success) throw httpError('Invalid checkout request', 400)
   const razorpay = getRazorpay()
@@ -43,7 +50,7 @@ async function createOrder(req, res) {
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
     .select('id,title,price,discount_price,published,status')
-    .eq('id', parsed.data.product_id)
+    .eq('id', productId)
     .is('deleted_at', null)
     .maybeSingle()
   if (productError) throw productError
@@ -53,21 +60,28 @@ async function createOrder(req, res) {
   const amount = Math.round(Number(product.discount_price ?? product.price) * 100)
   if (!Number.isSafeInteger(amount) || amount < 100) throw httpError('The payment amount must be at least 100 paise', 400)
 
+  console.log(req.body)
   const { data: databaseOrder, error: databaseError } = await supabaseAdmin
     .from('orders')
     .insert({
       user_id: user.sub,
       product_id: product.id,
       product_name: product.title,
-      customer_name: parsed.data.customer_name,
-      customer_email: parsed.data.customer_email,
+      customer_name: name,
+      customer_email: email,
+      customer_phone: phone,
       amount: amount / 100,
       payment_status: 'pending',
       status: 'pending',
     })
     .select('id')
     .single()
-  if (databaseError || !databaseOrder) throw databaseError || new Error('Unable to create the local order')
+  if (databaseError || !databaseOrder) {
+    return res.status(500).json({
+      success: false,
+      error: databaseError?.message || 'Unable to create the local order',
+    })
+  }
 
   console.info(JSON.stringify({ event: 'razorpay_order_create', productId: product.id, amount, userId: user.sub }))
   let razorpayOrder

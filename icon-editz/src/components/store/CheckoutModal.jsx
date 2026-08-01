@@ -64,10 +64,10 @@ export default function CheckoutModal({ product, onClose }) {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
-          product_id: product.id,
-          customer_name: formData.name,
-          customer_email: formData.email,
-          customer_phone: formData.phone,
+          productId: product.id,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
         }),
       }
       const razorpayOrderResponse = await fetch('/api/orders', createOrderRequest)
