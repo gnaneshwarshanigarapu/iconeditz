@@ -14,9 +14,10 @@ export const withApi = (methods, fn) => async (req, res) => {
   } catch (error) {
     console.error(JSON.stringify({ id, path: req.url, method: req.method, error: error.message, stack: error.stack }))
     const missingSchema = isMissingSchemaError(error)
-    const status = missingSchema ? 503 : error.status || 500
-    const message = missingSchema ? 'The database schema is not initialized. Run the Supabase migration deployment, then retry.' : error.status ? error.message : 'Internal server error'
-    return res.status(status).json({ success: false, message, error: { code: missingSchema ? 'DATABASE_NOT_INITIALIZED' : 'INTERNAL_ERROR', message, requestId: id } })
+    const validationError = error?.name === 'ZodError'
+    const status = missingSchema ? 503 : validationError ? 422 : error.status || 500
+    const message = missingSchema ? 'The database schema is not initialized. Run the Supabase migration deployment, then retry.' : validationError ? 'Invalid request data' : error.status ? error.message : 'Internal server error'
+    return res.status(status).json({ success: false, message, error: { code: missingSchema ? 'DATABASE_NOT_INITIALIZED' : validationError ? 'VALIDATION_ERROR' : 'INTERNAL_ERROR', message, details: validationError ? error.issues : undefined, requestId: id } })
   } finally {
     console.info(JSON.stringify({ id, method: req.method, path: req.url, status: res.statusCode, durationMs: Date.now() - started }))
   }

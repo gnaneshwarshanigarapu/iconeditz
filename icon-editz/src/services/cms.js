@@ -15,10 +15,7 @@ export const getCms = async ({ page, section, slug } = {}) => {
   if (page) params.set('page', page)
   if (section) params.set('section', section)
   if (slug) params.set('slug', slug)
-  const requested = page || section || slug || 'unknown'
-  console.log('CMS REQUEST', requested)
   const data = await readJson(await fetch(`/api/cms?${params.toString()}`))
-  console.log('CMS RESPONSE', data.data ?? {})
   return data.data ?? {}
 }
 
@@ -33,11 +30,9 @@ export const useCmsPage = (page, fallback = {}) => {
       .then((rows) => {
         const sections = rowsToSections(rows)
         const useFallback = Object.keys(sections).length === 0
-        console.log('CMS FALLBACK USED', { page, used: useFallback, rows: Array.isArray(rows) ? rows.length : 0 })
         if (active) setData(useFallback ? fallback : sections)
       })
       .catch((error) => {
-        console.warn('CMS FALLBACK USED', { page, used: true, reason: error.message })
         if (active) setData(fallback)
       })
       .finally(() => { if (active) setLoading(false) })
@@ -53,11 +48,9 @@ export const useCmsSingleton = (section, fallback = {}) => {
     getCms({ section })
       .then((content) => {
         const useFallback = !content || Object.keys(content).length === 0
-        console.log('CMS FALLBACK USED', { section, used: useFallback })
         if (active) setData(useFallback ? fallback : content)
       })
       .catch((error) => {
-        console.warn('CMS FALLBACK USED', { section, used: true, reason: error.message })
         if (active) setData(fallback)
       })
     return () => { active = false }

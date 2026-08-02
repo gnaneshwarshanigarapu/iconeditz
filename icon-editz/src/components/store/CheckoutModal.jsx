@@ -4,9 +4,8 @@ import { getToken } from '../../utils/api'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
 
-async function readApiResponse(response, request) {
+async function readApiResponse(response) {
   const text = await response.text()
-  const headers = Object.fromEntries(response.headers.entries())
   let data = {}
   if (text) {
     try {
@@ -14,18 +13,6 @@ async function readApiResponse(response, request) {
     } catch {
       data = {}
     }
-  }
-
-  if (import.meta.env.DEV) {
-    console.debug('[Checkout API]', {
-      url: request.url,
-      method: request.method,
-      body: request.body,
-      status: response.status,
-      headers,
-      text,
-      data,
-    })
   }
 
   if (!response.ok) throw new Error(data.error?.message || data.message || text || `Server error (${response.status})`)

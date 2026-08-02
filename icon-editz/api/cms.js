@@ -8,7 +8,6 @@ const hireSection = (section, content, published) => ({ page: HIRE_PAGE, section
 
 export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
     const section = req.query.section || req.query.page || req.body?.section;
-    console.log('CMS REQUEST', section);
     if (req.method === 'POST') {
         // SECURITY: Add rate limiting here to prevent abuse (see section 8)
         const schema = z.object({
@@ -48,14 +47,12 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
                 .order('sort_order');
             if (error) throw error;
             const response = { success: true, data: data ?? [] };
-            console.log('CMS RESPONSE', response.data);
             return res.json(response);
         }
         if (section === 'homepage') {
             const { data, error } = await supabaseAdmin.from('page_content').select('id,section,content,updated_at,status,sort_order').eq('page', 'Homepage').eq('status', 'published').is('deleted_at', null).order('sort_order');
             if (error) throw error;
             const response = { success: true, data: data ?? [] };
-            console.log('CMS RESPONSE', response.data);
             return res.json(response);
         }
         if (section === 'settings') {
@@ -68,7 +65,6 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             }, {});
           
             const response = { success: true, data: settings };
-            console.log('CMS RESPONSE', response.data);
             return res.json(response);
         }
         if (section === 'footer' || section === 'cta') {
@@ -76,7 +72,6 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             const { data, error } = await supabaseAdmin.from(table).select('content').eq('id', true).eq('status', 'published').is('deleted_at', null).maybeSingle();
             if (error) throw error;
             const response = { success: true, data: data?.content ?? {} };
-            console.log('CMS RESPONSE', response.data);
             return res.json(response);
         }
         if (section === 'legal') {
@@ -85,7 +80,6 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             const { data, error } = await supabaseAdmin.from('legal_pages').select('title,content,seo_title,seo_description,updated_at,slug').eq('slug', slug).eq('published', true).eq('status', 'published').is('deleted_at', null).maybeSingle();
             if (error) throw error;
             const response = { success: true, data: data ?? {} };
-            console.log('CMS RESPONSE', response.data);
             return res.json(response);
         }
         if (section !== 'hire-us') return res.status(400).json({ success: false, error: 'Valid CMS section or page is required' });
@@ -102,7 +96,6 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
                 faq: content.data?.find((row) => row.section_key === 'faq')?.content?.items ?? []
             },
         };
-        console.log('CMS RESPONSE', response.data);
         return res.json(response);
     }
 

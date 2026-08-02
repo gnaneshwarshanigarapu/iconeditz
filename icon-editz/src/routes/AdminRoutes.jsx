@@ -29,18 +29,6 @@ function AdminPage({ title, children }) {
   )
 }
 
-function MockAdminSection({ title }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.05] p-8 shadow-xl backdrop-blur-xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Coming Soon</p>
-      <h2 className="mt-3 text-2xl font-bold text-white">{title}</h2>
-      <p className="mt-2 max-w-2xl text-text-muted">
-        Mock dashboard data is active first. This section is ready for the next backend phase.
-      </p>
-    </div>
-  )
-}
-
 export default function AdminRoutes() {
   if (!isEnabled('admin')) return <FutureRoute title="Admin" />
 
@@ -68,9 +56,6 @@ export default function AdminRoutes() {
         <Route path="/newsletter-subscribers" element={<AdminPage title="Newsletter Subscribers"><NewsletterSubscribersPage /></AdminPage>} />
         <Route path="/hire-us" element={<Navigate to="/admin/content/hire-from-us" replace />} />
         <Route path="/hire-requests" element={<AdminPage title="Hire Requests"><HireRequestsPage /></AdminPage>} />
-        <Route path="/orders" element={<AdminPage title="Orders"><MockAdminSection title="Orders" /></AdminPage>} />
-        <Route path="/customers" element={<AdminPage title="Customers"><MockAdminSection title="Customers" /></AdminPage>} />
-        <Route path="/downloads" element={<AdminPage title="Downloads"><MockAdminSection title="Downloads" /></AdminPage>} />
         <Route path="/settings" element={<AdminPage title="Settings"><Settings /></AdminPage>} />
       </Routes>
     </Suspense>
