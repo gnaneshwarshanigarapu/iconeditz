@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { createSignedDownloadUrl, getUserDownloads, getUserOrders, getUserWishlist, updateUserProfile } from '../utils/supabase'
+import { getUserDownloads, getUserOrders, getUserWishlist, updateUserProfile } from '../utils/supabase'
+import { request } from '../utils/api'
 
 const tabs = [
   { id: 'purchases', label: 'My Purchases' },
@@ -45,11 +46,11 @@ export default function UserDashboard() {
     loadData()
   }, [user])
 
-  const handleDownload = async (filePath) => {
-    if (!filePath) return
+  const handleDownload = async (orderId) => {
+    if (!orderId) return
     try {
-      const url = await createSignedDownloadUrl(import.meta.env.VITE_SUPABASE_STORAGE_BUCKET, filePath)
-      window.open(url, '_blank')
+      const { downloadUrl } = await request('/api/downloads', { method: 'POST', body: { orderId } })
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer')
     } catch (error) {
       console.error('Download URL error:', error)
       setStatusMessage('Unable to generate secure download link. Please try again later.')
@@ -185,7 +186,7 @@ export default function UserDashboard() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleDownload(order.product_file_path || order.file_path)}
+                            onClick={() => handleDownload(order.id)}
                             className="rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-sm text-primary transition hover:bg-primary/10"
                           >
                             Download again
@@ -211,7 +212,7 @@ export default function UserDashboard() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleDownload(item.download_path || item.product_file_path || item.file_path)}
+                            onClick={() => handleDownload(item.order_id)}
                             className="rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-sm text-primary transition hover:bg-primary/10"
                           >
                             Download file

@@ -1,0 +1,4 @@
+const pixelId = import.meta.env.VITE_META_PIXEL_ID
+function ensurePixel() { if (!pixelId || typeof window === 'undefined') return false; if (!window.fbq) { const n = function (...args) { n.callMethod ? n.callMethod(...args) : n.queue.push(args) }; n.queue = []; window.fbq = n; window._fbq = n; const script = document.createElement('script'); script.async = true; script.src = 'https://connect.facebook.net/en_US/fbevents.js'; document.head.appendChild(script); n('init', pixelId); n('track', 'PageView') } return true }
+export function metaEvent(name, data = {}, eventId) { if (ensurePixel()) window.fbq('track', name, data, eventId ? { eventID: eventId } : undefined) }
+export const commerceData = (product) => ({ content_name: product.title, content_ids: [product.id], content_type: 'product', content_category: product.category || 'Digital product', value: Number(product.discountPrice ?? product.discount_price ?? product.price), currency: 'INR' })

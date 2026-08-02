@@ -63,21 +63,31 @@ export const deleteProduct = async (id) => { const { error } = await requireClie
 export const toggleProductPublish = async (id, published) => { const { data, error } = await requireClient().from('products').update({ published, status: published ? 'published' : 'draft' }).eq('id', id).select().single(); if (error) throw error; return { data, error: null } }
 export const getDashboardSummary = async () => {
   const client = requireClient()
-  const [{ count: totalProducts, error: productError }, { count: publishedProducts, error: publishedError }, { data: orders, error: ordersError }] = await Promise.all([
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const [{ count: totalProducts, error: productError }, { count: publishedProducts, error: publishedError }, { data: orders, error: ordersError }, { count: downloads, error: downloadError }] = await Promise.all([
     client.from('products').select('*', { count: 'exact', head: true }),
     client.from('products').select('*', { count: 'exact', head: true }).eq('published', true),
-    client.from('orders').select('amount'),
+    client.from('orders').select('amount,payment_status,status,created_at'),
+    client.from('download_logs').select('*', { count: 'exact', head: true }),
   ])
-  if (productError || publishedError || ordersError) throw productError || publishedError || ordersError
-  const totalSales = (orders || []).reduce((sum, order) => sum + Number(order.amount || 0), 0)
-  return { data: { totalProducts: totalProducts || 0, publishedProducts: publishedProducts || 0, totalCustomers: 0, totalSales }, error: null }
+  if (productError || publishedError || ordersError || downloadError) throw productError || publishedError || ordersError || downloadError
+  const paid = (orders || []).filter((order) => order.payment_status === 'PAID' || order.status === 'paid')
+  const totalSales = paid.reduce((sum, order) => sum + Number(order.amount || 0), 0)
+  const todaySales = paid.filter((order) => new Date(order.created_at) >= today).reduce((sum, order) => sum + Number(order.amount || 0), 0)
+  return { data: { totalProducts: totalProducts || 0, publishedProducts: publishedProducts || 0, totalCustomers: 0, totalSales, todaySales, orders: paid.length, downloads: downloads || 0, conversionRate: 0 }, error: null }
 }
 export const getRecentProducts = async () => { const { data, error } = await requireClient().from('products').select('*').order('created_at', { ascending: false }).limit(6); if (error) throw error; return { data: (data || []).map(toProduct), error: null } }
 export const getOrders = async () => { const { data, error } = await requireClient().from('orders').select('*'); if (error) throw error; return { data: data || [], error } }
 export const getUsers = async () => ({ data: [], error: null })
 export const uploadStorageFile = async (file, folder = 'uploads') => { const path = `${folder}/${crypto.randomUUID()}-${file.name}`; const { error } = await requireClient().storage.from(import.meta.env.VITE_SUPABASE_STORAGE_BUCKET).upload(path, file); if (error) throw error; return path }
 export const createSignedDownloadUrl = async (bucket, path) => { const { data, error } = await requireClient().storage.from(bucket).createSignedUrl(path, 3600); if (error) throw error; return data.signedUrl }
-export const getUserOrders = getOrders
+export const getUserOrders = async () => {
+  const { data: { session } } = await requireClient().auth.getSession()
+  if (!session) return []
+  const response = await fetch('/api/orders', { headers: { Authorization: `Bearer ${session.access_token}` } })
+  if (!response.ok) throw new Error('Unable to load order history')
+  return (await response.json()).data || []
+}
 export const getUserDownloads = async () => []
 export const getUserWishlist = async () => []
 export const updateUserProfile = async (profile) => { const { data: { user } } = await requireClient().auth.getUser(); const { data, error } = await requireClient().from('profiles').upsert({ id: user.id, ...profile }).select().single(); if (error) throw error; return data }

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth'; // Assuming you have a useAuth hook
 import { getToken } from '../../utils/api'
+import { commerceData, metaEvent } from '../../lib/metaPixel'
+import { trackGaCommerce } from '../../utils/tracking'
 
 async function readApiResponse(response, request) {
   const text = await response.text()
@@ -40,6 +42,7 @@ export default function CheckoutModal({ product, onClose }) {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState(''); // 'error', 'success', 'info'
+  const [purchase, setPurchase] = useState(null)
 
   const amount = product.discountPrice || product.price;
 
@@ -73,6 +76,7 @@ export default function CheckoutModal({ product, onClose }) {
       const razorpayOrderResponse = await fetch('/api/orders', createOrderRequest)
       
       const razorpayOrder = await readApiResponse(razorpayOrderResponse, { url: '/api/orders', ...createOrderRequest })
+      metaEvent('InitiateCheckout', commerceData(product)); trackGaCommerce('begin_checkout', product)
       if (!razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
 
       // Step 3: Setup Razorpay options and open the modal
@@ -101,7 +105,10 @@ export default function CheckoutModal({ product, onClose }) {
 
             const verifyData = await readApiResponse(verifyRes, { url: '/api/orders', ...verifyRequest })
             if (verifyData.success) {
-              setStatusMessage('Payment successful! Check your email for the download link.');
+              setPurchase(verifyData)
+              metaEvent('Purchase', commerceData(product), verifyData.eventId)
+              trackGaCommerce('purchase', product, verifyData.orderId)
+              setStatusMessage(verifyData.emailSent ? 'A download link has also been sent to your email.' : 'Payment successful. Download now. Email could not be sent.')
               setStatusType('success');
             } else {
               throw new Error(verifyData.message || 'Payment verification failed.');
@@ -214,10 +221,8 @@ export default function CheckoutModal({ product, onClose }) {
             </form>
           )}
 
-          {statusType === 'success' && (
-            <button onClick={onClose} className="w-full bg-surface-dark hover:bg-white/10 border border-white/10 text-white font-medium py-3 rounded-xl mt-4 transition-colors">
-              Close
-            </button>
+          {statusType === 'success' && purchase && (
+            <div className="space-y-4 text-sm"><div className="rounded-xl bg-green-500/10 p-4 text-green-100"><h3 className="text-xl font-bold">✔ Payment Successful</h3><p className="mt-3">Order ID: {purchase.orderId}</p><p>Product: {purchase.product || product.title}</p><p>Amount: ₹{purchase.amount ?? amount}</p></div>{purchase.downloadUrl ? <a href={purchase.downloadUrl} className="block w-full rounded-xl bg-primary py-3 text-center font-bold text-white" target="_blank" rel="noreferrer">⬇ Download Now</a> : <p className="text-amber-200">Your payment is confirmed. Please contact support for access.</p>}<button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-surface-dark py-3 font-medium text-white transition-colors hover:bg-white/10">🏠 Back to Store</button></div>
           )}
         </div>
       </div>

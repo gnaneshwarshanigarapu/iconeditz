@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useProducts } from '../../hooks/useProducts'
 import CheckoutModal from '../../components/store/CheckoutModal'
+import { commerceData, metaEvent } from '../../lib/metaPixel'
+import { trackGaCommerce } from '../../utils/tracking'
 
 const fallbackImage = '/assets/images/og-icon-editz.png'
 
@@ -47,6 +49,18 @@ export default function ProductDetail() {
   const price = Number(product.price || 0)
   const discountPrice = product.discount_price ?? product.discountPrice
   const payablePrice = Number(discountPrice ?? price)
+
+  useEffect(() => {
+    metaEvent('ViewContent', commerceData(product))
+    trackGaCommerce('view_item', product)
+  }, [product])
+
+  useEffect(() => {
+    if (showCheckout) {
+      metaEvent('AddToCart', commerceData(product))
+      trackGaCommerce('add_to_cart', product)
+    }
+  }, [showCheckout, product])
 
   return <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
     <div className="mb-8"><Link to="/store" className="inline-flex items-center text-primary transition-colors hover:text-primary-hover"><svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Back to Store</Link></div>

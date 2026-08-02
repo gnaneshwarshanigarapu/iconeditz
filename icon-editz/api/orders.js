@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { authenticate } from '../server/lib/auth.js'
 import { withApi } from '../server/lib/handler.js'
 import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
+import { createDelivery, sendDeliveryEmail } from '../server/lib/delivery.js'
+import { sendMetaPurchase } from '../server/lib/metaCapi.js'
 
 const checkoutSchema = z.object({
   productId: z.string().uuid(),
@@ -146,13 +148,16 @@ async function verifyPayment(req, res) {
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from('orders')
-    .select('id,user_id,amount,payment_status')
+    .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,created_at,products(download_key,download_filename)')
     .eq('order_id', input.razorpay_order_id)
     .maybeSingle()
   if (orderError) throw orderError
   if (!order) throw httpError('Order not found', 404)
   if (user.role !== 'admin' && order.user_id !== user.sub) throw httpError('Not authorized to verify this order', 403)
-  if (order.payment_status === 'PAID') return res.json({ success: true, message: 'Payment already verified' })
+  if (order.payment_status === 'PAID') {
+    const delivery = await createDelivery(order)
+    return res.json({ success: true, ...delivery, orderId: order.id, product: order.product_name, amount: order.amount, emailSent: true })
+  }
 
   const payment = await razorpay.payments.fetch(input.razorpay_payment_id)
   if (payment.order_id !== input.razorpay_order_id || payment.currency !== 'INR' || payment.amount !== Math.round(Number(order.amount) * 100) || payment.status !== 'captured') {
@@ -164,7 +169,18 @@ async function verifyPayment(req, res) {
     .update({ payment_status: 'PAID', status: 'paid', razorpay_payment_id: input.razorpay_payment_id })
     .eq('id', order.id)
   if (updateError) throw updateError
-  return res.json({ success: true, message: 'Payment verified successfully' })
+  let delivery; let emailSent = false
+  try {
+    delivery = await createDelivery(order)
+    await supabaseAdmin.from('download_logs').insert({ user_id: order.user_id, product_id: order.product_id, order_id: order.id, ip_address: req.headers['x-forwarded-for']?.split(',')[0]?.trim(), download_count: 0 })
+    try { await sendDeliveryEmail(order, delivery); emailSent = true } catch (error) { console.error('Delivery email failed:', error.message) }
+  } catch (error) {
+    // A verified payment is final even if product delivery configuration needs attention.
+    console.error('Delivery URL generation failed:', error.message)
+  }
+  const eventId = `purchase_${order.id}`
+  sendMetaPurchase(req, order, eventId).catch((error) => console.error('Meta CAPI failed:', error.message))
+  return res.json({ success: true, ...(delivery || {}), orderId: order.id, product: order.product_name, amount: order.amount, emailSent, eventId, message: 'Payment verified successfully' })
 }
 
 export default withApi({ GET: listOrders, POST: createOrder, PUT: verifyPayment })

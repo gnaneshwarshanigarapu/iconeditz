@@ -92,10 +92,10 @@ export default function AdminDashboard() {
   }
 
   const stats = summary ? [
-    { label: 'Total Products', value: summary.totalProducts, icon: FiBox, detail: 'All products' },
-    { label: 'Published Products', value: summary.publishedProducts, icon: FiEye, detail: 'Visible in store' },
-    { label: 'Total Customers', value: summary.totalCustomers, icon: FiShoppingBag, detail: 'All registered users' },
+    { label: "Today's Sales", value: formatCurrency(summary.todaySales || 0), icon: FiTrendingUp, detail: 'Paid orders today' },
     { label: 'Total Revenue', value: formatCurrency(summary.totalSales), icon: FiTrendingUp, detail: 'From paid orders' },
+    { label: 'Orders', value: summary.orders || 0, icon: FiShoppingBag, detail: 'Verified payments' },
+    { label: 'Downloads', value: summary.downloads || 0, icon: FiDownload, detail: 'Secure links generated' },
   ] : []
 
   if (error) {
