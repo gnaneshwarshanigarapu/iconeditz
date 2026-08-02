@@ -2,6 +2,20 @@
 
 A modern, scalable website for a premium video editing and motion graphics business. Built with React, Vite, Tailwind CSS, Framer Motion, and Three.js for stunning visuals and smooth animations.
 
+## CMS seed environment
+
+Create `icon-editz/.env` with real deployment values and keep it out of version control:
+
+```dotenv
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+Run `npm run seed:check` to validate the local environment without displaying credentials. Then run `npm run seed:cms` to connect and seed CMS content.
+
 ## 🚀 Features
 
 ### Current Features

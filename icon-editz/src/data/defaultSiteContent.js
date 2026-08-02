@@ -1,4 +1,4 @@
-import { defaultServicesPage } from './defaultServicesPage'
+import { defaultServicesPage } from './defaultServicesPage.js'
 
 export const defaultSiteContent = {
   servicesPage: defaultServicesPage,
