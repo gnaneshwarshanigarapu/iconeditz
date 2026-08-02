@@ -31,28 +31,34 @@ async function handleGetProducts(req, res) {
         return res.json({ data: data ?? [] });
 }
 
-// The detail endpoint fetches publication state as well, so the UI can give a
-// useful unpublished message rather than mistaking the record for missing.
+// Store detail URLs are UUID-based. Publication state is selected so this
+// service-role query can apply the same visibility rules as public RLS.
 export async function handleGetProduct(req, res, requestedId = req.query.id) {
-    const productId = requestedId;
-    console.log('Requested product:', productId);
-    if (!productId) return res.status(400).json({ success: false, error: 'Product ID is required' });
+    const productId = typeof requestedId === 'string' ? requestedId : '';
+    const isAdmin = (await tryAuthenticate(req))?.role === 'admin';
+    if (!productId) return res.status(400).json({ success: false, code: 'INVALID_UUID', error: 'Product ID is required' });
+
+    // Store URLs are UUID-based (/store/:productId), not slug-based. Do not
+    // fall back to slug here: mixing identifiers can return the wrong product.
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(productId)) {
+        return res.status(400).json({ success: false, code: 'INVALID_UUID', error: 'Invalid product ID' });
+    }
 
     // These are all product-detail fields that exist in the products schema.
     // `thumbnail_path` is the database column; it is also exposed as
     // `thumbnail` below for the client-facing product shape.
-    const { data, error } = await supabaseAdmin.from('products')
-        .select('id,title,description,price,discount_price,thumbnail_path,demo_video,category,published,status,features,tags,screenshots')
-        .eq('id', productId)
-        .maybeSingle();
-    console.log('Supabase data:', data);
-    console.log('Supabase error:', error);
+    const select = 'id,title,description,price,discount_price,thumbnail_path,demo_video,category,published,status,deleted_at,features,tags,screenshots';
+    const { data, error } = await supabaseAdmin.from('products').select(select).eq('id', productId).maybeSingle();
     if (error) {
-        console.error('Supabase error:', error);
         return res.status(500).json({ success: false, error: error.message, details: error });
     }
-    if (!data) return res.status(404).json({ success: false, error: 'Product not found' });
-    return res.json({ success: true, product: { ...data, thumbnail: data.thumbnail_path } });
+    if (!data) return res.status(404).json({ success: false, code: 'PRODUCT_NOT_FOUND', error: 'Product not found' });
+    if (data.deleted_at) return res.status(404).json({ success: false, code: 'PRODUCT_DELETED', error: 'Product has been deleted' });
+    if (!isAdmin && (data.published !== true || data.status !== 'published')) {
+        return res.status(404).json({ success: false, code: 'PRODUCT_DRAFT', error: 'Product is not published' });
+    }
+    return res.json({ success: true, product: { ...data, thumbnail: data.thumbnail_path, adminPreview: isAdmin } });
 }
 
 async function handleAdminProductActions(req, res) {

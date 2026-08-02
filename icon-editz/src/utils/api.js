@@ -39,8 +39,8 @@ export const request = async (endpoint, options = {}) => {
 
     if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
-        const error = new Error(errorPayload.error?.message || errorPayload.message || 'An unknown API error occurred.');
-        error.code = errorPayload.error?.code;
+        const error = new Error(typeof errorPayload.error === 'string' ? errorPayload.error : errorPayload.error?.message || errorPayload.message || 'An unknown API error occurred.');
+        error.code = errorPayload.code || errorPayload.error?.code;
         error.status = response.status;
         throw error;
     }

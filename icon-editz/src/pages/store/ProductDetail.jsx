@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import CheckoutModal from '../../components/store/CheckoutModal'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
+import { request } from '../../utils/api'
 
 const fallbackImage = '/assets/images/og-icon-editz.png'
 
@@ -32,24 +33,25 @@ export default function ProductDetail() {
     setNotFoundReason('')
     setProduct(null)
     setUnpublished(false)
-    console.log('Route param:', id)
     if (!id) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
     const url = `/api/products/${encodeURIComponent(id)}`
-    console.log('Fetching:', url)
-    fetch(url)
-      .then(async (response) => {
-        console.log('Status:', response.status)
-        console.log(await response.clone().text())
-        const payload = await response.json().catch(() => null)
-        if (!response.ok) {
-          const error = new Error(payload?.error || payload?.message || 'Unable to load product.')
-          error.status = response.status
-          throw error
-        }
+    request(url)
+      .then((payload) => {
         return payload?.product
       })
-      .then((item) => { if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('Product not found'); if (item && (item.published !== true || item.status !== 'published')) setUnpublished(true) } })
-      .catch((error) => { if (active) { setNotFound(true); setNotFoundReason(error.status === 404 ? 'Product not found' : 'The product could not be loaded. Please try again.') } })
+      .then((item) => { if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('Product not found'); if (item && !item.adminPreview && (item.published !== true || item.status !== 'published')) setUnpublished(true) } })
+      .catch((error) => {
+        if (!active) return
+        const reason = error.code === 'INVALID_UUID'
+          ? 'The product URL contains an invalid ID.'
+          : error.code === 'PRODUCT_DRAFT'
+            ? 'This product is not published.'
+            : error.code === 'PRODUCT_DELETED'
+              ? 'This product has been deleted.'
+              : error.status === 404 ? 'Product not found' : 'The product could not be loaded. Please try again.'
+        setNotFound(true)
+        setNotFoundReason(reason)
+      })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [id])
