@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
-import { authenticate } from '../server/lib/auth.js';
-import { ensureDefaultAdmin } from '../server/lib/defaultAdmin.js';
-import { withApi } from '../server/lib/handler.js';
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
+import { authenticate } from '../lib/auth.js';
+import { ensureDefaultAdmin } from '../lib/defaultAdmin.js';
+import { withApi } from '../lib/handler.js';
 
 let publicSupabase
 const getPublicSupabase = () => {

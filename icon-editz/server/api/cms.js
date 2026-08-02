@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
-import { authorizeAdmin } from '../server/lib/auth.js';
-import { withApi } from '../server/lib/handler.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
+import { authorizeAdmin } from '../lib/auth.js';
+import { withApi } from '../lib/handler.js'
 
 const HIRE_PAGE = 'Hire From Us'
 const hireSection = (section, content, published) => ({ page: HIRE_PAGE, section_key: section, content, status: published ? 'published' : 'draft' })

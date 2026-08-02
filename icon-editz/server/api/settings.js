@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { authorizeAdmin } from '../server/lib/auth.js'
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { withApi } from '../server/lib/handler.js'
+import { authorizeAdmin } from '../lib/auth.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { withApi } from '../lib/handler.js'
 
 async function getSettings(req, res) {
   await authorizeAdmin(req)

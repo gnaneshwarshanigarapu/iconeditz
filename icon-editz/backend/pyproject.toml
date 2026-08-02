@@ -1,9 +1,0 @@
-[project]
-name = "icon-editz-api"
-version = "0.1.0"
-description = "Incremental FastAPI backend for Icon Editz"
-requires-python = ">=3.11"
-dependencies = []
-
-[tool.uvicorn]
-factory = false

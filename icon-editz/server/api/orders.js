@@ -1,11 +1,11 @@
 import crypto from 'node:crypto'
 import { createRequire } from 'node:module'
 import { z } from 'zod'
-import { authenticate } from '../server/lib/auth.js'
-import { withApi } from '../server/lib/handler.js'
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { createDelivery, sendDeliveryEmail } from '../server/lib/delivery.js'
-import { sendMetaPurchase } from '../server/lib/metaCapi.js'
+import { authenticate } from '../lib/auth.js'
+import { withApi } from '../lib/handler.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { createDelivery, sendDeliveryEmail } from '../lib/delivery.js'
+import { sendMetaPurchase } from '../lib/metaCapi.js'
 
 const checkoutSchema = z.object({
   productId: z.string().uuid(),
@@ -27,7 +27,13 @@ const Razorpay = require("razorpay")
 let razorpayClient
 
 const getRazorpay = () => {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) throw httpError('Razorpay is not configured', 500)
+  const keyIdPresent = Boolean(process.env.RAZORPAY_KEY_ID)
+  const secretPresent = Boolean(process.env.RAZORPAY_KEY_SECRET)
+  console.info(JSON.stringify({ event: 'razorpay_configuration_check', key_id_present: keyIdPresent, key_secret_present: secretPresent }))
+  if (!keyIdPresent || !secretPresent) {
+    console.error(JSON.stringify({ event: 'razorpay_configuration_missing', missing: [!keyIdPresent && 'RAZORPAY_KEY_ID', !secretPresent && 'RAZORPAY_KEY_SECRET'].filter(Boolean) }))
+    throw httpError('Payment service temporarily unavailable.', 503)
+  }
   razorpayClient ||= new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -95,7 +101,6 @@ async function createOrder(req, res) {
     })
   }
 
-  console.info(JSON.stringify({ event: 'razorpay_order_create', productId: product.id, amount }))
   const receipt = databaseOrder.id
   let razorpayOrder
   try {
@@ -106,16 +111,9 @@ async function createOrder(req, res) {
     })
     razorpayOrder = order
   } catch (error) {
-    console.error(JSON.stringify({ event: 'razorpay_order_create_failed', status: error.statusCode, message: error.message }))
-
-    return res.status(500).json({
-      success: false,
-      source: "razorpay",
-      statusCode: error.statusCode,
-      message: error.message,
-      error: error.error,
-      response: error.response,
-    })
+    console.error(JSON.stringify({ event: 'razorpay_order_create_failed', status: error.statusCode || error.status, message: error.message, error: error.error, response: error.response }))
+    await supabaseAdmin.from('orders').delete().eq('id', databaseOrder.id)
+    return res.status(error.statusCode === 401 || error.status === 401 ? 503 : 502).json({ success: false, message: 'Payment service temporarily unavailable.' })
   }
   if (!razorpayOrder?.id) throw new Error('Razorpay returned an invalid order response')
 

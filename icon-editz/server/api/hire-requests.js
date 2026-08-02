@@ -1,8 +1,8 @@
 import multer from 'multer'
 import crypto from 'node:crypto'
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { authorizeAdmin } from '../server/lib/auth.js'
-import { withApi } from '../server/lib/handler.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { authorizeAdmin } from '../lib/auth.js'
+import { withApi } from '../lib/handler.js'
 
 export const config = { api: { bodyParser: false } }
 

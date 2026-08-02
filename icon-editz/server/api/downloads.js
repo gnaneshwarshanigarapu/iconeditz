@@ -1,8 +1,8 @@
-import { authenticate } from '../server/lib/auth.js'
-import { withApi } from '../server/lib/handler.js'
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { createDelivery } from '../server/lib/delivery.js'
-import { getIpAddress } from '../server/lib/ip.js'
+import { authenticate } from '../lib/auth.js'
+import { withApi } from '../lib/handler.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { createDelivery } from '../lib/delivery.js'
+import { getIpAddress } from '../lib/ip.js'
 
 async function createDownload(req, res) {
   const user = await authenticate(req)

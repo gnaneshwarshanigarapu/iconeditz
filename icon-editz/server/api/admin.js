@@ -1,8 +1,8 @@
 import crypto from 'node:crypto'
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { authorizeAdmin } from '../server/lib/auth.js'
-import { withApi } from '../server/lib/handler.js'
-import { getIpAddress } from '../server/lib/ip.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { authorizeAdmin } from '../lib/auth.js'
+import { withApi } from '../lib/handler.js'
+import { getIpAddress } from '../lib/ip.js'
 
 const hash = (value) => value ? crypto.createHash('sha256').update(String(value).toLowerCase()).digest('hex') : undefined
 

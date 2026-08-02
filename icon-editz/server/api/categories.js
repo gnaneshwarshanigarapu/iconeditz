@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { authorizeAdmin, tryAuthenticate } from '../server/lib/auth.js'
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js'
-import { withApi } from '../server/lib/handler.js'
+import { authorizeAdmin, tryAuthenticate } from '../lib/auth.js'
+import { supabaseAdmin } from '../lib/supabaseAdmin.js'
+import { withApi } from '../lib/handler.js'
 
 const categorySchema = z.object({ name: z.string().trim().min(1).max(100), slug: z.string().trim().min(1).max(120).optional() })
 const slugify = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')

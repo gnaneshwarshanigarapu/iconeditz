@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
-import { authorizeAdmin, tryAuthenticate } from '../server/lib/auth.js';
-import { withApi } from '../server/lib/handler.js';
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
+import { authorizeAdmin, tryAuthenticate } from '../lib/auth.js';
+import { withApi } from '../lib/handler.js';
 
 const productSchema = z.object({
     id: z.union([z.string(), z.number()]).optional(),

@@ -15,7 +15,7 @@ async function readApiResponse(response) {
     }
   }
 
-  if (!response.ok) throw new Error(data.error?.message || data.message || text || `Server error (${response.status})`)
+  if (!response.ok) throw new Error(data.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.')
   return data
 }
 
@@ -101,8 +101,7 @@ export default function CheckoutModal({ product, onClose }) {
               throw new Error(verifyData.message || 'Payment verification failed.');
             }
           } catch (err) {
-            console.error(err);
-            setStatusMessage(err.message || 'Error verifying payment. Please contact support.');
+            setStatusMessage(err.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.');
             setStatusType('error');
           }
         },
@@ -126,7 +125,7 @@ export default function CheckoutModal({ product, onClose }) {
 
       const rzp1 = new window.Razorpay(options);
       rzp1.on('payment.failed', function (response){
-        setStatusMessage(`Payment Failed: ${response.error.description}`);
+        setStatusMessage('Payment could not be completed. Please try again in a few minutes.');
         setStatusType('error');
         setLoading(false);
       });
@@ -136,8 +135,7 @@ export default function CheckoutModal({ product, onClose }) {
       setStatusMessage(''); // Clear loading text when Razorpay modal opens
 
     } catch (err) {
-      console.error(err);
-      setStatusMessage(err.message || 'An unexpected error occurred.');
+      setStatusMessage(err.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.');
       setStatusType('error');
       setLoading(false);
     }

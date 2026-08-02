@@ -4,12 +4,11 @@
   "devCommand": "npm run dev",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.py": {
-      "excludeFiles": "{src/**,public/**,dist/**,node_modules/**,backend/tests/**,frontend/**,shared/**,supabase/**,fontawesome-free-6.7.2-web/**,**/__pycache__/**,**/*.py[cod],**/*.map,**/*.log,**/*.md}"
-    }
-  },
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index?route=:path*"
+    },
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
