@@ -3,12 +3,7 @@ name = "icon-editz-api"
 version = "0.1.0"
 description = "Incremental FastAPI backend for Icon Editz"
 requires-python = ">=3.11"
-dependencies = [
-  "fastapi>=0.115,<1.0",
-  "uvicorn[standard]>=0.30,<1.0",
-  "pydantic-settings>=2.6,<3.0",
-  "supabase>=2.10,<3.0",
-]
+dependencies = []
 
 [tool.uvicorn]
 factory = false

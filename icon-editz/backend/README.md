@@ -8,7 +8,7 @@ This directory is additive. The Vercel functions in `../api` are still the produ
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e .
+pip install -r ..\requirements.txt
 Copy-Item .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
