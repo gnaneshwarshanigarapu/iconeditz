@@ -30,6 +30,11 @@ dist-ssr
 .vercel/
 coverage/
 
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+backend/.venv/
+
 # IDE
 .idea/
 .vscode/

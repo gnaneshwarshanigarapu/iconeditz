@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { Eye, EyeOff } from 'lucide-react'
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState('admin@iconeditz.com')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -57,7 +57,7 @@ export default function AdminLogin() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded-2xl border border-primary/20 bg-background/80 px-4 py-3 text-text outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-              placeholder="admin@example.com"
+              placeholder="admin@iconeditz.com"
             />
           </div>
 

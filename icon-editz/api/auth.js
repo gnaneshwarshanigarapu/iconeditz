@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '../server/lib/supabaseAdmin.js';
 import { authenticate } from '../server/lib/auth.js';
+import { ensureDefaultAdmin } from '../server/lib/defaultAdmin.js';
 import { withApi } from '../server/lib/handler.js';
 
 let publicSupabase
@@ -36,6 +37,11 @@ async function handleAuth(req, res) {
 
     if (req.method === 'POST') {
         const { action } = req.body;
+
+        if (action === 'bootstrap-admin') {
+            await ensureDefaultAdmin();
+            return res.json({ success: true });
+        }
 
         if (action === 'logout') {
             await authenticate(req); // Ensure user is logged in to log out

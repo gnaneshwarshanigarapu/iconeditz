@@ -1,0 +1,24 @@
+# Build outputs and package caches are recreated by Vercel.
+dist
+node_modules
+.vite
+
+# Do not upload local Python artifacts or backend tests.
+backend/.venv
+backend/tests
+**/__pycache__
+**/*.py[cod]
+
+# Non-runtime migration placeholders and documentation.
+frontend
+shared
+fontawesome-free-6.7.2-web
+*.md
+deploy-debug.txt
+
+# Editor, source-control, and transient files.
+.git
+.github
+.vscode
+*.log
+*.map
