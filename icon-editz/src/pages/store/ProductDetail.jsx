@@ -34,7 +34,7 @@ export default function ProductDetail() {
     setProduct(null)
     setUnpublished(false)
     if (!id) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
-    const url = `/api/products/${encodeURIComponent(id)}`
+    const url = `/api/products?id=${encodeURIComponent(id)}`
     request(url)
       .then((payload) => {
         return payload?.product

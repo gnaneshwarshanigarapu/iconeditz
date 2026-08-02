@@ -16,7 +16,7 @@ export function ProductsProvider({ children }) {
   const getPublishedProducts = useCallback(async () => (await getProducts()).data, [getProducts])
   const getProduct = useCallback(async (id) => {
     if (!id) return null
-    const response = await request(`/api/products/${encodeURIComponent(id)}`)
+    const response = await request(`/api/products?id=${encodeURIComponent(id)}`)
     return response.product ? normalize(response.product) : null
   }, [])
   const toRecord = (product) => ({ ...product, thumbnail_path: product.thumbnail || product.image || null, demo_video: product.demoVideo || null, discount_price: product.discountPrice == null || product.discountPrice === '' ? null : Number(product.discountPrice), published: product.status ? product.status === 'published' : Boolean(product.published), status: product.status || (product.published ? 'published' : 'draft') })
