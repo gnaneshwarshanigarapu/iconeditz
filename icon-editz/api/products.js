@@ -13,6 +13,8 @@ const productSchema = z.object({
 }).passthrough();
 
 async function handleGetProducts(req, res) {
+        const productId = req.query.id;
+        if (productId) return handleGetProduct(req, res, productId);
         const user = await tryAuthenticate(req);
         let query = supabaseAdmin.from('products').select('*').order('created_at', { ascending: false });
 
@@ -27,6 +29,24 @@ async function handleGetProducts(req, res) {
         const { data, error } = await query;
         if (error) throw error;
         return res.json({ data: data ?? [] });
+}
+
+// The detail endpoint fetches publication state as well, so the UI can give a
+// useful unpublished message rather than mistaking the record for missing.
+export async function handleGetProduct(req, res, requestedId = req.query.id) {
+    const productId = requestedId;
+    console.log('Requested product:', productId);
+    if (!productId) return res.status(400).json({ success: false, error: 'Product ID is required' });
+
+    const { data, error } = await supabaseAdmin.from('products').select('*').eq('id', productId).maybeSingle();
+    console.log('Supabase result:', data);
+    console.log('Supabase error:', error);
+    if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+    }
+    if (!data) return res.status(404).json({ success: false, error: 'Product not found' });
+    return res.json({ success: true, data });
 }
 
 async function handleAdminProductActions(req, res) {

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useProducts } from '../../hooks/useProducts'
 import CheckoutModal from '../../components/store/CheckoutModal'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
@@ -11,14 +10,18 @@ function NotFound({ reason }) {
   return <div className="mx-auto max-w-7xl px-4 py-32 text-center sm:px-6 lg:px-8"><h2 className="mb-4 text-3xl font-bold text-white">Product Not Found</h2><p className="mb-8 text-text-muted">{reason || 'The product does not exist or is not published.'}</p><Link to="/store" className="rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary-hover">Back to Store</Link></div>
 }
 
+function Unpublished() {
+  return <div className="mx-auto max-w-7xl px-4 py-32 text-center sm:px-6 lg:px-8"><h2 className="mb-4 text-3xl font-bold text-white">This product is not published.</h2><Link to="/store" className="rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary-hover">Back to Store</Link></div>
+}
+
 export default function ProductDetail() {
   // This name intentionally matches StoreRoutes: /store/:productId.
   const { productId } = useParams()
-  const { getProduct } = useProducts()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [notFoundReason, setNotFoundReason] = useState('')
+  const [unpublished, setUnpublished] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
 
@@ -28,17 +31,46 @@ export default function ProductDetail() {
     setNotFound(false)
     setNotFoundReason('')
     setProduct(null)
+    setUnpublished(false)
     if (!productId) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
-    if (import.meta.env.DEV) console.debug('[ProductDetail] loading product', { productId, query: 'products.id + published + status + deleted_at' })
-    getProduct(productId)
-      .then((item) => { if (import.meta.env.DEV) console.debug('[ProductDetail] query result', { productId, data: item }); if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('No published product matches this ID.') } })
-      .catch((error) => { if (import.meta.env.DEV) console.debug('[ProductDetail] query error', { productId, error }); if (active) { setNotFound(true); setNotFoundReason('The product could not be loaded. Please try again.') } })
+    const url = `/api/products/${encodeURIComponent(productId)}`
+    console.log('Product ID:', productId)
+    console.log('Fetch URL:', url)
+    fetch(url)
+      .then(async (response) => {
+        console.log('Response:', response.status)
+        console.log(await response.clone().text())
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) {
+          const error = new Error(payload?.error || payload?.message || 'Unable to load product.')
+          error.status = response.status
+          throw error
+        }
+        return payload?.data
+      })
+      .then((item) => { if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('Product not found'); if (item && (item.published !== true || item.status !== 'published')) setUnpublished(true) } })
+      .catch((error) => { if (active) { setNotFound(true); setNotFoundReason(error.status === 404 ? 'Product not found' : 'The product could not be loaded. Please try again.') } })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [getProduct, productId])
+  }, [productId])
+
+  // These effects must be declared before early returns to preserve hook order.
+  useEffect(() => {
+    if (!product || unpublished) return
+    metaEvent('ViewContent', commerceData(product))
+    trackGaCommerce('view_item', product)
+  }, [product, unpublished])
+
+  useEffect(() => {
+    if (showCheckout && product && !unpublished) {
+      metaEvent('AddToCart', commerceData(product))
+      trackGaCommerce('add_to_cart', product)
+    }
+  }, [showCheckout, product, unpublished])
 
   if (loading) return <div className="mx-auto max-w-7xl px-4 py-32 text-center text-text-muted sm:px-6 lg:px-8">Loading product…</div>
   if (notFound || !product) return <NotFound reason={notFoundReason} />
+  if (unpublished) return <Unpublished />
 
   const title = product.title || 'Untitled product'
   const image = product.thumbnail_path || product.thumbnail || product.image || fallbackImage
@@ -49,18 +81,6 @@ export default function ProductDetail() {
   const price = Number(product.price || 0)
   const discountPrice = product.discount_price ?? product.discountPrice
   const payablePrice = Number(discountPrice ?? price)
-
-  useEffect(() => {
-    metaEvent('ViewContent', commerceData(product))
-    trackGaCommerce('view_item', product)
-  }, [product])
-
-  useEffect(() => {
-    if (showCheckout) {
-      metaEvent('AddToCart', commerceData(product))
-      trackGaCommerce('add_to_cart', product)
-    }
-  }, [showCheckout, product])
 
   return <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
     <div className="mb-8"><Link to="/store" className="inline-flex items-center text-primary transition-colors hover:text-primary-hover"><svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Back to Store</Link></div>
