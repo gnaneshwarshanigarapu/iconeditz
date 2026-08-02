@@ -196,7 +196,7 @@ import Razorpay from 'razorpay'
 
 const handlePayment = async (amount) => {
   const options = {
-    key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+    key: order.key_id,
     amount: amount * 100, // Convert to paise
     currency: 'INR',
     name: 'Icon Editz',

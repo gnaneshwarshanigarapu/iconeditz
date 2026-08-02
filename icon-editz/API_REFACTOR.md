@@ -45,7 +45,7 @@ There were no standalone newsletter, download, category, image, footer, CTA, leg
 ## Response and deployment guarantees
 
 - Every endpoint success and failure path returns a JSON response; former `204` empty responses were replaced with `{ "success": true }`.
-- Razorpay keys remain server-only. The browser only uses `VITE_RAZORPAY_KEY_ID`.
+- Razorpay keys remain server-only. The server returns the public key with a successfully-created checkout order; the secret is never returned.
 - The retained R2 upload endpoint now uses the installed S3-compatible client and fails explicitly when its R2 environment variables are missing; it no longer returns a placeholder URL.
 - The consolidated root `.env.example` is the sole server environment template; the duplicate `api/.env.example` was removed.
 - With seven files in `api/`, this project is below Vercel Hobby's 12 Serverless Function limit while retaining its API capabilities.

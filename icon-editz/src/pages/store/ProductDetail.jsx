@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import CheckoutModal from '../../components/store/CheckoutModal'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
-import { request } from '../../utils/api'
+import { useProduct } from '../../hooks/useProduct'
 
 const fallbackImage = '/assets/images/og-icon-editz.png'
 
@@ -18,43 +18,12 @@ function Unpublished() {
 export default function ProductDetail() {
   // This name intentionally matches StoreRoutes: /store/:productId.
   const { productId: id } = useParams()
-  const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
-  const [notFoundReason, setNotFoundReason] = useState('')
-  const [unpublished, setUnpublished] = useState(false)
+  const { data: product, isLoading: loading, error } = useProduct(id)
   const [isPlaying, setIsPlaying] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
 
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setNotFound(false)
-    setNotFoundReason('')
-    setProduct(null)
-    setUnpublished(false)
-    if (!id) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
-    const url = `/api/products?id=${encodeURIComponent(id)}`
-    request(url)
-      .then((payload) => {
-        return payload?.product
-      })
-      .then((item) => { if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('Product not found'); if (item && !item.adminPreview && (item.published !== true || item.status !== 'published')) setUnpublished(true) } })
-      .catch((error) => {
-        if (!active) return
-        const reason = error.code === 'INVALID_UUID'
-          ? 'The product URL contains an invalid ID.'
-          : error.code === 'PRODUCT_DRAFT'
-            ? 'This product is not published.'
-            : error.code === 'PRODUCT_DELETED'
-              ? 'This product has been deleted.'
-              : error.status === 404 ? 'Product not found' : 'The product could not be loaded. Please try again.'
-        setNotFound(true)
-        setNotFoundReason(reason)
-      })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [id])
+  const unpublished = Boolean(product && !product.adminPreview && (product.published !== true || product.status !== 'published'))
+  const notFoundReason = !id ? 'The product URL is missing an ID.' : error?.code === 'INVALID_UUID' ? 'The product URL contains an invalid ID.' : error?.code === 'PRODUCT_DRAFT' ? 'This product is not published.' : error?.code === 'PRODUCT_DELETED' ? 'This product has been deleted.' : error?.status === 404 ? 'Product not found' : error ? 'The product could not be loaded. Please try again.' : 'Product not found'
 
   // These effects must be declared before early returns to preserve hook order.
   useEffect(() => {
@@ -71,7 +40,7 @@ export default function ProductDetail() {
   }, [showCheckout, product, unpublished])
 
   if (loading) return <div className="mx-auto max-w-7xl px-4 py-32 text-center text-text-muted sm:px-6 lg:px-8">Loading product…</div>
-  if (notFound || !product) return <NotFound reason={notFoundReason} />
+  if (error || !product) return <NotFound reason={notFoundReason} />
   if (unpublished) return <Unpublished />
 
   const title = product.title || 'Untitled product'

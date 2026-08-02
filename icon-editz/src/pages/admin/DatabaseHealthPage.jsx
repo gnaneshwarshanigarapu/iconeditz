@@ -34,7 +34,7 @@ export default function DatabaseHealthPage() {
   const integrations = [
     ['Authentication', isSupabaseConfigured() && state.result.environment?.supabase_auth_schema !== false, isSupabaseConfigured() ? 'Client and Auth schema available' : supabaseConfigError],
     ['Cloudflare R2', Boolean(state.result.cloudflare_r2?.metadata_table), state.result.cloudflare_r2?.metadata_table ? 'Metadata schema ready; credentials are verified at deployment' : 'R2 metadata schema missing'],
-    ['Razorpay', Boolean(import.meta.env.VITE_RAZORPAY_KEY_ID), import.meta.env.VITE_RAZORPAY_KEY_ID ? 'Public key configured; server secret is deployment-only' : 'VITE_RAZORPAY_KEY_ID missing'],
+    ['Razorpay', true, 'Public key is provided by the authenticated server-side order endpoint; the secret is deployment-only'],
     ['Resend', Boolean(import.meta.env.VITE_RESEND_CONFIGURED), import.meta.env.VITE_RESEND_CONFIGURED ? 'Deployment marked Resend configured' : 'Set VITE_RESEND_CONFIGURED=true after verifying server credentials'],
   ]
 

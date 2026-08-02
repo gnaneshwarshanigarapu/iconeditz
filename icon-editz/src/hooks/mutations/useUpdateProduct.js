@@ -1,0 +1,1 @@
+export { useUpdateProduct } from './index'

@@ -1,23 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth'; // Assuming you have a useAuth hook
-import { getToken } from '../../utils/api'
+import { useCreateOrder } from '../../hooks/mutations/useCreateOrder'
+import { useVerifyPayment } from '../../hooks/mutations/useVerifyPayment'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
-
-async function readApiResponse(response) {
-  const text = await response.text()
-  let data = {}
-  if (text) {
-    try {
-      data = JSON.parse(text)
-    } catch {
-      data = {}
-    }
-  }
-
-  if (!response.ok) throw new Error(data.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.')
-  return data
-}
 
 export default function CheckoutModal({ product, onClose }) {
   const { user } = useAuth(); // Get authenticated user
@@ -30,6 +16,8 @@ export default function CheckoutModal({ product, onClose }) {
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState(''); // 'error', 'success', 'info'
   const [purchase, setPurchase] = useState(null)
+  const createOrder = useCreateOrder()
+  const verifyPayment = useVerifyPayment()
 
   const amount = product.discountPrice || product.price;
 
@@ -43,33 +31,17 @@ export default function CheckoutModal({ product, onClose }) {
     setLoading(true);
 
     try {
-      const accessToken = await getToken()
-      if (!accessToken) throw new Error('Your session has expired. Please sign in again.')
-      const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` }
-      if (!import.meta.env.VITE_RAZORPAY_KEY_ID) throw new Error('Payments are not configured. Please contact support.')
       if (!window.Razorpay) throw new Error('Razorpay Checkout could not be loaded. Please refresh and try again.')
 
       // The server calculates the product price and creates both the local and Razorpay orders.
-      const createOrderRequest = {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          productId: product.id,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-        }),
-      }
-      const razorpayOrderResponse = await fetch('/api/orders', createOrderRequest)
-      
-      const razorpayOrder = await readApiResponse(razorpayOrderResponse, { url: '/api/orders', ...createOrderRequest })
+      const razorpayOrder = await createOrder.mutateAsync({ productId: product.id, name: formData.name, email: formData.email, phone: formData.phone })
       metaEvent('InitiateCheckout', commerceData(product)); trackGaCommerce('begin_checkout', product)
-      if (!razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
+      if (!razorpayOrder.key_id || !razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
 
       // Step 3: Setup Razorpay options and open the modal
       let paymentReceived = false;
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: razorpayOrder.key_id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         name: 'Icon Editz',
@@ -79,18 +51,7 @@ export default function CheckoutModal({ product, onClose }) {
           paymentReceived = true;
           setStatusMessage('Verifying payment...');
           try {
-            const verifyRequest = {
-              method: 'PUT',
-              headers: authHeaders,
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              })
-            }
-            const verifyRes = await fetch('/api/orders', verifyRequest)
-
-            const verifyData = await readApiResponse(verifyRes, { url: '/api/orders', ...verifyRequest })
+            const verifyData = await verifyPayment.mutateAsync({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature })
             if (verifyData.success) {
               setPurchase(verifyData)
               metaEvent('Purchase', commerceData(product), verifyData.eventId)

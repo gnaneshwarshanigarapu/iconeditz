@@ -1,0 +1,1 @@
+import { useQuery } from '@tanstack/react-query'; import { api } from '../services/api'; import { queryKeys } from '../constants/queryKeys'; export const useSettings = () => useQuery({ queryKey: queryKeys.settings, queryFn: async () => (await api.get('/api/settings')).data || {} })

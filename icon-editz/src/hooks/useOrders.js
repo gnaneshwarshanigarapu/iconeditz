@@ -1,0 +1,1 @@
+import { useQuery } from '@tanstack/react-query'; import { api } from '../services/api'; import { queryKeys } from '../constants/queryKeys'; export const useOrders = () => useQuery({ queryKey: queryKeys.orders(), queryFn: () => api.get('/api/orders') })

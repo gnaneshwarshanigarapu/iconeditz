@@ -1,0 +1,1 @@
+export { useUpdateSettings } from './index'

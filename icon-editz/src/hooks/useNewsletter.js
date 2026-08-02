@@ -1,0 +1,1 @@
+import { useQuery } from '@tanstack/react-query'; import { api } from '../services/api'; import { queryKeys } from '../constants/queryKeys'; export const useNewsletter = () => useQuery({ queryKey: queryKeys.newsletter, queryFn: async () => (await api.get('/api/newsletter')).data || [] })

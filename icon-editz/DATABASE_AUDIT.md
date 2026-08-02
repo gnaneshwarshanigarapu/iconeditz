@@ -49,7 +49,7 @@ Then ensure the Vercel and local environments point at that same project. The He
 
 Required server variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `BASE_URL`, `SUPABASE_HIRE_REQUESTS_BUCKET`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RESEND_API_KEY`.
 
-Required client variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (or `VITE_SUPABASE_PUBLISHABLE_KEY`), `VITE_SUPABASE_STORAGE_BUCKET`, `VITE_RAZORPAY_KEY_ID`.
+Required client variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (or `VITE_SUPABASE_PUBLISHABLE_KEY`), `VITE_SUPABASE_STORAGE_BUCKET`.
 
 Optional feature variables: `VITE_ENABLE_3D_BACKGROUND` and the `VITE_FIREBASE_*` group (only if Firebase functionality is enabled).
 

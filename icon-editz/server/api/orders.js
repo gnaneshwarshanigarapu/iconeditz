@@ -119,7 +119,13 @@ async function createOrder(req, res) {
 
   const { error: updateError } = await supabaseAdmin.from('orders').update({ order_id: razorpayOrder.id }).eq('id', databaseOrder.id)
   if (updateError) throw updateError
-  return res.status(201).json({ success: true, order_id: razorpayOrder.id, amount: razorpayOrder.amount, currency: razorpayOrder.currency })
+  return res.status(201).json({
+    success: true,
+    key_id: process.env.RAZORPAY_KEY_ID,
+    order_id: razorpayOrder.id,
+    amount: razorpayOrder.amount,
+    currency: razorpayOrder.currency,
+  })
 }
 
 async function verifyPayment(req, res) {

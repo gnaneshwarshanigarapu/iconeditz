@@ -181,7 +181,7 @@ Do not remove a package solely from this report without a lockfile/build verific
 
 ### Required client-side
 
-`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (or publishable-key fallback), `VITE_SUPABASE_STORAGE_BUCKET`, `VITE_RAZORPAY_KEY_ID`.
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (or publishable-key fallback), `VITE_SUPABASE_STORAGE_BUCKET`.
 
 ### Edge-only initialization
 

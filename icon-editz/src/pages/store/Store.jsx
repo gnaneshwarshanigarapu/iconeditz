@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import ProductCard from '../../components/store/ProductCard'
-import { useProducts } from '../../hooks/useProducts'
+import { useProductsQuery } from '../../hooks/useProductsQuery'
 import CmsPageContent from '../../components/CmsPageContent'
 
 const categories = ['All Assets', 'PSD', 'Wedding Invitation', 'After Effects', 'Premiere Pro', 'Photoshop', 'LUTs', 'Sound Packs']
@@ -11,17 +11,10 @@ const sorts = ['Newest', 'Oldest', 'Price Low → High', 'Price High → Low']
 const initialFilters = { query: '', category: 'All Assets', price: 'All', sort: 'Newest' }
 
 export default function Store() {
-  const { getPublishedProducts } = useProducts()
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data: products = [], isLoading: loading, error } = useProductsQuery()
   const [filters, setFilters] = useState(initialFilters)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [draft, setDraft] = useState(initialFilters)
-
-  useEffect(() => {
-    getPublishedProducts().then((data) => setProducts(data || [])).catch((err) => setError(err.message)).finally(() => setLoading(false))
-  }, [getPublishedProducts])
 
   const displayed = useMemo(() => [...products]
     .filter((item) => {
@@ -54,7 +47,7 @@ export default function Store() {
       <aside className="hidden h-fit rounded-[24px] border border-white/10 bg-white/[.055] p-5 shadow-xl backdrop-blur-xl lg:sticky lg:top-28 lg:block">
         <FilterControls filters={filters} setFilters={setFilters} />
       </aside>
-      <ProductResults loading={loading} error={error} products={displayed} />
+      <ProductResults loading={loading} error={error?.message} products={displayed} />
     </div>
 
     <AnimatePresence>

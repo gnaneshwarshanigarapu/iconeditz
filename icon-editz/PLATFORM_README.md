@@ -22,8 +22,8 @@ npm install @supabase/supabase-js @resend/node
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=public-publishable-key
 VITE_RESEND_API_KEY=your_resend_key
-RAZORPAY_KEY_ID=rzp_test_xxx
-RAZORPAY_KEY_SECRET=rzp_test_secret
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 ```
 
 Feature flags

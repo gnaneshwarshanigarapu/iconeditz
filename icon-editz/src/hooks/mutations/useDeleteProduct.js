@@ -1,0 +1,1 @@
+export { useDeleteProduct } from './index'
