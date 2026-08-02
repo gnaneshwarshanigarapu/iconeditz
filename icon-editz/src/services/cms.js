@@ -1,59 +1,24 @@
-import { useEffect, useState } from 'react'
-
-const readJson = async (response) => {
-  const text = await response.text()
-  let body = {}
-  if (text) {
-    try { body = JSON.parse(text) } catch { body = {} }
-  }
-  if (!response.ok) throw new Error(body.error?.message || body.error || body.message || text || `CMS request failed (${response.status})`)
-  return body
-}
+import { useMemo } from 'react'
+import { api } from './api'
+import { useCMS } from '../hooks/useCMS'
 
 export const getCms = async ({ page, section, slug } = {}) => {
   const params = new URLSearchParams()
   if (page) params.set('page', page)
   if (section) params.set('section', section)
   if (slug) params.set('slug', slug)
-  const data = await readJson(await fetch(`/api/cms?${params.toString()}`))
-  return data.data ?? {}
+  return (await api.get(`/api/cms?${params}`)).data ?? {}
 }
 
 export const rowsToSections = (rows) => Object.fromEntries((Array.isArray(rows) ? rows : []).map((row) => [row.section, row.content || {}]))
 
-export const useCmsPage = (page, fallback = {}) => {
-  const [data, setData] = useState(fallback)
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    let active = true
-    getCms({ page })
-      .then((rows) => {
-        const sections = rowsToSections(rows)
-        const useFallback = Object.keys(sections).length === 0
-        if (active) setData(useFallback ? fallback : sections)
-      })
-      .catch((error) => {
-        if (active) setData(fallback)
-      })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [page])
-  return { content: data, loading }
+export const useCmsPage = (page) => {
+  const query = useCMS({ page })
+  const content = useMemo(() => rowsToSections(query.data), [query.data])
+  return { content, loading: query.isLoading, error: query.error, refetch: query.refetch }
 }
 
-export const useCmsSingleton = (section, fallback = {}) => {
-  const [data, setData] = useState(fallback)
-  useEffect(() => {
-    let active = true
-    getCms({ section })
-      .then((content) => {
-        const useFallback = !content || Object.keys(content).length === 0
-        if (active) setData(useFallback ? fallback : content)
-      })
-      .catch((error) => {
-        if (active) setData(fallback)
-      })
-    return () => { active = false }
-  }, [section])
-  return data
+export const useCmsSingleton = (section) => {
+  const query = useCMS({ section })
+  return query.data || {}
 }

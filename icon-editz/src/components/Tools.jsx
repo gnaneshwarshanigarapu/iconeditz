@@ -1,11 +1,13 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { toolsData } from '../data/tools'
+import { useCmsPage } from '../services/cms'
 import { staggerContainer, fadeInUp, scaleIn } from '../utils/animations'
 import { BsCameraVideo, BsStars } from 'react-icons/bs'
 import { FiCpu, FiLayers, FiScissors } from 'react-icons/fi'
 
 export default function Tools() {
+  const { content } = useCmsPage('Homepage')
+  const toolsData = content.Tools?.items || []
   const iconMap = {
     CapCut: FiScissors,
     'Adobe Premiere Pro': FiLayers,

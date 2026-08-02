@@ -9,10 +9,11 @@ export default function ProductCard({ product }) {
   const currentPrice = salePrice ?? price
   const isFree = Number(currentPrice) === 0
   const badge = product.badge || (isFree ? 'FREE' : salePrice ? 'SALE' : product.is_new ? 'NEW' : null)
-  const share = async (event) => { event.preventDefault(); event.stopPropagation(); const url = `${window.location.origin}/store/${product.id}`; if (navigator.share) await navigator.share({ title: product.title, url }); else await navigator.clipboard?.writeText(url) }
+  const productPath = `/store/${product.slug || product.id}`
+  const share = async (event) => { event.preventDefault(); event.stopPropagation(); const url = `${window.location.origin}${productPath}`; if (navigator.share) await navigator.share({ title: product.title, url }); else await navigator.clipboard?.writeText(url) }
 
   return <article className="group relative flex h-full flex-col overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] shadow-xl shadow-black/20 backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-violet-400/35 hover:shadow-2xl hover:shadow-violet-950/40">
-    <Link to={`/store/${product.id}`} className="absolute inset-0 z-0" aria-label={`View ${product.title}`} />
+    <Link to={productPath} className="absolute inset-0 z-0" aria-label={`View ${product.title}`} />
     <div className="relative z-10 aspect-[4/5] overflow-hidden bg-[#110b1d]">
       <img src={image} alt={product.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" onError={(event) => { event.currentTarget.src = '/assets/images/og-icon-editz.png' }} />
       <div className="absolute inset-0 bg-gradient-to-t from-[#120a1d]/70 via-transparent to-transparent" />

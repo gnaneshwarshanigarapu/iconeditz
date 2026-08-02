@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Check, ChevronDown, Clapperboard, Lightbulb, MessageCircle, Palette, Play, Sparkles, Wand2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useSiteContent } from '../hooks/useSiteContent'
-import { defaultServicesPage } from '../data/defaultServicesPage'
 
 const icons = [Sparkles, Play, Wand2, Clapperboard, Palette, Lightbulb]
 const visible = (items = []) => items.filter((entry) => entry.visible && entry.status !== 'draft')
@@ -12,12 +11,7 @@ const Section = ({ label, title, children }) => <section className="relative mx-
 export default function Services() {
   const { content } = useSiteContent()
   const storedPage = content.servicesPage || {}
-  const page = {
-    ...defaultServicesPage,
-    ...storedPage,
-    hero: { ...defaultServicesPage.hero, ...storedPage.hero },
-    cta: { ...defaultServicesPage.cta, ...storedPage.cta },
-  }
+  const page = { hero: {}, cta: {}, services: [], process: [], features: [], industries: [], software: [], packages: [], faq: [], testimonials: [], ...storedPage }
   const [faq, setFaq] = useState(null)
   const [testimonial, setTestimonial] = useState(0)
   const hero = page.hero

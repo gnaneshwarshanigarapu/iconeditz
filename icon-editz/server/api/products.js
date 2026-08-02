@@ -12,6 +12,18 @@ const productSchema = z.object({
     published: z.boolean().optional(),
 }).passthrough();
 
+const slugify = (value) => String(value || 'product').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'product'
+async function uniqueSlug(value, excludeId) {
+    const base = slugify(value); let candidate = base; let suffix = 2
+    while (true) {
+        let query = supabaseAdmin.from('products').select('id').eq('slug', candidate).maybeSingle()
+        const { data, error } = await query
+        if (error) throw error
+        if (!data || data.id === excludeId) return candidate
+        candidate = `${base}-${suffix++}`
+    }
+}
+
 async function handleGetProducts(req, res) {
         const productId = req.query.id;
         if (productId) return handleGetProduct(req, res, productId);
@@ -31,25 +43,19 @@ async function handleGetProducts(req, res) {
         return res.json({ data: data ?? [] });
 }
 
-// Store detail URLs are UUID-based. Publication state is selected so this
-// service-role query can apply the same visibility rules as public RLS.
+// Public URLs use a stable slug; UUIDs remain supported for admin compatibility.
 export async function handleGetProduct(req, res, requestedId = req.query.id) {
-    const productId = typeof requestedId === 'string' ? requestedId : '';
+    const productId = typeof requestedId === 'string' ? requestedId.trim() : '';
     const isAdmin = (await tryAuthenticate(req))?.role === 'admin';
-    if (!productId) return res.status(400).json({ success: false, code: 'INVALID_UUID', error: 'Product ID is required' });
-
-    // Store URLs are UUID-based (/store/:productId), not slug-based. Do not
-    // fall back to slug here: mixing identifiers can return the wrong product.
+    if (!productId) return res.status(400).json({ success: false, code: 'INVALID_PRODUCT', error: 'Product identifier is required' });
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidPattern.test(productId)) {
-        return res.status(400).json({ success: false, code: 'INVALID_UUID', error: 'Invalid product ID' });
-    }
 
     // These are all product-detail fields that exist in the products schema.
     // `thumbnail_path` is the database column; it is also exposed as
     // `thumbnail` below for the client-facing product shape.
-    const select = 'id,title,description,price,discount_price,thumbnail_path,demo_video,category,published,status,deleted_at,features,tags,screenshots';
-    const { data, error } = await supabaseAdmin.from('products').select(select).eq('id', productId).maybeSingle();
+    const select = 'id,slug,title,description,price,discount_price,thumbnail_path,demo_video,category,published,status,deleted_at,features,tags,screenshots,seo_title,meta_description,og_image,canonical_url';
+    const lookupColumn = uuidPattern.test(productId) ? 'id' : 'slug';
+    const { data, error } = await supabaseAdmin.from('products').select(select).eq(lookupColumn, productId).maybeSingle();
     if (error) {
         return res.status(500).json({ success: false, error: error.message, details: error });
     }
@@ -70,13 +76,16 @@ async function handleAdminProductActions(req, res) {
 
     switch (req.method) {
         case 'POST': {
-            const { data, error } = await supabaseAdmin.from('products').insert(body).select().single();
+            const payload = { ...body, slug: await uniqueSlug(body.slug || body.title) };
+            const { data, error } = await supabaseAdmin.from('products').insert(payload).select().single();
             if (error) throw error;
             return res.status(201).json({ data });
         }
         case 'PUT': {
             if (!id) throw Object.assign(new Error('Product ID is required for updates'), { status: 400 });
-            const { data, error } = await supabaseAdmin.from('products').update(body).eq('id', id).select().single();
+            const payload = { ...body };
+            if (body.slug || body.title) payload.slug = await uniqueSlug(body.slug || body.title, id);
+            const { data, error } = await supabaseAdmin.from('products').update(payload).eq('id', id).select().single();
             if (error) throw error;
             return res.json({ data });
         }

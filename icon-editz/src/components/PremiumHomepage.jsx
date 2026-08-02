@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Play, Sparkles, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useSiteContent } from '../hooks/useSiteContent'
-import { defaultServicesPage } from '../data/defaultServicesPage'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import ImageWithFallback from './ui/ImageWithFallback'
 import VideoWithPlaceholder from './ui/VideoWithPlaceholder'
@@ -46,7 +45,7 @@ export default function PremiumHomepage() {
   const prefersReducedMotion = useReducedMotion()
 
   const heroBadges = content.hero.badges || []
-  const servicesPage = { ...defaultServicesPage, ...(content.servicesPage || {}) }
+  const servicesPage = content.servicesPage || {}
   const featuredServices = (servicesPage.services || []).filter((service) => service.visible && service.status !== 'draft' && service.featured).slice(0, 4)
   const visibleProjects = (content.projects.items || []).filter((item) => item.visible).slice(0, 3)
   const visibleTools = (content.tools.items || []).filter((item) => item.visible)
