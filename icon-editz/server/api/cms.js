@@ -4,6 +4,16 @@ import { authorizeAdmin } from '../lib/auth.js';
 import { withApi } from '../lib/handler.js'
 
 const HIRE_PAGE = 'Hire From Us'
+const normalizeCmsContent = (value) => {
+    if (typeof value === 'string') {
+        try {
+            return JSON.parse(value)
+        } catch {
+            return value
+        }
+    }
+    return value ?? {}
+}
 const hireSection = (section, content, published) => ({ page: HIRE_PAGE, section_key: section, content, status: published ? 'published' : 'draft' })
 
 export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
@@ -46,13 +56,13 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
                 .is('deleted_at', null)
                 .order('sort_order');
             if (error) throw error;
-            const response = { success: true, data: data ?? [] };
+            const response = { success: true, data: (data ?? []).map((row) => ({ ...row, content: normalizeCmsContent(row.content) })) };
             return res.json(response);
         }
         if (section === 'homepage') {
             const { data, error } = await supabaseAdmin.from('page_content').select('id,section,content,updated_at,status,sort_order').eq('page', 'Homepage').eq('status', 'published').is('deleted_at', null).order('sort_order');
             if (error) throw error;
-            const response = { success: true, data: data ?? [] };
+            const response = { success: true, data: (data ?? []).map((row) => ({ ...row, content: normalizeCmsContent(row.content) })) };
             return res.json(response);
         }
         if (section === 'settings') {
@@ -71,7 +81,7 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             const table = section === 'footer' ? 'footer_content' : 'cta_content';
             const { data, error } = await supabaseAdmin.from(table).select('content').eq('id', true).eq('status', 'published').is('deleted_at', null).maybeSingle();
             if (error) throw error;
-            const response = { success: true, data: data?.content ?? {} };
+            const response = { success: true, data: normalizeCmsContent(data?.content) };
             return res.json(response);
         }
         if (section === 'legal') {
@@ -89,11 +99,11 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
         const response = {
             success: true,
             data: {
-                sections: (content.data ?? []).filter((row) => !['features', 'services', 'gallery', 'faq'].includes(row.section_key)).map((row) => ({ section: row.section_key, content: row.content })),
-                features: content.data?.find((row) => row.section_key === 'features')?.content?.items ?? [],
-                services: content.data?.find((row) => row.section_key === 'services')?.content?.items ?? [],
-                gallery: content.data?.find((row) => row.section_key === 'gallery')?.content?.items ?? [],
-                faq: content.data?.find((row) => row.section_key === 'faq')?.content?.items ?? []
+                sections: (content.data ?? []).filter((row) => !['features', 'services', 'gallery', 'faq'].includes(row.section_key)).map((row) => ({ section: row.section_key, content: normalizeCmsContent(row.content) })),
+                features: normalizeCmsContent(content.data?.find((row) => row.section_key === 'features')?.content)?.items ?? [],
+                services: normalizeCmsContent(content.data?.find((row) => row.section_key === 'services')?.content)?.items ?? [],
+                gallery: normalizeCmsContent(content.data?.find((row) => row.section_key === 'gallery')?.content)?.items ?? [],
+                faq: normalizeCmsContent(content.data?.find((row) => row.section_key === 'faq')?.content)?.items ?? []
             },
         };
         return res.json(response);

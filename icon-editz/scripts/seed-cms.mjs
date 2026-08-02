@@ -43,6 +43,10 @@ if (!validateEnvironment({ checkOnly })) process.exit(1)
 if (checkOnly) process.exit(0)
 const db = createClient(url, serviceKey, { auth: { persistSession: false } })
 const isEmpty = (value) => !value || (typeof value === 'object' && Object.keys(value).length === 0)
+const upsertPageSection = async (page, section, content, sortOrder) => {
+  const { error } = await db.from('page_content').upsert({ page, section, content, status: 'published', sort_order: sortOrder }, { onConflict: 'page,section' })
+  if (error) throw error
+}
 
 const homepage = [
   ['Hero', defaultSiteContent.hero], ['Showreel', defaultSiteContent.showreel], ['Services', defaultSiteContent.services],
@@ -62,23 +66,13 @@ const pages = [
 
 for (const [page, sections] of pages) {
   for (const [sortOrder, [section, content]] of sections.entries()) {
-    const { data: existing, error: readError } = await db.from('page_content').select('id,content').eq('page', page).eq('section', section).maybeSingle()
-    if (readError) throw readError
-    if (!existing) {
-      const { error } = await db.from('page_content').insert({ page, section, content, status: 'published', sort_order: sortOrder })
-      if (error) throw error
-    } else if (isEmpty(existing.content)) {
-      const { error } = await db.from('page_content').update({ content, status: 'published', sort_order: sortOrder }).eq('id', existing.id)
-      if (error) throw error
-    }
+    await upsertPageSection(page, section, content, sortOrder)
   }
 }
 
 for (const [table, content] of [['footer_content', { brandName: defaultSiteContent.site.brandName, description: 'Creative editing, motion, and digital assets.', socialLinks: { instagram: defaultSiteContent.site.instagram, linkedin: defaultSiteContent.site.linkedin, youtube: defaultSiteContent.site.youtube }, email: defaultSiteContent.site.email, copyrightText: defaultSiteContent.site.copyright }], ['cta_content', defaultSiteContent.cta]]) {
-  const { data, error: readError } = await db.from(table).select('content').eq('id', true).maybeSingle()
-  if (readError) throw readError
-  if (!data) { const { error } = await db.from(table).insert({ id: true, content, status: 'published' }); if (error) throw error }
-  else if (isEmpty(data.content)) { const { error } = await db.from(table).update({ content, status: 'published' }).eq('id', true); if (error) throw error }
+  const { error } = await db.from(table).upsert({ id: true, content, status: 'published' }, { onConflict: 'id' })
+  if (error) throw error
 }
 
 const { data: settings, error: settingsError } = await db.from('settings').select('id,value').eq('key', 'site').maybeSingle()

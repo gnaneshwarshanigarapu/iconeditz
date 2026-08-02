@@ -10,7 +10,18 @@ export const getCms = async ({ page, section, slug } = {}) => {
   return (await api.get(`/api/cms?${params}`)).data ?? {}
 }
 
-export const rowsToSections = (rows) => Object.fromEntries((Array.isArray(rows) ? rows : []).map((row) => [row.section, row.content || {}]))
+const normalizeCmsContent = (value) => {
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value)
+    } catch {
+      return value
+    }
+  }
+  return value ?? {}
+}
+
+export const rowsToSections = (rows) => Object.fromEntries((Array.isArray(rows) ? rows : []).map((row) => [row.section, normalizeCmsContent(row.content)]))
 
 export const useCmsPage = (page) => {
   const query = useCMS({ page })
