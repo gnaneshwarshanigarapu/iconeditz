@@ -17,6 +17,11 @@ export const useSiteContent = () => {
 
   const content = useMemo(() => {
     const cmsServicesSection = servicesPage.Services || servicesPage['Services'] || {}
+    const cmsPricingSection = servicesPage.Pricing || servicesPage['Pricing'] || {}
+    const cmsFaqSection = servicesPage.FAQ || servicesPage['FAQ'] || {}
+    const cmsTestimonialsSection = servicesPage.Testimonials || servicesPage['Testimonials'] || {}
+    const cmsHeroSection = servicesPage.Hero || servicesPage['Hero'] || {}
+    const cmsCtaSection = servicesPage.CTA || servicesPage['CTA'] || {}
     const servicesPageContent = hasContent(cmsServicesSection) ? cmsServicesSection : defaultServicesPage
     const featuredServicesSection = sections['Featured Services'] || servicesPage['Featured Services']
     const homeServices = hasContent(featuredServicesSection)
@@ -33,7 +38,17 @@ export const useSiteContent = () => {
       faq: hasContent(sections.FAQ) ? sections.FAQ : defaultSiteContent.faq,
       cta: hasContent(sections.CTA) ? sections.CTA : defaultSiteContent.cta,
       site: hasContent(sections.Site) ? sections.Site : defaultSiteContent.site,
-      servicesPage: { ...defaultServicesPage, ...servicesPageContent, homeServices },
+      servicesPage: {
+        ...defaultServicesPage,
+        ...servicesPage,
+        hero: { ...defaultServicesPage.hero, ...cmsHeroSection },
+        cta: { ...defaultServicesPage.cta, ...cmsCtaSection },
+        services: hasContent(cmsServicesSection?.items) ? cmsServicesSection.items : defaultServicesPage.services,
+        packages: hasContent(cmsPricingSection?.items) ? cmsPricingSection.items : defaultServicesPage.packages,
+        faq: hasContent(cmsFaqSection?.items) ? cmsFaqSection.items : defaultServicesPage.faq,
+        testimonials: hasContent(cmsTestimonialsSection?.items) ? cmsTestimonialsSection.items : defaultServicesPage.testimonials,
+        homeServices,
+      },
     }
   }, [sections, servicesPage])
 

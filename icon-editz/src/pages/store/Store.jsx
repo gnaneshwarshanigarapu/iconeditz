@@ -80,10 +80,43 @@ function MobileFilterDrawer({ draft, setDraft, onApply, onReset, onClose }) {
 }
 
 function ProductResults({ loading, error, products }) {
-  if (loading) return <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="aspect-[4/5] animate-pulse rounded-[24px] bg-white/10" />)}</section>
-  if (error) return <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-6 text-red-200">{error}</p>
-  if (!products.length) return <div className="rounded-[24px] border border-white/10 bg-white/[.04] p-12 text-center text-white/55">No assets match these filters.</div>
-  return <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.map((product) => <ProductCard key={product.id} product={product} />)}</section>
+
+  if (loading) {
+    return (
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div
+            key={index}
+            className="aspect-[3/4] animate-pulse rounded-2xl bg-white/10"
+          />
+        ))}
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-6 text-red-200">
+        {error}
+      </p>
+    )
+  }
+
+  if (!products.length) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center text-white/60">
+        No assets match these filters.
+      </div>
+    )
+  }
+
+  return (
+    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      {products.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </section>
+  )
 }
 
 function Filter({ title, options, selected, onChange }) {

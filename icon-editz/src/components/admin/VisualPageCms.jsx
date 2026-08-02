@@ -15,6 +15,49 @@ const sectionSchema = z.object({
 
 const emptySection = { eyebrow: '', heading: '', description: '', primaryLabel: '', primaryUrl: '', secondaryLabel: '', secondaryUrl: '', imageUrl: '', videoUrl: '', status: 'draft', sortOrder: 0 }
 
+const normalizeSectionContent = (value) => {
+  if (value == null) return {}
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value)
+    } catch {
+      return { value }
+    }
+  }
+  if (Array.isArray(value)) return { items: value }
+  if (typeof value !== 'object') return {}
+  if (value.content && typeof value.content === 'object' && !Array.isArray(value.content)) {
+    return { ...value.content, ...value }
+  }
+  return value
+}
+
+const buildFormDefaults = (value, sectionName, availableSections) => {
+  const normalized = normalizeSectionContent(value)
+  const directContent = normalized.content && typeof normalized.content === 'object' && !Array.isArray(normalized.content) ? normalized.content : normalized
+  const resolvedSortOrder = directContent.sortOrder ?? normalized.sortOrder ?? availableSections.indexOf(sectionName)
+  return {
+    ...emptySection,
+    ...normalized,
+    ...directContent,
+    status: directContent.status || normalized.status || 'published',
+    sortOrder: resolvedSortOrder,
+  }
+}
+
+const mergeSectionContent = (currentContent, values) => {
+  const normalized = normalizeSectionContent(currentContent)
+  const nested = normalized.content && typeof normalized.content === 'object' && !Array.isArray(normalized.content) ? normalized.content : {}
+  const simpleFields = ['eyebrow', 'heading', 'description', 'primaryLabel', 'primaryUrl', 'secondaryLabel', 'secondaryUrl', 'imageUrl', 'videoUrl', 'status', 'sortOrder']
+  const directUpdates = Object.fromEntries(Object.entries(values).filter(([key]) => simpleFields.includes(key)))
+  const nextContent = {
+    ...normalized,
+    ...values,
+    ...(Object.keys(directUpdates).length ? { content: { ...nested, ...directUpdates } } : {}),
+  }
+  return nextContent
+}
+
 export default function VisualPageCms({ page, sections }) {
   const [active, setActive] = useState(sections[0])
   const queryClient = useQueryClient()
@@ -33,16 +76,17 @@ export default function VisualPageCms({ page, sections }) {
     }
     return current
   } })
-  const row = rows.find((item) => item.section === active)
-  const defaults = useMemo(() => ({ ...emptySection, sortOrder: sections.indexOf(active), ...(row?.content || {}) }), [row, active, sections])
+  const selectedSection = useMemo(() => rows.find((item) => item.section === active) ?? null, [rows, active])
+  const defaults = useMemo(() => buildFormDefaults(selectedSection?.content, active, sections), [selectedSection?.content, active, sections])
   const form = useForm({ resolver: zodResolver(sectionSchema), defaultValues: defaults })
   useEffect(() => form.reset(defaults), [defaults, form])
   const mutation = useMutation({ mutationFn: async (values) => {
-    const { error: requestError } = await supabase.from('page_content').upsert({ page, section: active, content: values, updated_at: new Date().toISOString() }, { onConflict: 'page,section' })
+    const nextContent = mergeSectionContent(selectedSection?.content, values)
+    const { error: requestError } = await supabase.from('page_content').upsert({ page, section: active, content: nextContent, updated_at: new Date().toISOString() }, { onConflict: 'page,section' })
     if (requestError) throw requestError
   }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['page-content', page] }); queryClient.invalidateQueries({ queryKey: ['cms'] }) } })
   const remove = useMutation({ mutationFn: async () => { const { error: requestError } = await supabase.from('page_content').delete().eq('page', page).eq('section', active); if (requestError) throw requestError }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['page-content', page] }); queryClient.invalidateQueries({ queryKey: ['cms'] }); form.reset(emptySection) } })
-  const duplicate = async () => { const values = form.getValues(); const { error: requestError } = await supabase.from('page_content').upsert({ page, section: `${active} Copy`, content: values }, { onConflict: 'page,section' }); if (requestError) return form.setError('root', { message: requestError.message }); queryClient.invalidateQueries({ queryKey: ['page-content', page] }); queryClient.invalidateQueries({ queryKey: ['cms'] }) }
+  const duplicate = async () => { const values = form.getValues(); const nextContent = mergeSectionContent(selectedSection?.content, values); const { error: requestError } = await supabase.from('page_content').upsert({ page, section: `${active} Copy`, content: nextContent }, { onConflict: 'page,section' }); if (requestError) return form.setError('root', { message: requestError.message }); queryClient.invalidateQueries({ queryKey: ['page-content', page] }); queryClient.invalidateQueries({ queryKey: ['cms'] }) }
   if (isLoading) return <div className="animate-pulse rounded-2xl bg-white/5 p-16 text-text-muted">Loading editor...</div>
   if (error) return <DatabaseSetupNotice error={error} onRetry={() => queryClient.invalidateQueries({ queryKey: ['page-content', page] })} />
   return <div className="grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)]"><aside className="rounded-2xl border border-white/10 bg-white/[.04] p-3"><p className="px-3 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted">{page}</p>{sections.map((section, index) => <button key={section} onClick={() => setActive(section)} className={`mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-3 text-left text-sm ${active === section ? 'bg-primary/20 text-white' : 'text-text-muted hover:bg-white/5 hover:text-white'}`}><GripVertical className="h-4 w-4 opacity-50" />{section}<span className="ml-auto text-xs opacity-50">{index + 1}</span></button>)}</aside><section className="rounded-2xl border border-white/10 bg-white/[.04] p-5 sm:p-7"><div className="mb-7 flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-widest text-primary">Section editor</p><h2 className="mt-1 text-2xl font-bold text-white">{active}</h2></div><div className="flex flex-wrap gap-2"><button type="button" onClick={duplicate} className="admin-button-secondary"><Copy className="h-4 w-4" />Duplicate</button><button type="button" onClick={() => remove.mutate()} className="admin-button-secondary text-red-200"><Trash2 className="h-4 w-4" />Delete</button><button form="section-form" className="admin-button-primary" disabled={mutation.isPending}><Save className="h-4 w-4" />{mutation.isPending ? 'Saving...' : 'Save'}</button></div></div><form id="section-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="space-y-6"><FormError message={form.formState.errors.root?.message || mutation.error?.message} /><div className="grid gap-4 sm:grid-cols-2"><Input label="Eyebrow" registration={form.register('eyebrow')} /><Input label="Heading" registration={form.register('heading')} /></div><TextArea label="Description" registration={form.register('description')} /><div className="grid gap-4 sm:grid-cols-2"><Input label="Primary button label" registration={form.register('primaryLabel')} /><Input label="Primary button URL" registration={form.register('primaryUrl')} /><Input label="Secondary button label" registration={form.register('secondaryLabel')} /><Input label="Secondary button URL" registration={form.register('secondaryUrl')} /></div><div className="grid gap-4 sm:grid-cols-2"><MediaField label="Image" value={form.watch('imageUrl')} onChange={(value) => form.setValue('imageUrl', value)} /><MediaField label="Video" value={form.watch('videoUrl')} onChange={(value) => form.setValue('videoUrl', value)} /></div><div className="grid gap-4 sm:grid-cols-2"><Select label="Status" registration={form.register('status')} options={['draft', 'published']} /><Input label="Sort order" type="number" registration={form.register('sortOrder')} /></div><div className="flex justify-end"><button type="button" className="admin-button-secondary"><Eye className="h-4 w-4" />Live preview</button></div></form></section></div>

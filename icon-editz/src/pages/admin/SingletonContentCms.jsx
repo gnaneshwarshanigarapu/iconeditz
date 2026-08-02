@@ -12,12 +12,30 @@ const ctaSchema = z.object({ heading: z.string().min(1), subheading: z.string().
 const footerDefaults = { brandName: 'ICON EDITZ', logo: '', description: '', address: '', email: '', phone: '', businessHours: '', newsletterTitle: '', newsletterDescription: '', newsletterButtonText: '', copyrightText: '', backgroundColor: '#0f0a1f', accentColor: '#9d5cff' }
 const ctaDefaults = { heading: '', subheading: '', primaryButton: '', primaryButtonUrl: '', secondaryButton: '', secondaryButtonUrl: '', backgroundImage: '', backgroundGradient: '', visible: true }
 
+const normalizeSingletonContent = (value, defaults) => {
+  if (value == null) return defaults
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return typeof parsed === 'object' && parsed ? { ...defaults, ...parsed } : defaults
+    } catch {
+      return { ...defaults, value }
+    }
+  }
+  if (Array.isArray(value)) return { ...defaults, items: value }
+  if (typeof value !== 'object') return defaults
+  if (value.content && typeof value.content === 'object' && !Array.isArray(value.content)) {
+    return { ...defaults, ...value.content, ...value }
+  }
+  return { ...defaults, ...value }
+}
+
 export default function SingletonContentCms({ table, title }) {
   const isFooter = table === 'footer_content'; const defaults = isFooter ? footerDefaults : ctaDefaults; const schema = isFooter ? footerSchema : ctaSchema
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useQuery({ queryKey: [table], queryFn: async () => { const { data: row, error: requestError } = await supabase.from(table).select('content').eq('id', true).maybeSingle(); if (requestError) throw requestError; if (row) return row.content; const { error: seedError } = await supabase.from(table).upsert({ id: true, content: defaults, status: 'published' }); if (seedError) throw seedError; return defaults } })
   const form = useForm({ resolver: zodResolver(schema), defaultValues: defaults })
-  useEffect(() => { if (data) form.reset({ ...defaults, ...data }) }, [data, form])
+  useEffect(() => { if (data) form.reset(normalizeSingletonContent(data, defaults)) }, [data, defaults, form])
   const save = useMutation({ mutationFn: async (content) => { const { error: requestError } = await supabase.from(table).upsert({ id: true, content, updated_at: new Date().toISOString() }); if (requestError) throw requestError }, onSuccess: () => queryClient.invalidateQueries({ queryKey: [table] }) })
   if (isLoading) return <p className="text-text-muted">Loading CMS content...</p>
   if (error) return <DatabaseSetupNotice error={error} onRetry={() => queryClient.invalidateQueries({ queryKey: [table] })} />

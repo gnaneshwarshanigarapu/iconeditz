@@ -3,10 +3,16 @@ import { motion } from 'framer-motion'
 import { useCmsPage } from '../services/cms'
 import { staggerContainer, fadeInUp, fadeInLeft, fadeInRight } from '../utils/animations'
 
+const hasContent = (value) => {
+  if (Array.isArray(value)) return value.length > 0
+  if (value && typeof value === 'object') return Object.keys(value).length > 0
+  return Boolean(value)
+}
+
 export default function About() {
   const { content } = useCmsPage('About Page')
   const hero = content.Hero || {}
-  const stats = [
+  const stats = hasContent(content.Stats?.items) ? content.Stats.items : [
     { label: 'Lyric Videos', value: '3D' },
     { label: 'Projects Done', value: '10+' },
     { label: 'Pro Tools', value: '4+' },
@@ -95,7 +101,23 @@ export default function About() {
               {/* Skills */}
               <div className="mt-8 space-y-4">
                 <h3 className="text-xl font-bold mb-6">Core Skills</h3>
-                {[
+                {(content.Skills?.items || []).length ? content.Skills.items.map((item, index) => (
+                  <div key={item.id || index}>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-text">{item.skill || item.name || item.title}</span>
+                      <span className="text-primary font-bold">{item.level || item.percentage || item.value || 0}%</span>
+                    </div>
+                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${item.level || item.percentage || item.value || 0}%` }}
+                        transition={{ duration: 0.8, delay: index * 0.1 }}
+                        viewport={{ once: true }}
+                        className="h-full bg-gradient-purple rounded-full"
+                      />
+                    </div>
+                  </div>
+                )) : [
                   { skill: 'Video Editing', level: 95 },
                   { skill: 'Motion Graphics', level: 90 },
                   { skill: 'Color Grading', level: 85 },
