@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+app/__init__.py
+app/config.py
+app/main.py
+app/api/__init__.py
+app/api/products.py
+app/schemas/__init__.py
+app/schemas/products.py
+app/services/__init__.py
+app/services/products.py
+app/services/supabase.py
+icon_editz_api.egg-info/PKG-INFO
+icon_editz_api.egg-info/SOURCES.txt
+icon_editz_api.egg-info/dependency_links.txt
+icon_editz_api.egg-info/requires.txt
+icon_editz_api.egg-info/top_level.txt

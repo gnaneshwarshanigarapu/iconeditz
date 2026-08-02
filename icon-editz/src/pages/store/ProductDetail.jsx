@@ -16,7 +16,7 @@ function Unpublished() {
 
 export default function ProductDetail() {
   // This name intentionally matches StoreRoutes: /store/:productId.
-  const { productId } = useParams()
+  const { productId: id } = useParams()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -32,13 +32,13 @@ export default function ProductDetail() {
     setNotFoundReason('')
     setProduct(null)
     setUnpublished(false)
-    if (!productId) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
-    const url = `/api/products/${encodeURIComponent(productId)}`
-    console.log('Product ID:', productId)
-    console.log('Fetch URL:', url)
+    console.log('Route param:', id)
+    if (!id) { setNotFound(true); setNotFoundReason('The product URL is missing an ID.'); setLoading(false); return undefined }
+    const url = `/api/products/${encodeURIComponent(id)}`
+    console.log('Fetching:', url)
     fetch(url)
       .then(async (response) => {
-        console.log('Response:', response.status)
+        console.log('Status:', response.status)
         console.log(await response.clone().text())
         const payload = await response.json().catch(() => null)
         if (!response.ok) {
@@ -46,13 +46,13 @@ export default function ProductDetail() {
           error.status = response.status
           throw error
         }
-        return payload?.data
+        return payload?.product
       })
       .then((item) => { if (active) { setProduct(item); setNotFound(!item); if (!item) setNotFoundReason('Product not found'); if (item && (item.published !== true || item.status !== 'published')) setUnpublished(true) } })
       .catch((error) => { if (active) { setNotFound(true); setNotFoundReason(error.status === 404 ? 'Product not found' : 'The product could not be loaded. Please try again.') } })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [productId])
+  }, [id])
 
   // These effects must be declared before early returns to preserve hook order.
   useEffect(() => {

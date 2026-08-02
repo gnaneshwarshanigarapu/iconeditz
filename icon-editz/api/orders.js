@@ -73,7 +73,6 @@ async function createOrder(req, res) {
   }
   if (!Number.isSafeInteger(amount) || amount < 100) throw httpError('The payment amount must be at least 100 paise', 400)
 
-  console.log(req.body)
   const { data: databaseOrder, error: databaseError } = await supabaseAdmin
     .from('orders')
     .insert({
@@ -96,10 +95,7 @@ async function createOrder(req, res) {
     })
   }
 
-  console.info(JSON.stringify({ event: 'razorpay_order_create', productId: product.id, amount, userId: user.sub }))
-  console.log("KEY_ID:", process.env.RAZORPAY_KEY_ID)
-  console.log("SECRET EXISTS:", !!process.env.RAZORPAY_KEY_SECRET)
-  console.log("SECRET PREFIX:", process.env.RAZORPAY_KEY_SECRET?.substring(0, 4))
+  console.info(JSON.stringify({ event: 'razorpay_order_create', productId: product.id, amount }))
   const receipt = databaseOrder.id
   let razorpayOrder
   try {
@@ -110,12 +106,7 @@ async function createOrder(req, res) {
     })
     razorpayOrder = order
   } catch (error) {
-    console.error("RAZORPAY ERROR")
-    console.error(error)
-    console.error(error.statusCode)
-    console.error(error.error)
-    console.error(error.response)
-    console.error(error.message)
+    console.error(JSON.stringify({ event: 'razorpay_order_create_failed', status: error.statusCode, message: error.message }))
 
     return res.status(500).json({
       success: false,

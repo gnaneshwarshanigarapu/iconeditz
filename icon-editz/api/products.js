@@ -38,15 +38,21 @@ export async function handleGetProduct(req, res, requestedId = req.query.id) {
     console.log('Requested product:', productId);
     if (!productId) return res.status(400).json({ success: false, error: 'Product ID is required' });
 
-    const { data, error } = await supabaseAdmin.from('products').select('*').eq('id', productId).maybeSingle();
-    console.log('Supabase result:', data);
+    // These are all product-detail fields that exist in the products schema.
+    // `thumbnail_path` is the database column; it is also exposed as
+    // `thumbnail` below for the client-facing product shape.
+    const { data, error } = await supabaseAdmin.from('products')
+        .select('id,title,description,price,discount_price,thumbnail_path,demo_video,category,published,status,features,tags,screenshots')
+        .eq('id', productId)
+        .maybeSingle();
+    console.log('Supabase data:', data);
     console.log('Supabase error:', error);
     if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        return res.status(500).json({ success: false, error: error.message, details: error });
     }
     if (!data) return res.status(404).json({ success: false, error: 'Product not found' });
-    return res.json({ success: true, data });
+    return res.json({ success: true, product: { ...data, thumbnail: data.thumbnail_path } });
 }
 
 async function handleAdminProductActions(req, res) {
