@@ -2,13 +2,15 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Loader2 } from 'lucide-react'
 import { request } from '../utils/api'
-import CmsPageContent from '../components/CmsPageContent'
+import { useCmsPage } from '../services/cms'
 
 const services = ['Video Editing', 'Motion Graphics', 'Branding', 'Logo Design', 'YouTube Editing', 'Instagram Reels', 'Wedding Editing', 'Commercial Ads', 'Other']
 const initialForm = { client_name: '', email: '', phone: '', company: '', project_type: '', budget: '', deadline: '', location: '', service: '', message: '', reference_link: '', preferred_contact: 'Email' }
 const fieldClass = 'mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/20'
 
 export default function HireFromUsPage() {
+  const { content } = useCmsPage('Hire From Us Page')
+  const hero = content.Hero || {}
   const [form, setForm] = useState(initialForm)
   const [files, setFiles] = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -32,12 +34,12 @@ export default function HireFromUsPage() {
     } catch (error) { setNotice(error.message || 'Unable to send your enquiry. Please try again.') } finally { setSubmitting(false) }
   }
 
-  return <><CmsPageContent page="Hire From Us Page" fallbackTitle="Hire From Us" fallbackDescription="Tell us about your project." /><div className="relative overflow-hidden bg-[#0b0717] py-32 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(124,58,237,.25),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(192,38,211,.16),transparent_30%)]" />
+  return <><div className="relative overflow-hidden bg-[#0b0717] py-32 text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(124,58,237,.25),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(192,38,211,.16),transparent_30%)]" />
     <div className="relative mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-[.82fr_1fr] lg:px-8">
       <motion.section initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="self-center">
         <span className="inline-flex rounded-full border border-violet-400/30 bg-violet-500/10 px-4 py-2 text-xs font-semibold tracking-[.18em] text-violet-100">BOOK ICON EDITZ</span>
-        <h1 className="mt-6 text-5xl font-semibold leading-[.96] tracking-tight sm:text-6xl">Let&apos;s Build Your<br />Next Creative<br />Project Together</h1>
-        <p className="mt-6 max-w-xl text-base leading-8 text-white/65 sm:text-lg">Tell us about your project and we&apos;ll prepare the perfect editing, motion graphics, branding, or content creation solution.</p>
+        <h1 className="mt-6 text-5xl font-semibold leading-[.96] tracking-tight sm:text-6xl">{hero.heading || 'Let\'s Build Your\nNext Creative\nProject Together'}</h1>
+        <p className="mt-6 max-w-xl text-base leading-8 text-white/65 sm:text-lg">{hero.description || 'Tell us about your project and we\'ll prepare the perfect editing, motion graphics, branding, or content creation solution.'}</p>
         <div className="mt-10 grid gap-3 sm:grid-cols-2">{['Fast Response', 'Professional Editing', 'Brand Strategy', 'Worldwide Remote Service'].map((item) => <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-xl backdrop-blur-xl"><span className="grid h-8 w-8 place-items-center rounded-full bg-violet-500/20 text-violet-200"><Check className="h-4 w-4" /></span><span className="text-sm font-semibold">{item}</span></div>)}</div>
       </motion.section>
 

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import PremiumHomepage from '../components/PremiumHomepage'
 import Seo from '../components/Seo'
 import { organization, website } from '../utils/schema'
-import CmsPageContent from '../components/CmsPageContent'
 
 export default function Home() {
   useEffect(() => {
@@ -20,7 +19,6 @@ export default function Home() {
         canonical="https://iconeditz.com/"
         schema={[organization, website]}
       />
-      <CmsPageContent page="Homepage" fallbackTitle="Icon Editz" fallbackDescription="Premium video editing and motion graphics." />
       <PremiumHomepage />
     </div>
   )

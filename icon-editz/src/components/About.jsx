@@ -1,8 +1,11 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { useCmsPage } from '../services/cms'
 import { staggerContainer, fadeInUp, fadeInLeft, fadeInRight } from '../utils/animations'
 
 export default function About() {
+  const { content } = useCmsPage('About Page')
+  const hero = content.Hero || {}
   const stats = [
     { label: 'Lyric Videos', value: '3D' },
     { label: 'Projects Done', value: '10+' },
@@ -29,7 +32,7 @@ export default function About() {
           {/* Section Title */}
           <motion.div variants={fadeInUp} className="mb-16">
             <h2 className="text-4xl md:text-5xl font-bold">
-              <span className="text-gradient">About Me</span>
+              <span className="text-gradient">{hero.heading || 'About Me'}</span>
             </h2>
             <div className="w-20 h-1 bg-gradient-purple mt-4 rounded-full" />
           </motion.div>
@@ -38,7 +41,7 @@ export default function About() {
             {/* Left Content */}
             <motion.div variants={fadeInLeft} className="space-y-6">
               <p className="text-lg text-text-muted leading-relaxed">
-                I&apos;m a passionate and creative video editor with hands-on experience across reels, YouTube content, wedding videos, birthday celebrations, and 3D lyric videos.
+                {hero.description || 'I\'m a passionate and creative video editor with hands-on experience across reels, YouTube content, wedding videos, birthday celebrations, and 3D lyric videos.'}
               </p>
 
               <p className="text-lg text-text-muted leading-relaxed">

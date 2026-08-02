@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCmsPage } from '../services/cms'
 import { staggerContainer, fadeInUp, scaleIn } from '../utils/animations'
+import { projectsData as fallbackProjects } from '../data/projects'
 import { FiPlay, FiX } from 'react-icons/fi'
 
 function ProjectPreview({ project }) {
@@ -38,7 +39,7 @@ function ProjectPreview({ project }) {
 
 export default function Projects() {
   const { content } = useCmsPage('Projects Page')
-  const projectsData = content.Projects?.items || []
+  const projectsData = (content.Projects?.items || []).length ? content.Projects.items : fallbackProjects
   const categories = ['All', ...new Set(projectsData.map((project) => project.category).filter(Boolean))]
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedProject, setSelectedProject] = useState(null)
