@@ -27,7 +27,7 @@ const normalizeSectionContent = (value) => {
   if (Array.isArray(value)) return { items: value }
   if (typeof value !== 'object') return {}
   if (value.content && typeof value.content === 'object' && !Array.isArray(value.content)) {
-    return { ...value.content, ...value }
+    return { ...value, ...value.content }
   }
   return value
 }
