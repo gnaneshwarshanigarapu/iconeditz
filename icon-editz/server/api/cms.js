@@ -92,6 +92,19 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
             const response = { success: true, data: data ?? {} };
             return res.json(response);
         }
+        if (req.query.collection) {
+            const collection = req.query.collection;
+            const validCollections = ['projects', 'tools', 'skills'];
+            if (!validCollections.includes(collection)) {
+                return res.status(400).json({ success: false, error: 'Invalid collection specified' });
+            }
+
+            const { data, error } = await supabaseAdmin.from(collection).select('*');
+            if (error) throw error;
+
+            return res.json({ success: true, data: data ?? [] });
+        }
+
         if (section !== 'hire-us') return res.status(400).json({ success: false, error: 'Valid CMS section or page is required' });
         const content = await supabaseAdmin.from('website_sections').select('section_key,content,status').eq('page', HIRE_PAGE).is('deleted_at', null).order('sort_order')
         const error = content.error;
@@ -111,6 +124,32 @@ export default withApi(['GET', 'PUT', 'POST'], async (req, res) => {
 
     // All methods below are admin-only
     await authorizeAdmin(req);
+
+    if (req.method === 'PUT' || req.method === 'POST') {
+        const { collection, item } = req.body;
+        if (collection && item) {
+            const validCollections = ['projects', 'tools', 'skills'];
+            if (!validCollections.includes(collection)) {
+                return res.status(400).json({ success: false, error: 'Invalid collection specified' });
+            }
+            const { data, error } = await supabaseAdmin.from(collection).upsert(item).select().single();
+            if (error) throw error;
+            return res.json({ success: true, data });
+        }
+    }
+
+    if (req.method === 'DELETE') {
+        const { collection, id } = req.body;
+        if (collection && id) {
+            const validCollections = ['projects', 'tools', 'skills'];
+            if (!validCollections.includes(collection)) {
+                return res.status(400).json({ success: false, error: 'Invalid collection specified' });
+            }
+            const { error } = await supabaseAdmin.from(collection).delete().eq('id', id);
+            if (error) throw error;
+            return res.json({ success: true });
+        }
+    }
 
     if (req.method === 'PUT') {
         if (section === 'homepage') {

@@ -20,6 +20,7 @@ const SingletonContentCms = lazy(() => import('../pages/admin/SingletonContentCm
 const NewsletterSubscribersPage = lazy(() => import('../pages/admin/NewsletterSubscribersPage'))
 const LegalPagesAdmin = lazy(() => import('../pages/admin/LegalPagesAdmin'))
 const DatabaseHealthPage = lazy(() => import('../pages/admin/DatabaseHealthPage'))
+const CollectionCms = lazy(() => import('../components/admin/CollectionCms'))
 
 function AdminPage({ title, children }) {
   return (
@@ -53,6 +54,11 @@ export default function AdminRoutes() {
         <Route path="/content/footer" element={<AdminPage title="Footer CMS"><SingletonContentCms table="footer_content" title="Footer CMS" /></AdminPage>} />
         <Route path="/content/cta" element={<AdminPage title="CTA CMS"><SingletonContentCms table="cta_content" title="CTA CMS" /></AdminPage>} />
         <Route path="/content/legal" element={<AdminPage title="Legal Pages"><LegalPagesAdmin /></AdminPage>} />
+
+        <Route path="/collections/projects" element={<AdminPage title="Projects Collection"><CollectionCms collectionName="projects" /></AdminPage>} />
+        <Route path="/collections/tools" element={<AdminPage title="Tools Collection"><CollectionCms collectionName="tools" /></AdminPage>} />
+        <Route path="/collections/skills" element={<AdminPage title="Skills Collection"><CollectionCms collectionName="skills" /></AdminPage>} />
+
         <Route path="/newsletter-subscribers" element={<AdminPage title="Newsletter Subscribers"><NewsletterSubscribersPage /></AdminPage>} />
         <Route path="/hire-us" element={<Navigate to="/admin/content/hire-from-us" replace />} />
         <Route path="/hire-requests" element={<AdminPage title="Hire Requests"><HireRequestsPage /></AdminPage>} />
