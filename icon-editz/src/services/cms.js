@@ -57,15 +57,7 @@ const fallbackPageSections = {
     CTA: defaultSiteContent.cta,
     SEO: { title: 'About | Icon Editz', description: 'Learn more about Icon Editz and the creative story behind the studio.' },
   },
-  'Services Page': {
-    Hero: defaultServicesPage.hero,
-    Services: { items: defaultServicesPage.services, visible: true, published: true },
-    Pricing: { items: defaultServicesPage.packages },
-    FAQ: { items: defaultServicesPage.faq },
-    Testimonials: { items: defaultServicesPage.testimonials },
-    CTA: defaultServicesPage.cta,
-    SEO: { title: 'Services | Icon Editz', description: defaultServicesPage.hero.description },
-  },
+  'Services Page': {},
   'Projects Page': {
     Hero: { eyebrow: 'Projects', heading: 'Featured Projects', description: 'Selected creative work from Icon Editz.', primaryLabel: 'Hire Me', primaryUrl: '/hire' },
     Categories: { items: projectCategories },
