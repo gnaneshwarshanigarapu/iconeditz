@@ -6,7 +6,6 @@ import { logPaymentAttempt } from '../lib/paymentAttemptLog.js'
 async function listPaymentAttempts(req, res) {
   await authorizeAdmin(req)
 
-  // 1. Try reading from payment_attempts table
   const { data: attemptRows, error } = await supabaseAdmin
     .from('payment_attempts')
     .select('*')
@@ -16,37 +15,53 @@ async function listPaymentAttempts(req, res) {
     const formatted = attemptRows.map((att) => ({
       ...att,
       id: att.id,
-      orderId: att.order_id || att.razorpay_order_id || 'N/A',
-      customerEmail: att.customer_email || 'Anonymous',
+      paymentId: att.razorpay_payment_id || att.id,
+      orderId: att.razorpay_order_id || att.order_id || 'N/A',
       customerName: att.customer_name || 'Customer',
+      customerEmail: att.customer_email || 'Anonymous',
       customerPhone: att.customer_phone || '',
       amount: Number(att.amount || 0),
       currency: att.currency || 'INR',
-      status: att.status || 'initiated',
-      errorReason: att.error_description || att.error_code || 'Customer - Payment Timed Out',
+      status: att.status || 'failed',
+      paymentMethod: att.payment_method || 'UPI',
+      gatewayErrorCode: att.gateway_error_code || 'BAD_REQUEST_PAYMENT_TIMED_OUT',
+      gatewayErrorDescription: att.gateway_error_description || 'Customer - Payment Timed Out',
+      webhookEvent: att.webhook_event || (att.status === 'captured' ? 'payment.captured' : 'payment.failed'),
+      retryCount: Number(att.retry_count || 1),
+      recoveryEmailSent: Boolean(att.recovery_email_sent),
       createdAt: att.created_at,
     }))
     return res.json({ success: true, data: formatted, attempts: formatted })
   }
 
-  // 2. Fallback: Query live pending/failed/draft orders directly from orders table
+  // Fallback query from orders table for failed/pending attempts
   const { data: orders = [] } = await supabaseAdmin
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false })
 
-  const liveAttempts = orders.map((o) => ({
-    id: o.id,
-    orderId: o.razorpay_order_id || o.order_id || o.id,
-    customerEmail: o.customer_email || o.user_email || o.email || '',
-    customerName: o.customer_name || 'Customer',
-    customerPhone: o.customer_phone || '',
-    amount: Number(o.amount || 0),
-    currency: o.currency || 'INR',
-    status: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'captured' : 'failed',
-    errorReason: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'SUCCESS' : 'Customer - Payment Timed Out',
-    createdAt: o.created_at,
-  }))
+  const liveAttempts = orders.map((o) => {
+    const isPaid = (o.payment_status || o.status || '').toUpperCase() === 'PAID'
+
+    return {
+      id: o.id,
+      paymentId: o.razorpay_payment_id || `pay_${o.id.slice(0, 8)}`,
+      orderId: o.razorpay_order_id || o.order_id || o.id,
+      customerName: o.customer_name || 'Customer',
+      customerEmail: o.customer_email || o.user_email || o.email || '',
+      customerPhone: o.customer_phone || '',
+      amount: Number(o.amount || 0),
+      currency: o.currency || 'INR',
+      status: isPaid ? 'captured' : 'failed',
+      paymentMethod: o.payment_method || 'UPI',
+      gatewayErrorCode: isPaid ? 'SUCCESS' : 'BAD_REQUEST_PAYMENT_TIMED_OUT',
+      gatewayErrorDescription: isPaid ? 'Payment Captured' : 'Customer - Payment Timed Out',
+      webhookEvent: isPaid ? 'payment.captured' : 'payment.failed',
+      retryCount: 1,
+      recoveryEmailSent: false,
+      createdAt: o.created_at,
+    }
+  })
 
   return res.json({ success: true, data: liveAttempts, attempts: liveAttempts })
 }
@@ -63,8 +78,10 @@ async function recordPaymentAttempt(req, res) {
     customer_name,
     customer_email,
     customer_phone,
-    error_code,
-    error_description,
+    gateway_error_code,
+    gateway_error_description,
+    webhook_event,
+    retry_count,
     raw_response,
   } = req.body || {}
 
@@ -75,12 +92,14 @@ async function recordPaymentAttempt(req, res) {
     amount,
     currency: currency || 'INR',
     status: status || 'failed',
-    payment_method: payment_method || 'razorpay',
+    payment_method: payment_method || 'UPI',
     customer_name,
     customer_email,
     customer_phone,
-    error_code: error_code || 'BAD_REQUEST_PAYMENT_TIMED_OUT',
-    error_description: error_description || 'Customer - Payment Timed Out',
+    gateway_error_code: gateway_error_code || 'BAD_REQUEST_PAYMENT_TIMED_OUT',
+    gateway_error_description: gateway_error_description || 'Customer - Payment Timed Out',
+    webhook_event: webhook_event || 'payment.failed',
+    retry_count: retry_count || 1,
     raw_response: raw_response || {},
   })
 

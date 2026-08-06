@@ -5,56 +5,76 @@ import { withApi } from '../lib/handler.js'
 async function listCustomers(req, res) {
   await authorizeAdmin(req)
 
-  // 1. Try reading from customers table
-  const { data: customerRows, error } = await supabaseAdmin
-    .from('customers')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (!error && Array.isArray(customerRows) && customerRows.length > 0) {
-    const formatted = customerRows.map((c) => ({
-      ...c,
-      email: c.email,
-      name: c.name || c.email.split('@')[0],
-      totalOrders: Number(c.total_orders || c.orders_count || 1),
-      totalSpent: Number(c.total_spent || c.ltv || 0),
-      lastPurchase: c.last_purchase_at || c.updated_at || c.created_at,
-    }))
-    return res.json({ success: true, data: formatted, customers: formatted })
-  }
-
-  // 2. If customers table is empty, aggregate strictly from live orders table
-  const { data: orders = [] } = await supabaseAdmin
+  // Fetch all orders with order_items join
+  const { data: allOrders = [] } = await supabaseAdmin
     .from('orders')
-    .select('id,customer_name,customer_email,customer_phone,user_email,email,amount,payment_status,status,created_at')
-    .or('payment_status.eq.PAID,status.eq.paid')
+    .select('*, order_items(*, products(*))')
     .order('created_at', { ascending: false })
 
-  const map = new Map()
-  orders.forEach((o) => {
+  // Map orders into customer profiles strictly calculating LTV from PAID orders
+  const customerMap = new Map()
+
+  allOrders.forEach((o) => {
     const email = (o.customer_email || o.user_email || o.email || '').trim().toLowerCase()
     if (!email) return
 
-    if (!map.has(email)) {
-      map.set(email, {
-        id: o.id,
+    const isPaid = (o.payment_status || o.status || '').toUpperCase() === 'PAID' || (o.payment_status || o.status || '').toUpperCase() === 'SUCCESS' || (o.payment_status || o.status || '').toUpperCase() === 'CAPTURED'
+
+    if (!customerMap.has(email)) {
+      customerMap.set(email, {
+        id: o.customer_id || o.id,
         email,
         name: o.customer_name || email.split('@')[0] || 'Customer',
         phone: o.customer_phone || '',
         totalOrders: 0,
         totalSpent: 0,
-        lastPurchase: o.created_at,
-        orders: [],
+        lastPurchase: null,
+        purchases: [],
       })
     }
-    const cust = map.get(email)
-    cust.totalOrders += 1
-    cust.totalSpent += Number(o.amount || 0)
-    cust.orders.push(o)
+
+    const cust = customerMap.get(email)
+    if (o.customer_phone && !cust.phone) cust.phone = o.customer_phone
+    if (o.customer_name && cust.name === 'Customer') cust.name = o.customer_name
+
+    // Record purchase item in drawer history
+    let items = o.order_items || []
+    if (items.length === 0) {
+      items = [{
+        product_name: o.product_name || 'Creative Asset',
+        quantity: 1,
+        unit_price: Number(o.amount || 0),
+        total_price: Number(o.amount || 0),
+      }]
+    }
+
+    items.forEach((item) => {
+      cust.purchases.push({
+        orderId: o.id,
+        razorpayOrderId: o.razorpay_order_id || 'N/A',
+        razorpayPaymentId: o.razorpay_payment_id || 'N/A',
+        productName: item.product_name || 'Creative Asset',
+        quantity: item.quantity || 1,
+        unitPrice: Number(item.unit_price || o.amount || 0),
+        amount: Number(item.total_price || o.amount || 0),
+        status: isPaid ? 'PAID' : 'PENDING / FAILED',
+        downloadStatus: isPaid ? 'Delivered & Active' : 'Locked',
+        createdAt: o.created_at,
+      })
+    })
+
+    // Strictly add to LTV and Order Count if PAID
+    if (isPaid) {
+      cust.totalOrders += 1
+      cust.totalSpent += Number(o.amount || 0)
+      if (!cust.lastPurchase || new Date(o.created_at) > new Date(cust.lastPurchase)) {
+        cust.lastPurchase = o.created_at
+      }
+    }
   })
 
-  const liveCustomers = Array.from(map.values())
-  return res.json({ success: true, data: liveCustomers, customers: liveCustomers })
+  const formattedCustomers = Array.from(customerMap.values())
+  return res.json({ success: true, data: formattedCustomers, customers: formattedCustomers })
 }
 
 export default withApi(['GET'], listCustomers)

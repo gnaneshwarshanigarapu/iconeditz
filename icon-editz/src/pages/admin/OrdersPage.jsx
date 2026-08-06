@@ -4,16 +4,14 @@ import {
   FiShoppingBag,
   FiCheckCircle,
   FiClock,
-  FiXCircle,
   FiRefreshCw,
-  FiDownload,
   FiEye,
-  FiMail,
   FiUser,
   FiCreditCard,
-  FiPhone,
+  FiBox,
 } from 'react-icons/fi'
 import DataFilterBar from '../../components/admin/DataFilterBar'
+import OrderDetailDrawer from '../../components/admin/OrderDetailDrawer'
 import { api } from '../../services/api'
 import { supabase } from '../../utils/supabase'
 
@@ -22,7 +20,7 @@ export default function OrdersPage() {
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
 
-  // Fetch orders strictly from backend API / Supabase orders table
+  // Fetch orders strictly with SQL joins from backend API / Supabase
   const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: ['adminOrdersList'],
     queryFn: async () => {
@@ -30,7 +28,13 @@ export default function OrdersPage() {
         const res = await api.get('/api/orders')
         if (res.orders || res.data) return res.orders || res.data
       } catch {}
-      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+
+      // Fallback query from Supabase with SQL joins
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*, products(*)), products(*)')
+        .order('created_at', { ascending: false })
+
       if (error) throw error
       return data || []
     },
@@ -38,11 +42,14 @@ export default function OrdersPage() {
 
   // Export handlers
   const exportCSV = () => {
-    const headers = ['Order ID,Customer Name,Customer Email,Customer Phone,Amount,Status,Razorpay Order ID,Razorpay Payment ID,Date\n']
-    const rows = filteredOrders.map(
-      (o) =>
-        `"${o.id}","${o.customer_name || ''}","${o.customer_email || o.user_email || o.email || ''}","${o.customer_phone || ''}","${o.amount}","${o.payment_status || o.status || 'PAID'}","${o.razorpay_order_id || ''}","${o.razorpay_payment_id || ''}","${o.created_at}"`
-    )
+    const headers = ['Order ID,Customer Name,Customer Email,Product Items,Quantity,Total Amount,Payment Status,Razorpay Order ID,Razorpay Payment ID,Date\n']
+    const rows = filteredOrders.map((o) => {
+      const items = o.order_items || [{ product_name: o.product_name, quantity: 1, total_price: o.amount }]
+      const itemNames = items.map((i) => i.product_name || i.products?.title || 'Asset').join(' + ')
+      const totalQty = items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+
+      return `"${o.id}","${o.customer_name || ''}","${o.customer_email || o.user_email || o.email || ''}","${itemNames}","${totalQty}","${o.amount || o.total_amount || 0}","${o.payment_status || o.status || 'PAID'}","${o.razorpay_order_id || ''}","${o.razorpay_payment_id || ''}","${o.created_at}"`
+    })
     const blob = new Blob([headers.concat(rows).join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -72,7 +79,7 @@ export default function OrdersPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search by Order ID, customer name or email..."
-        statusOptions={['paid', 'pending', 'refunded', 'failed']}
+        statusOptions={['paid', 'pending', 'refunded']}
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
         onExportCSV={exportCSV}
@@ -85,7 +92,7 @@ export default function OrdersPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-base font-bold text-white">Verified Customer Orders</h3>
-            <p className="text-xs text-text-muted">Reading strictly from live PostgreSQL orders table ({filteredOrders.length} records)</p>
+            <p className="text-xs text-text-muted">Reading strictly with SQL joins from order_items & products ({filteredOrders.length} records)</p>
           </div>
           <button
             onClick={() => refetch()}
@@ -110,8 +117,8 @@ export default function OrdersPage() {
                 <tr className="border-b border-white/10 text-text-muted uppercase tracking-wider">
                   <th className="py-3.5 px-4">Order ID</th>
                   <th className="py-3.5 px-4">Customer Name & Email</th>
-                  <th className="py-3.5 px-4">Product Name</th>
-                  <th className="py-3.5 px-4">Amount</th>
+                  <th className="py-3.5 px-4">Product Items & Qty</th>
+                  <th className="py-3.5 px-4">Total Amount</th>
                   <th className="py-3.5 px-4">Razorpay Payment ID</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Date</th>
@@ -123,6 +130,9 @@ export default function OrdersPage() {
                   const email = order.customer_email || order.user_email || order.email || ''
                   const name = order.customer_name || 'Customer'
                   const isPaid = (order.payment_status || order.status || 'PAID').toUpperCase() === 'PAID'
+                  const items = order.order_items || [{ product_name: order.product_name, quantity: 1, total_price: order.amount }]
+                  const mainItemName = items[0]?.products?.title || items[0]?.product_name || order.product_name || 'Creative Asset'
+                  const extraCount = items.length - 1
 
                   return (
                     <tr key={order.id} className="hover:bg-white/[0.02] transition-colors">
@@ -133,8 +143,14 @@ export default function OrdersPage() {
                           <p className="text-[11px] text-text-muted">{email}</p>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-white font-medium">{order.product_name || 'Creative Asset'}</td>
-                      <td className="py-3.5 px-4 font-bold text-emerald-400">₹{order.amount || 0}</td>
+                      <td className="py-3.5 px-4 text-white font-medium">
+                        <div>
+                          <span className="font-semibold text-white">{mainItemName}</span>
+                          {extraCount > 0 && <span className="ml-1 text-[10px] text-primary font-bold">+{extraCount} more</span>}
+                          <p className="text-[10px] text-text-muted">Qty: {items[0]?.quantity || 1}</p>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-400">₹{order.amount || order.total_amount || 0}</td>
                       <td className="py-3.5 px-4 font-mono text-[11px] text-text-muted">
                         {order.razorpay_payment_id || order.razorpay_order_id || 'N/A'}
                       </td>
@@ -172,53 +188,7 @@ export default function OrdersPage() {
 
       {/* Order Details Drawer Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#120c24] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <h3 className="text-base font-bold text-white">Order Details #{selectedOrder.id.slice(0, 8)}</h3>
-                <p className="text-xs text-text-muted">Verified digital asset order from Supabase database</p>
-              </div>
-              <button onClick={() => setSelectedOrder(null)} className="text-text-muted hover:text-white">
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="rounded-xl bg-white/[0.03] p-4 border border-white/5 space-y-1.5">
-                <div className="flex items-center gap-2 text-white font-semibold mb-1">
-                  <FiUser className="text-primary" /> Customer Info
-                </div>
-                <p className="text-white font-bold">{selectedOrder.customer_name || 'Customer'}</p>
-                <p className="text-text-muted">Email: {selectedOrder.customer_email || selectedOrder.user_email || selectedOrder.email}</p>
-                {selectedOrder.customer_phone && <p className="text-text-muted">Phone: {selectedOrder.customer_phone}</p>}
-                <p className="text-text-muted">Purchased Date: {new Date(selectedOrder.created_at).toLocaleString('en-IN')}</p>
-              </div>
-
-              <div className="rounded-xl bg-white/[0.03] p-4 border border-white/5 space-y-1.5">
-                <div className="flex items-center gap-2 text-white font-semibold mb-1">
-                  <FiCreditCard className="text-emerald-400" /> Gateway & Payment Details
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Amount Paid:</span>
-                  <span className="font-bold text-emerald-400 text-sm">₹{selectedOrder.amount}</span>
-                </div>
-                <p className="text-text-muted font-mono">Payment Method: {selectedOrder.payment_method || 'Razorpay'}</p>
-                <p className="text-text-muted font-mono">Razorpay Payment ID: {selectedOrder.razorpay_payment_id || 'N/A'}</p>
-                <p className="text-text-muted font-mono">Razorpay Order ID: {selectedOrder.razorpay_order_id || 'N/A'}</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white shadow-lg shadow-primary/25"
-              >
-                Close Details
-              </button>
-            </div>
-          </div>
-        </div>
+        <OrderDetailDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} />
       )}
     </div>
   )

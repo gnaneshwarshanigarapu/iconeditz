@@ -1,68 +1,19 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { FiUsers, FiShoppingBag, FiDollarSign, FiDownload, FiMail, FiRefreshCw, FiPhone } from 'react-icons/fi'
+import { FiUsers, FiShoppingBag, FiDollarSign, FiDownload, FiMail, FiRefreshCw, FiPhone, FiCheckCircle, FiClock, FiBox } from 'react-icons/fi'
 import DataFilterBar from '../../components/admin/DataFilterBar'
 import { api } from '../../services/api'
-import { supabase } from '../../utils/supabase'
 
 export default function CustomersPage() {
   const [search, setSearch] = useState('')
   const [selectedCustomer, setSelectedCustomer] = useState(null)
 
-  // Fetch strictly live customer profiles from backend / Supabase
+  // Fetch strictly live customer profiles from backend
   const { data: customers = [], isLoading, refetch } = useQuery({
     queryKey: ['adminCustomersList'],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api/customers')
-        if (res.customers || res.data) return res.customers || res.data
-      } catch {}
-
-      // Fallback query to customers table
-      const { data: customerRows = [] } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (customerRows.length > 0) {
-        return customerRows.map((c) => ({
-          id: c.id,
-          name: c.name || c.email?.split('@')[0] || 'Customer',
-          email: c.email,
-          phone: c.phone || '',
-          totalOrders: Number(c.total_orders || 1),
-          totalSpent: Number(c.total_spent || 0),
-          lastPurchase: c.last_purchase_at || c.updated_at || c.created_at,
-        }))
-      }
-
-      // Live aggregation from orders table if customers table is empty
-      const { data: orders = [] } = await supabase.from('orders').select('*')
-      const map = new Map()
-
-      orders.forEach((o) => {
-        const email = (o.customer_email || o.user_email || o.email || '').trim().toLowerCase()
-        if (!email) return
-
-        if (!map.has(email)) {
-          map.set(email, {
-            id: o.id,
-            name: o.customer_name || email.split('@')[0] || 'Customer',
-            email,
-            phone: o.customer_phone || '',
-            totalOrders: 0,
-            totalSpent: 0,
-            lastPurchase: o.created_at,
-            orders: [],
-          })
-        }
-        const cust = map.get(email)
-        cust.totalOrders += 1
-        cust.totalSpent += Number(o.amount || 0)
-        cust.orders.push(o)
-      })
-
-      return Array.from(map.values())
+      const res = await api.get('/api/customers')
+      return res.customers || res.data || []
     },
   })
 
@@ -86,7 +37,7 @@ export default function CustomersPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-base font-bold text-white">Verified Customer Profiles</h3>
-            <p className="text-xs text-text-muted">Reading strictly from PostgreSQL customers table ({filteredCustomers.length} records)</p>
+            <p className="text-xs text-text-muted">Lifetime metrics calculated strictly from captured/PAID orders ({filteredCustomers.length} profiles)</p>
           </div>
           <button
             onClick={() => refetch()}
@@ -111,8 +62,8 @@ export default function CustomersPage() {
                 <tr className="border-b border-white/10 text-text-muted uppercase tracking-wider">
                   <th className="py-3.5 px-4">Customer Name & Email</th>
                   <th className="py-3.5 px-4">Phone Number</th>
-                  <th className="py-3.5 px-4">Total Orders</th>
-                  <th className="py-3.5 px-4">Total Spent (LTV)</th>
+                  <th className="py-3.5 px-4">Paid Orders</th>
+                  <th className="py-3.5 px-4">Lifetime Spend (LTV)</th>
                   <th className="py-3.5 px-4">Last Purchase</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -132,17 +83,17 @@ export default function CustomersPage() {
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-text-muted font-mono">{cust.phone || '—'}</td>
-                    <td className="py-3.5 px-4 text-text-muted font-bold">{cust.totalOrders || 1} orders</td>
+                    <td className="py-3.5 px-4 text-text-muted font-bold">{cust.totalOrders || 0} paid orders</td>
                     <td className="py-3.5 px-4 font-extrabold text-emerald-400">₹{(cust.totalSpent || 0).toLocaleString('en-IN')}</td>
                     <td className="py-3.5 px-4 text-text-muted">
-                      {cust.lastPurchase ? new Date(cust.lastPurchase).toLocaleDateString('en-IN') : 'Recent'}
+                      {cust.lastPurchase ? new Date(cust.lastPurchase).toLocaleDateString('en-IN') : 'No paid orders yet'}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => setSelectedCustomer(cust)}
                         className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
                       >
-                        View Profile
+                        View Profile & Purchases
                       </button>
                     </td>
                   </tr>
@@ -153,10 +104,10 @@ export default function CustomersPage() {
         )}
       </div>
 
-      {/* Customer Profile Modal */}
+      {/* Customer Profile & Purchase History Drawer Modal */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#120c24] p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#120c24] p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <h3 className="text-base font-bold text-white">{selectedCustomer.name || 'Customer Profile'}</h3>
@@ -167,21 +118,52 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-white/[0.03] p-3 border border-white/5">
-                  <span className="text-[10px] uppercase text-text-muted">Lifetime Value (LTV)</span>
-                  <p className="text-base font-bold text-emerald-400">₹{selectedCustomer.totalSpent || 0}</p>
-                </div>
-                <div className="rounded-xl bg-white/[0.03] p-3 border border-white/5">
-                  <span className="text-[10px] uppercase text-text-muted">Total Orders</span>
-                  <p className="text-base font-bold text-white">{selectedCustomer.totalOrders || 1}</p>
-                </div>
+            {/* Metrics */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="rounded-xl bg-white/[0.03] p-3 border border-white/5">
+                <span className="text-[10px] uppercase text-text-muted font-mono">Lifetime Value (LTV)</span>
+                <p className="text-lg font-extrabold text-emerald-400">₹{selectedCustomer.totalSpent || 0}</p>
+              </div>
+              <div className="rounded-xl bg-white/[0.03] p-3 border border-white/5">
+                <span className="text-[10px] uppercase text-text-muted font-mono">Verified Paid Orders</span>
+                <p className="text-lg font-extrabold text-white">{selectedCustomer.totalOrders || 0}</p>
+              </div>
+            </div>
+
+            {selectedCustomer.phone && (
+              <div className="rounded-xl bg-white/[0.03] p-3 border border-white/5 flex items-center gap-2 text-text-muted text-xs">
+                <FiPhone className="text-primary" /> Phone: <span className="text-white font-mono">{selectedCustomer.phone}</span>
+              </div>
+            )}
+
+            {/* Purchase History Section */}
+            <div className="rounded-xl bg-white/[0.03] p-4 border border-white/5 space-y-3">
+              <div className="flex items-center gap-2 text-white font-bold text-sm">
+                <FiBox className="text-indigo-400" /> Purchase History ({selectedCustomer.purchases?.length || 0} records)
               </div>
 
-              {selectedCustomer.phone && (
-                <div className="rounded-xl bg-white/[0.03] p-3 border border-white/5 flex items-center gap-2 text-text-muted">
-                  <FiPhone className="text-primary" /> Phone: <span className="text-white font-mono">{selectedCustomer.phone}</span>
+              {(!selectedCustomer.purchases || selectedCustomer.purchases.length === 0) ? (
+                <p className="text-xs text-text-muted py-3 text-center">No purchases recorded for this customer.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {selectedCustomer.purchases.map((p, idx) => (
+                    <div key={idx} className="rounded-lg bg-black/30 p-3 border border-white/5 space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white">{p.productName}</span>
+                        <span className="font-bold text-emerald-400">₹{p.amount}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between text-[11px] text-text-muted">
+                        <span>Date: {new Date(p.createdAt).toLocaleDateString('en-IN')}</span>
+                        <span className="font-mono text-[10px]">Payment ID: {p.razorpayPaymentId}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between text-[10px] pt-1">
+                        <span className="font-mono text-text-muted">Order ID: {p.razorpayOrderId}</span>
+                        <span className={`font-semibold ${p.status === 'PAID' ? 'text-emerald-400' : 'text-amber-300'}`}>
+                          Status: {p.status} ({p.downloadStatus})
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -189,7 +171,7 @@ export default function CustomersPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setSelectedCustomer(null)}
-                className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white"
+                className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white shadow-lg shadow-primary/25"
               >
                 Close Profile
               </button>

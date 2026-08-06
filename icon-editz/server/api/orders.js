@@ -10,7 +10,11 @@ import { syncCustomerOnPayment } from '../lib/customerSync.js'
 import { logPaymentAttempt } from '../lib/paymentAttemptLog.js'
 
 const checkoutSchema = z.object({
-  productId: z.string().uuid(),
+  productId: z.string().uuid().optional(),
+  items: z.array(z.object({
+    productId: z.string().uuid(),
+    quantity: z.number().int().positive().default(1),
+  })).optional(),
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email(),
   phone: z.string().trim().min(7).max(20),
@@ -43,63 +47,132 @@ const getRazorpay = () => {
 
 async function listOrders(req, res) {
   const user = await authenticate(req)
-  let query = supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false })
+  const singleOrderId = req.query.id
+
+  if (singleOrderId) {
+    // Single order details with SQL joins
+    const { data: singleOrder, error: singleErr } = await supabaseAdmin
+      .from('orders')
+      .select('*, order_items(*, products(*)), customers(*)')
+      .eq('id', singleOrderId)
+      .maybeSingle()
+
+    if (singleErr) throw singleErr
+    if (!singleOrder) return res.status(404).json({ success: false, message: 'Order not found' })
+    return res.json({ success: true, data: singleOrder, order: singleOrder })
+  }
+
+  let query = supabaseAdmin
+    .from('orders')
+    .select('*, order_items(*, products(*)), products(*)')
+    .order('created_at', { ascending: false })
+
   if (user.role !== 'admin') {
     query = query.eq('user_id', user.sub)
   }
+
   const { data, error } = await query
   if (error) throw error
 
-  // Clean, consistent order list without hardcoded fallback strings
-  const formatted = (data || []).map((o) => ({
-    ...o,
-    customer_email: o.customer_email || o.user_email || o.email || '',
-    customer_name: o.customer_name || o.name || 'Customer',
-    customer_phone: o.customer_phone || o.phone || '',
-    payment_status: o.payment_status || o.status || 'PAID',
-  }))
+  // Format order items with product titles from SQL join
+  const formatted = (data || []).map((o) => {
+    let items = o.order_items || []
+    if (items.length === 0 && (o.product_name || o.products?.title)) {
+      items = [
+        {
+          id: o.id,
+          product_id: o.product_id || o.products?.id,
+          product_name: o.products?.title || o.product_name || 'Creative Asset',
+          quantity: 1,
+          unit_price: Number(o.amount || 0),
+          total_price: Number(o.amount || 0),
+          products: o.products || null,
+        },
+      ]
+    }
+
+    return {
+      ...o,
+      order_items: items,
+      customer_email: o.customer_email || o.user_email || o.email || '',
+      customer_name: o.customer_name || o.name || 'Customer',
+      customer_phone: o.customer_phone || o.phone || '',
+      payment_status: o.payment_status || o.status || 'PAID',
+    }
+  })
 
   return res.json({ success: true, data: formatted, orders: formatted })
 }
 
 async function createOrder(req, res) {
   const user = await authenticate(req)
-  const { productId, name, email, phone } = req.body || {}
+  const { productId, items: rawItems, name, email, phone } = req.body || {}
+
   if (!phone) {
-    return res.status(400).json({
-      success: false,
-      error: 'Phone number is required',
-    })
+    return res.status(400).json({ success: false, error: 'Phone number is required' })
   }
 
   const parsed = checkoutSchema.safeParse(req.body)
   if (!parsed.success) throw httpError('Invalid checkout request', 400)
   const razorpay = getRazorpay()
 
-  const { data: product, error: productError } = await supabaseAdmin
+  // Collect products to buy
+  const itemsToFetch = rawItems && rawItems.length > 0
+    ? rawItems
+    : productId
+    ? [{ productId, quantity: 1 }]
+    : []
+
+  if (itemsToFetch.length === 0) throw httpError('No products selected for order', 400)
+
+  const productIds = itemsToFetch.map((i) => i.productId)
+  const { data: dbProducts, error: prodErr } = await supabaseAdmin
     .from('products')
     .select('id,title,price,discount_price,published,status')
-    .eq('id', productId)
-    .is('deleted_at', null)
-    .maybeSingle()
-  if (productError) throw productError
-  if (!product) throw httpError('Product not found', 404)
+    .in('id', productIds)
 
-  const amount = Math.round(Number(product.discount_price ?? product.price) * 100)
-  if (!amount || amount < 100) {
+  if (prodErr) throw prodErr
+  if (!dbProducts || dbProducts.length === 0) throw httpError('Selected products not found', 404)
+
+  const productMap = new Map(dbProducts.map((p) => [p.id, p]))
+
+  let totalAmountPaise = 0
+  const orderItemsData = []
+
+  for (const item of itemsToFetch) {
+    const prod = productMap.get(item.productId)
+    if (!prod) continue
+    const unitPrice = Number(prod.discount_price ?? prod.price)
+    const lineTotalPaise = Math.round(unitPrice * 100) * item.quantity
+    totalAmountPaise += lineTotalPaise
+
+    orderItemsData.push({
+      product_id: prod.id,
+      product_name: prod.title,
+      quantity: item.quantity,
+      unit_price: unitPrice,
+      total_price: unitPrice * item.quantity,
+    })
+  }
+
+  if (!totalAmountPaise || totalAmountPaise < 100) {
     return res.status(400).json({ success: false, error: 'The payment amount must be at least 100 paise' })
   }
 
+  const firstProdName = orderItemsData[0]?.product_name || 'Creative Asset'
+
+  // Insert Order
   const { data: databaseOrder, error: databaseError } = await supabaseAdmin
     .from('orders')
     .insert({
       user_id: user.sub,
-      product_id: product.id,
-      product_name: product.title,
+      product_id: orderItemsData[0]?.product_id || null,
+      product_name: firstProdName,
       customer_name: name.trim(),
       customer_email: email.trim().toLowerCase(),
       customer_phone: phone.trim(),
-      amount: amount / 100,
+      amount: totalAmountPaise / 100,
+      total_amount: totalAmountPaise / 100,
       currency: 'INR',
       payment_status: 'pending',
       status: 'pending',
@@ -109,17 +182,18 @@ async function createOrder(req, res) {
     .single()
 
   if (databaseError || !databaseOrder) {
-    return res.status(500).json({
-      success: false,
-      error: databaseError?.message || 'Unable to create order in database',
-    })
+    return res.status(500).json({ success: false, error: databaseError?.message || 'Unable to create order' })
   }
+
+  // Insert normalized order_items
+  const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: databaseOrder.id }))
+  await supabaseAdmin.from('order_items').insert(itemsWithOrderId).catch(() => {})
 
   const receipt = databaseOrder.id
   let razorpayOrder
   try {
     const order = await razorpay.orders.create({
-      amount,
+      amount: totalAmountPaise,
       currency: 'INR',
       receipt,
     })
@@ -137,16 +211,16 @@ async function createOrder(req, res) {
     .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
     .eq('id', databaseOrder.id)
 
-  // Log initiated attempt
   logPaymentAttempt({
     order_id: databaseOrder.id,
     razorpay_order_id: razorpayOrder.id,
-    amount: amount / 100,
+    amount: totalAmountPaise / 100,
     currency: 'INR',
     status: 'initiated',
     customer_name: name,
     customer_email: email,
     customer_phone: phone,
+    webhook_event: 'order.created',
   }).catch(() => {})
 
   return res.status(201).json({
@@ -166,7 +240,7 @@ async function verifyPayment(req, res) {
   const secret = process.env.RAZORPAY_KEY_SECRET
   const razorpay = getRazorpay()
 
-  // 1. Verify Razorpay HMAC signature
+  // 1. HMAC Verification
   const expected = crypto
     .createHmac('sha256', secret)
     .update(`${input.razorpay_order_id}|${input.razorpay_payment_id}`)
@@ -174,21 +248,19 @@ async function verifyPayment(req, res) {
 
   const expectedBuffer = Buffer.from(expected, 'utf8')
   const signatureBuffer = Buffer.from(input.razorpay_signature, 'utf8')
-  if (
-    expectedBuffer.length !== signatureBuffer.length ||
-    !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
-  ) {
+  if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) {
     logPaymentAttempt({
       razorpay_order_id: input.razorpay_order_id,
       razorpay_payment_id: input.razorpay_payment_id,
       status: 'failed',
-      error_code: 'BAD_SIGNATURE',
-      error_description: 'HMAC SHA256 signature verification failed',
+      gateway_error_code: 'BAD_SIGNATURE',
+      gateway_error_description: 'HMAC SHA256 signature verification failed',
+      webhook_event: 'payment.failed',
     }).catch(() => {})
     throw httpError('Invalid payment signature', 400)
   }
 
-  // 2. Lookup Order
+  // 2. Fetch Order
   const { data: order, error: orderError } = await supabaseAdmin
     .from('orders')
     .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,created_at,products(download_key,download_filename)')
@@ -197,11 +269,8 @@ async function verifyPayment(req, res) {
 
   if (orderError) throw orderError
   if (!order) throw httpError('Order not found', 404)
-  if (user.role !== 'admin' && order.user_id !== user.sub) {
-    throw httpError('Not authorized to verify this order', 403)
-  }
 
-  // 3. Fetch Real Payment Details from Razorpay API
+  // 3. Fetch Real Payment from Razorpay API
   const payment = await razorpay.payments.fetch(input.razorpay_payment_id)
   if (
     payment.order_id !== input.razorpay_order_id ||
@@ -215,8 +284,9 @@ async function verifyPayment(req, res) {
       razorpay_payment_id: input.razorpay_payment_id,
       amount: order.amount,
       status: 'failed',
-      error_code: 'PAYMENT_MISMATCH',
-      error_description: `Payment status ${payment.status} or currency/amount mismatch`,
+      gateway_error_code: 'PAYMENT_MISMATCH',
+      gateway_error_description: `Payment status ${payment.status} or amount mismatch`,
+      webhook_event: 'payment.failed',
       raw_response: payment,
     }).catch(() => {})
     throw httpError('Payment details do not match the order', 400)
@@ -229,22 +299,21 @@ async function verifyPayment(req, res) {
       payment_status: 'PAID',
       status: 'paid',
       razorpay_payment_id: input.razorpay_payment_id,
-      razorpay_order_id: input.razorpay_order_id,
+      razorpay_signature: input.razorpay_signature,
       payment_method: payment.method || 'razorpay',
     })
     .eq('id', order.id)
 
   if (updateError) throw updateError
 
-  // 5. Aggregate / Sync Customer Record in customers table
+  // 5. Recalculate Customer LTV strictly from PAID orders
   await syncCustomerOnPayment({
     name: order.customer_name,
     email: order.customer_email,
     phone: order.customer_phone,
-    amount: order.amount,
   })
 
-  // 6. Log Successful Payment Attempt
+  // 6. Log Captured Payment Attempt
   logPaymentAttempt({
     order_id: order.id,
     razorpay_order_id: input.razorpay_order_id,
@@ -256,10 +325,11 @@ async function verifyPayment(req, res) {
     customer_name: order.customer_name,
     customer_email: order.customer_email,
     customer_phone: order.customer_phone,
+    webhook_event: 'payment.captured',
     raw_response: payment,
   }).catch(() => {})
 
-  // 7. Delivery & Email Notification
+  // 7. Delivery & Receipt
   let delivery
   let emailSent = false
   try {
@@ -270,7 +340,7 @@ async function verifyPayment(req, res) {
       order_id: order.id,
       ip_address: req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
       download_count: 0,
-    })
+    }).catch(() => {})
     try {
       await sendDeliveryEmail(order, delivery)
       emailSent = true
@@ -278,11 +348,11 @@ async function verifyPayment(req, res) {
       console.error('Delivery email failed:', error.message)
     }
   } catch (error) {
-    console.error('Delivery URL generation failed:', error.message)
+    console.error('Delivery generation failed:', error.message)
   }
 
   const eventId = `purchase_${order.id}`
-  sendMetaPurchase(req, order, eventId).catch((error) => console.error('Meta CAPI failed:', error.message))
+  sendMetaPurchase(req, order, eventId).catch(() => {})
 
   return res.json({
     success: true,
