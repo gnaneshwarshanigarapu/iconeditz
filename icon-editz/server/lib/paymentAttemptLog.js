@@ -2,6 +2,8 @@ import { supabaseAdmin } from './supabaseAdmin.js'
 
 /**
  * Logs a payment attempt (initiated, captured, failed, refunded) to payment_attempts table.
+ * Accepts both `error_code`/`error_description` and `gateway_error_code`/`gateway_error_description`
+ * for backward compatibility — maps to the actual DB columns `gateway_error_code` / `gateway_error_description`.
  */
 export async function logPaymentAttempt({
   order_id,
@@ -16,11 +18,16 @@ export async function logPaymentAttempt({
   customer_phone,
   error_code,
   error_description,
+  gateway_error_code,
+  gateway_error_description,
+  webhook_event,
+  retry_count,
+  recovery_email_sent,
   raw_response,
 }) {
   try {
     const payload = {
-      order_id: order_id || null,
+      order_id: order_id ? String(order_id) : null,
       razorpay_order_id: razorpay_order_id || null,
       razorpay_payment_id: razorpay_payment_id || null,
       amount: Number(amount || 0),
@@ -30,8 +37,11 @@ export async function logPaymentAttempt({
       customer_name: customer_name || null,
       customer_email: customer_email ? customer_email.trim().toLowerCase() : null,
       customer_phone: customer_phone || null,
-      error_code: error_code || null,
-      error_description: error_description || null,
+      gateway_error_code: gateway_error_code || error_code || null,
+      gateway_error_description: gateway_error_description || error_description || null,
+      webhook_event: webhook_event || null,
+      retry_count: Number(retry_count || 1),
+      recovery_email_sent: Boolean(recovery_email_sent),
       raw_response: raw_response || {},
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
