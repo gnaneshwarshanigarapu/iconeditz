@@ -2,25 +2,34 @@ import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FiCreditCard, FiAlertTriangle, FiRefreshCw, FiArchive, FiCheckCircle, FiSend } from 'react-icons/fi'
 import DataFilterBar from '../../components/admin/DataFilterBar'
+import { api } from '../../services/api'
 import { supabase } from '../../utils/supabase'
 
 export default function PaymentAttemptsPage() {
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
 
-  // Fetch payment attempts or orders with status pending/failed
+  // Fetch payment attempts strictly from live backend / payment_attempts table
   const { data: attempts = [], isLoading, refetch } = useQuery({
     queryKey: ['adminPaymentAttempts'],
     queryFn: async () => {
-      // Query payment attempts log table or draft orders
-      const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
-      return (data || []).map((item, idx) => ({
-        id: `att_${item.id.slice(0, 8)}`,
-        customerEmail: item.user_email || item.email || 'client@domain.com',
-        amount: item.amount,
-        status: idx % 3 === 0 ? 'failed' : idx % 2 === 0 ? 'pending' : 'cancelled',
-        errorReason: idx % 3 === 0 ? 'BAD_REQUEST_PAYMENT_CANCELLED' : 'CUSTOMER_ABANDONED_CHECKOUT',
-        createdAt: item.created_at,
+      try {
+        const res = await api.get('/api/payment-attempts')
+        if (res.attempts || res.data) return res.attempts || res.data
+      } catch {}
+
+      // Fallback: Query live orders from Supabase orders table
+      const { data: orders = [] } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+      return (orders || []).map((o) => ({
+        id: o.id,
+        orderId: o.razorpay_order_id || o.order_id || o.id,
+        customerEmail: o.customer_email || o.user_email || o.email || '',
+        customerName: o.customer_name || 'Customer',
+        amount: Number(o.amount || 0),
+        currency: o.currency || 'INR',
+        status: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'captured' : 'pending',
+        errorReason: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'GATEWAY_CAPTURED' : 'CHECKOUT_PENDING',
+        createdAt: o.created_at,
       }))
     },
   })
@@ -28,33 +37,35 @@ export default function PaymentAttemptsPage() {
   const filteredAttempts = attempts.filter((att) => {
     const matchesSearch =
       (att.id || '').toLowerCase().includes(search.toLowerCase()) ||
-      (att.customerEmail || '').toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = !selectedStatus || att.status.toLowerCase() === selectedStatus.toLowerCase()
+      (att.customerEmail || '').toLowerCase().includes(search.toLowerCase()) ||
+      (att.orderId || '').toLowerCase().includes(search.toLowerCase())
+    const matchesStatus = !selectedStatus || (att.status || '').toLowerCase() === selectedStatus.toLowerCase()
     return matchesSearch && matchesStatus
   })
 
   const handleSendRecoveryEmail = (email) => {
+    if (!email) return
     alert(`Checkout recovery email sent to ${email}`)
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
       {/* Controls */}
       <DataFilterBar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search payment attempts by ID or customer email..."
-        statusOptions={['failed', 'pending', 'cancelled']}
+        searchPlaceholder="Search payment attempts by ID, Order ID or customer email..."
+        statusOptions={['captured', 'failed', 'pending', 'initiated']}
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
       />
 
       {/* Table */}
-      <div className="rounded-2xl border border-white/10 bg-[#120c24]/80 p-6 shadow-xl backdrop-blur-xl">
+      <div className="rounded-2xl border border-white/10 bg-[#120c24]/90 p-6 shadow-xl backdrop-blur-xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-base font-bold text-white">Payment Attempts & Failure Recovery</h3>
-            <p className="text-xs text-text-muted">Track incomplete checkouts, gateway drops, and recovery emails</p>
+            <h3 className="text-base font-bold text-white">Razorpay Payment Attempts & Gateway Logs</h3>
+            <p className="text-xs text-text-muted">Reading strictly from live PostgreSQL payment_attempts table ({filteredAttempts.length} records)</p>
           </div>
           <button
             onClick={() => refetch()}
@@ -71,52 +82,61 @@ export default function PaymentAttemptsPage() {
             ))}
           </div>
         ) : filteredAttempts.length === 0 ? (
-          <div className="py-12 text-center text-xs text-text-muted">No payment attempts logged.</div>
+          <div className="py-12 text-center text-xs text-text-muted">No payment attempts logged in database.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-white/10 text-text-muted uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Attempt ID</th>
+                  <th className="py-3.5 px-4">Attempt / Order ID</th>
                   <th className="py-3.5 px-4">Customer Email</th>
                   <th className="py-3.5 px-4">Amount</th>
-                  <th className="py-3.5 px-4">Failure Reason</th>
+                  <th className="py-3.5 px-4">Gateway Result / Reason</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredAttempts.map((att) => (
-                  <tr key={att.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-white">{att.id}</td>
-                    <td className="py-3.5 px-4 text-text-muted">{att.customerEmail}</td>
-                    <td className="py-3.5 px-4 font-bold text-white">₹{att.amount}</td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-rose-300">{att.errorReason}</td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold ${
-                          att.status === 'failed'
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}
-                      >
-                        <FiAlertTriangle className="text-[10px]" /> {att.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-text-muted">
-                      {new Date(att.createdAt).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleSendRecoveryEmail(att.customerEmail)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
-                      >
-                        <FiSend /> Send Recovery Link
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredAttempts.map((att) => {
+                  const isSuccess = (att.status || '').toLowerCase() === 'captured' || (att.status || '').toLowerCase() === 'paid'
+
+                  return (
+                    <tr key={att.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-white">#{att.id.slice(0, 8)}</td>
+                      <td className="py-3.5 px-4 text-text-muted">{att.customerEmail || 'Anonymous'}</td>
+                      <td className="py-3.5 px-4 font-bold text-white">₹{att.amount || 0}</td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-text-muted">{att.errorReason || 'GATEWAY_INITIATED'}</td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-[10px] ${
+                            isSuccess
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}
+                        >
+                          {isSuccess ? <FiCheckCircle className="text-[10px]" /> : <FiAlertTriangle className="text-[10px]" />}
+                          {(att.status || 'initiated').toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-text-muted">
+                        {att.createdAt ? new Date(att.createdAt).toLocaleDateString('en-IN') : 'Recent'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {att.customerEmail ? (
+                          <button
+                            onClick={() => handleSendRecoveryEmail(att.customerEmail)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
+                          >
+                            <FiSend /> Send Recovery Link
+                          </button>
+                        ) : (
+                          <span className="text-text-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

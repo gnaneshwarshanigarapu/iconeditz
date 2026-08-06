@@ -1,5 +1,5 @@
 import React from 'react'
-import { Heart, Share2, Star } from 'lucide-react'
+import { Share2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function ProductCard({ product }) {
@@ -8,7 +8,8 @@ export default function ProductCard({ product }) {
   const price = Number(product.price || 0)
   const currentPrice = salePrice ?? price
   const isFree = Number(currentPrice) === 0
-  const badge = product.badge || (isFree ? 'FREE' : salePrice && salePrice < price ? 'SALE' : product.is_new ? 'NEW' : null)
+  const isSale = salePrice != null && Number(salePrice) < price
+  const badge = product.badge || (isFree ? 'FREE!' : isSale ? 'SALE!' : product.is_new ? 'NEW!' : 'SALE!')
   const productPath = `/store/${product.slug || product.id}`
 
   const share = async (event) => {
@@ -20,11 +21,11 @@ export default function ProductCard({ product }) {
   }
 
   return (
-    <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#120a22]/80 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-violet-500/40 hover:shadow-2xl hover:shadow-violet-950/50">
+    <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#120a22]/90 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-violet-500/40 hover:shadow-2xl hover:shadow-violet-950/50">
       <Link to={productPath} className="absolute inset-0 z-0" aria-label={`View ${product.title}`} />
 
-      {/* Thumbnail Container */}
-      <div className="relative z-10 aspect-[16/10] w-full overflow-hidden bg-[#0d0718]">
+      {/* Square Thumbnail Image matching reference screenshot */}
+      <div className="relative z-10 aspect-square w-full overflow-hidden bg-[#0a0518]">
         <img
           src={image}
           alt={product.title}
@@ -35,75 +36,61 @@ export default function ProductCard({ product }) {
           loading="lazy"
           decoding="async"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#120a22]/80 via-transparent to-transparent" />
+
+        {/* Top Left Red SALE! Badge */}
         {badge && (
-          <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-[#150B25]/90 px-3 py-0.5 text-[10px] font-bold tracking-wide text-white backdrop-blur">
+          <span className="absolute left-3 top-3 rounded-md bg-rose-600 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md shadow-rose-950/50">
             {badge}
           </span>
         )}
-        <div className="absolute right-3 top-3 flex gap-1.5">
+
+        {/* Top Right Share Circular Button */}
+        <div className="absolute right-3 top-3">
           <button
             type="button"
             onClick={share}
-            className="grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur transition hover:bg-violet-500/40"
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur transition hover:bg-violet-600/60"
             aria-label="Share product"
           >
-            <Share2 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            className="grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur transition hover:bg-violet-500/40"
-            aria-label="Add to wishlist"
-          >
-            <Heart className="h-3.5 w-3.5" />
+            <Share2 className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Content Container */}
+      {/* Content Section */}
       <div className="relative z-10 flex flex-1 flex-col p-4 sm:p-5">
-        <span className="w-fit rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300">
+        {/* Category Pill */}
+        <span className="w-fit rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
           {product.category || 'Asset'}
         </span>
 
-        <h3 className="mt-2.5 line-clamp-1 text-base font-bold text-white sm:text-lg">
+        {/* Product Title */}
+        <h3 className="mt-2.5 line-clamp-2 text-sm font-bold text-white leading-snug sm:text-base">
           {product.title}
         </h3>
 
-        <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-white/60 sm:text-sm">
-          {product.description || 'Premium creative asset for your next project.'}
+        {/* Subtitle Description */}
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-white/55">
+          {product.description || 'Premium creative asset for editors and content creators.'}
         </p>
 
-        {/* Responsive Wrap Stats */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/50">
-          <span className="inline-flex items-center gap-1 text-amber-400 font-medium">
-            <Star className="h-3 w-3 fill-current" />
-            {product.rating || '5.0'}
+        {/* Price Row */}
+        <div className="mt-4 flex items-baseline gap-2">
+          {isSale && (
+            <span className="text-xs text-white/40 line-through">
+              Rs {price.toFixed(2)}
+            </span>
+          )}
+          <span className="text-lg font-extrabold text-white sm:text-xl">
+            {isFree ? 'Free' : `Rs ${Number(currentPrice).toFixed(2)}`}
           </span>
-          <span>•</span>
-          <span>{product.downloads || 0} downloads</span>
-          <span>•</span>
-          <span className="text-violet-300">{product.stock == null ? 'Digital' : `${product.stock} left`}</span>
         </div>
 
-        {/* Bottom Price & Action */}
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3.5">
-          <div>
-            {salePrice != null && salePrice < price && (
-              <p className="text-[11px] text-white/40 line-through">₹{price}</p>
-            )}
-            <p className="text-xl font-extrabold text-white sm:text-2xl">
-              {isFree ? 'Free' : `₹${currentPrice}`}
-            </p>
-          </div>
-
+        {/* Full-width Pill Buy Now Button */}
+        <div className="mt-4 pt-1">
           <Link
             to={productPath}
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-xs font-bold text-white shadow-[0_0_16px_rgba(139,92,246,.35)] transition-all duration-300 hover:scale-105 hover:shadow-[0_0_24px_rgba(168,85,247,.6)] sm:px-5 sm:py-2.5 sm:text-sm"
+            className="flex w-full items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-purple-500 py-2.5 text-xs font-bold text-white shadow-lg shadow-violet-950/40 transition-all duration-300 hover:scale-[1.02] hover:shadow-violet-600/40 sm:text-sm"
           >
             Buy Now
           </Link>

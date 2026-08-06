@@ -3,6 +3,8 @@ import products from '../server/api/products.js'
 import categories from '../server/api/categories.js'
 import cms from '../server/api/cms.js'
 import orders from '../server/api/orders.js'
+import customers from '../server/api/customers.js'
+import paymentAttempts from '../server/api/payment-attempts.js'
 import downloads from '../server/api/downloads.js'
 import uploads from '../server/api/uploads.js'
 import settings from '../server/api/settings.js'
@@ -10,6 +12,7 @@ import newsletter from '../server/api/newsletter.js'
 import admin from '../server/api/admin.js'
 import hireRequests from '../server/api/hire-requests.js'
 import health from '../server/api/health.js'
+import razorpayWebhook from '../server/api/webhooks/razorpay.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -19,6 +22,8 @@ const handlers = {
   categories,
   cms,
   orders,
+  customers,
+  'payment-attempts': paymentAttempts,
   downloads,
   uploads,
   settings,
@@ -26,6 +31,8 @@ const handlers = {
   admin,
   'hire-requests': hireRequests,
   health,
+  webhook: razorpayWebhook,
+  webhooks: razorpayWebhook,
 }
 
 const parseJsonBody = async (req) => {
