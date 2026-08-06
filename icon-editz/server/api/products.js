@@ -34,6 +34,64 @@ async function uniqueSlug(value, excludeId) {
   }
 }
 
+/**
+ * Sanitizes input body to only include valid PostgreSQL columns for public.products table.
+ * Prevents PGRST204 errors caused by non-existent columns (e.g., discountPrice, mainImage).
+ */
+function sanitizeProductPayload(body) {
+  const payload = {}
+
+  if (body.title !== undefined) payload.title = String(body.title).trim()
+  if (body.category !== undefined) payload.category = String(body.category).trim()
+  if (body.description !== undefined) payload.description = body.description ? String(body.description) : null
+
+  // Prices
+  if (body.price !== undefined) payload.price = Number(body.price || 0)
+  if (body.discountPrice !== undefined || body.discount_price !== undefined) {
+    const val = body.discountPrice ?? body.discount_price
+    payload.discount_price = val !== '' && val !== null && val !== undefined ? Number(val) : null
+  }
+
+  // Media & Download URLs
+  if (body.thumbnail !== undefined || body.thumbnail_path !== undefined) {
+    const thumb = body.thumbnail ?? body.thumbnail_path
+    payload.thumbnail_path = thumb ? String(thumb).trim() : null
+  }
+  if (body.downloadUrl !== undefined || body.zip_path !== undefined) {
+    const zip = body.downloadUrl ?? body.zip_path
+    payload.zip_path = zip ? String(zip).trim() : null
+  }
+  if (body.demoVideo !== undefined || body.demo_video !== undefined) {
+    const vid = body.demoVideo ?? body.demo_video
+    payload.demo_video = vid ? String(vid).trim() : null
+  }
+
+  // Arrays / JSON
+  if (body.features !== undefined) {
+    payload.features = Array.isArray(body.features)
+      ? body.features
+      : String(body.features || '').split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  if (body.screenshots !== undefined) {
+    payload.screenshots = Array.isArray(body.screenshots)
+      ? body.screenshots
+      : String(body.screenshots || '').split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  if (body.tags !== undefined) {
+    payload.tags = Array.isArray(body.tags)
+      ? body.tags
+      : String(body.tags || '').split(',').map((s) => s.trim()).filter(Boolean)
+  }
+
+  // Status & Published flag
+  if (body.status !== undefined) payload.status = String(body.status)
+  if (body.published !== undefined) payload.published = Boolean(body.published)
+  else if (body.status !== undefined) payload.published = body.status === 'published'
+
+  payload.updated_at = new Date().toISOString()
+  return payload
+}
+
 async function handleGetProducts(req, res) {
   const productId = req.query.id
   if (productId) return handleGetProduct(req, res, productId)
@@ -52,13 +110,14 @@ async function handleGetProducts(req, res) {
   if (error) throw error
   const mapped = (data || []).map((p) => ({
     ...p,
-    thumbnail: p.thumbnail || p.thumbnail_path || '/assets/images/og-icon-editz.png',
+    thumbnail: p.thumbnail_path || p.thumbnail || '/assets/images/og-icon-editz.png',
     discountPrice: p.discount_price ?? p.discountPrice ?? p.price,
+    downloadUrl: p.zip_path || p.downloadUrl || '',
+    demoVideo: p.demo_video || p.demoVideo || '',
   }))
   return res.json({ data: mapped, products: mapped })
 }
 
-// Public URLs use a stable slug or UUID.
 export async function handleGetProduct(req, res, requestedId = req.query.id) {
   const productId = typeof requestedId === 'string' ? requestedId.trim() : ''
   const isAdmin = (await tryAuthenticate(req))?.role === 'admin'
@@ -71,7 +130,6 @@ export async function handleGetProduct(req, res, requestedId = req.query.id) {
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
   const lookupColumn = uuidPattern.test(productId) ? 'id' : 'slug'
 
-  // Query all fields safely without selecting non-existent column names
   const { data, error } = await supabaseAdmin
     .from('products')
     .select('*')
@@ -87,30 +145,25 @@ export async function handleGetProduct(req, res, requestedId = req.query.id) {
   if (data.deleted_at) {
     return res.status(404).json({ success: false, code: 'PRODUCT_DELETED', error: 'Product has been deleted' })
   }
-  if (!isAdmin && data.published === false && data.status === 'draft') {
-    return res.status(404).json({ success: false, code: 'PRODUCT_DRAFT', error: 'Product is not published' })
-  }
 
-  const thumbnail = data.thumbnail || data.thumbnail_path || '/assets/images/og-icon-editz.png'
+  const thumbnail = data.thumbnail_path || data.thumbnail || '/assets/images/og-icon-editz.png'
   const discountPrice = data.discount_price ?? data.discountPrice ?? data.price
-  const mainImage = data.main_image || data.mainImage || thumbnail
+  const downloadUrl = data.zip_path || data.downloadUrl || ''
+  const demoVideo = data.demo_video || data.demoVideo || ''
+
+  const formatted = {
+    ...data,
+    thumbnail,
+    discountPrice,
+    downloadUrl,
+    demoVideo,
+    adminPreview: isAdmin,
+  }
 
   return res.json({
     success: true,
-    data: {
-      ...data,
-      thumbnail,
-      discountPrice,
-      mainImage,
-      adminPreview: isAdmin,
-    },
-    product: {
-      ...data,
-      thumbnail,
-      discountPrice,
-      mainImage,
-      adminPreview: isAdmin,
-    },
+    data: formatted,
+    product: formatted,
   })
 }
 
@@ -122,18 +175,36 @@ async function handleAdminProductActions(req, res) {
 
   switch (req.method) {
     case 'POST': {
-      const payload = { ...body, slug: await uniqueSlug(body.slug || body.title) }
-      const { data, error } = await supabaseAdmin.from('products').insert(payload).select().single()
+      const sanitized = sanitizeProductPayload(body)
+      sanitized.slug = await uniqueSlug(body.slug || body.title)
+      sanitized.created_at = new Date().toISOString()
+
+      const { data, error } = await supabaseAdmin.from('products').insert([sanitized]).select().single()
       if (error) throw error
-      return res.status(201).json({ data })
+
+      const formatted = {
+        ...data,
+        thumbnail: data.thumbnail_path || '/assets/images/og-icon-editz.png',
+        discountPrice: data.discount_price ?? data.price,
+      }
+      return res.status(201).json({ success: true, data: formatted, product: formatted })
     }
     case 'PUT': {
       if (!id) throw Object.assign(new Error('Product ID is required for updates'), { status: 400 })
-      const payload = { ...body }
-      if (body.slug || body.title) payload.slug = await uniqueSlug(body.slug || body.title, id)
-      const { data, error } = await supabaseAdmin.from('products').update(payload).eq('id', id).select().single()
+      const sanitized = sanitizeProductPayload(body)
+      if (body.slug || body.title) {
+        sanitized.slug = await uniqueSlug(body.slug || body.title, id)
+      }
+
+      const { data, error } = await supabaseAdmin.from('products').update(sanitized).eq('id', id).select().single()
       if (error) throw error
-      return res.json({ data })
+
+      const formatted = {
+        ...data,
+        thumbnail: data.thumbnail_path || '/assets/images/og-icon-editz.png',
+        discountPrice: data.discount_price ?? data.price,
+      }
+      return res.json({ success: true, data: formatted, product: formatted })
     }
     case 'DELETE': {
       if (!id) throw Object.assign(new Error('Product ID is required for deletion'), { status: 400 })

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth'; // Assuming you have a useAuth hook
+import { useAuth } from '../../hooks/useAuth';
 import { useCreateOrder } from '../../hooks/mutations/useCreateOrder'
 import { useVerifyPayment } from '../../hooks/mutations/useVerifyPayment'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
+import { api } from '../../services/api'
 
 export default function CheckoutModal({ product, onClose }) {
-  const { user } = useAuth(); // Get authenticated user
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: user?.user_metadata?.full_name || '',
     email: user?.email || '',
@@ -14,7 +15,7 @@ export default function CheckoutModal({ product, onClose }) {
   });
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [statusType, setStatusType] = useState(''); // 'error', 'success', 'info'
+  const [statusType, setStatusType] = useState('');
   const [purchase, setPurchase] = useState(null)
   const createOrder = useCreateOrder()
   const verifyPayment = useVerifyPayment()
@@ -25,6 +26,20 @@ export default function CheckoutModal({ product, onClose }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const reportFailedAttempt = (razorpayOrderId, errDetails) => {
+    api.post('/api/payment-attempts', {
+      razorpay_order_id: razorpayOrderId,
+      amount: amount,
+      currency: 'INR',
+      status: 'failed',
+      customer_name: formData.name,
+      customer_email: formData.email,
+      customer_phone: formData.phone,
+      error_code: errDetails?.code || 'BAD_REQUEST_PAYMENT_TIMED_OUT',
+      error_description: errDetails?.description || errDetails?.reason || 'Customer - Payment Timed Out',
+    }).catch(() => {})
+  }
+
   const loadRazorpay = async () => {
     setStatusMessage('Initiating payment...');
     setStatusType('info');
@@ -33,12 +48,10 @@ export default function CheckoutModal({ product, onClose }) {
     try {
       if (!window.Razorpay) throw new Error('Razorpay Checkout could not be loaded. Please refresh and try again.')
 
-      // The server calculates the product price and creates both the local and Razorpay orders.
       const razorpayOrder = await createOrder.mutateAsync({ productId: product.id, name: formData.name, email: formData.email, phone: formData.phone })
       metaEvent('InitiateCheckout', commerceData(product)); trackGaCommerce('begin_checkout', product)
       if (!razorpayOrder.key_id || !razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
 
-      // Step 3: Setup Razorpay options and open the modal
       let paymentReceived = false;
       const options = {
         key: razorpayOrder.key_id,
@@ -62,6 +75,7 @@ export default function CheckoutModal({ product, onClose }) {
               throw new Error(verifyData.message || 'Payment verification failed.');
             }
           } catch (err) {
+            reportFailedAttempt(razorpayOrder.order_id, { code: 'VERIFICATION_FAILED', description: err.message })
             setStatusMessage(err.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.');
             setStatusType('error');
           }
@@ -78,7 +92,8 @@ export default function CheckoutModal({ product, onClose }) {
           ondismiss: () => {
             if (paymentReceived) return;
             setLoading(false);
-            setStatusMessage('Payment cancelled. Your order has not been charged.');
+            reportFailedAttempt(razorpayOrder.order_id, { code: 'BAD_REQUEST_PAYMENT_TIMED_OUT', description: 'Customer - Payment Timed Out' })
+            setStatusMessage('Payment cancelled or timed out.');
             setStatusType('info');
           },
         },
@@ -86,14 +101,15 @@ export default function CheckoutModal({ product, onClose }) {
 
       const rzp1 = new window.Razorpay(options);
       rzp1.on('payment.failed', function (response){
-        setStatusMessage('Payment could not be completed. Please try again in a few minutes.');
+        reportFailedAttempt(razorpayOrder.order_id, response?.error || { code: 'BAD_REQUEST_PAYMENT_TIMED_OUT', description: 'Customer - Payment Timed Out' })
+        setStatusMessage('Payment could not be completed.');
         setStatusType('error');
         setLoading(false);
       });
 
       rzp1.open();
       setLoading(false);
-      setStatusMessage(''); // Clear loading text when Razorpay modal opens
+      setStatusMessage('');
 
     } catch (err) {
       setStatusMessage(err.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.');
@@ -110,10 +126,9 @@ export default function CheckoutModal({ product, onClose }) {
       return;
     }
     if (!user) {
-        setStatusMessage('You must be logged in to make a purchase.');
-        setStatusType('error');
-        // Here you might want to trigger a login modal
-        return;
+      setStatusMessage('You must be logged in to make a purchase.');
+      setStatusType('error');
+      return;
     }
     loadRazorpay();
   };
@@ -126,7 +141,6 @@ export default function CheckoutModal({ product, onClose }) {
           className="absolute top-4 right-4 text-text-muted hover:text-white transition-colors"
           disabled={loading}
         >
-          {/* Close Icon */}
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
 
@@ -168,7 +182,24 @@ export default function CheckoutModal({ product, onClose }) {
           )}
 
           {statusType === 'success' && purchase && (
-            <div className="space-y-4 text-sm"><div className="rounded-xl bg-green-500/10 p-4 text-green-100"><h3 className="text-xl font-bold">✔ Payment Successful</h3><p className="mt-3">Order ID: {purchase.orderId}</p><p>Product: {purchase.product || product.title}</p><p>Amount: ₹{purchase.amount ?? amount}</p></div>{purchase.downloadUrl ? <a href={purchase.downloadUrl} className="block w-full rounded-xl bg-primary py-3 text-center font-bold text-white" target="_blank" rel="noreferrer">⬇ Download Now</a> : <p className="text-amber-200">Your payment is confirmed. Please contact support for access.</p>}<button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-surface-dark py-3 font-medium text-white transition-colors hover:bg-white/10">🏠 Back to Store</button></div>
+            <div className="space-y-4 text-sm">
+              <div className="rounded-xl bg-green-500/10 p-4 text-green-100">
+                <h3 className="text-xl font-bold">✔ Payment Successful</h3>
+                <p className="mt-3">Order ID: {purchase.orderId}</p>
+                <p>Product: {purchase.product || product.title}</p>
+                <p>Amount: ₹{purchase.amount ?? amount}</p>
+              </div>
+              {purchase.downloadUrl ? (
+                <a href={purchase.downloadUrl} className="block w-full rounded-xl bg-primary py-3 text-center font-bold text-white" target="_blank" rel="noreferrer">
+                  ⬇ Download Now
+                </a>
+              ) : (
+                <p className="text-amber-200">Your payment is confirmed. Please contact support for access.</p>
+              )}
+              <button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-surface-dark py-3 font-medium text-white transition-colors hover:bg-white/10">
+                🏠 Back to Store
+              </button>
+            </div>
           )}
         </div>
       </div>

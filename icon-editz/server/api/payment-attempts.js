@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../lib/supabaseAdmin.js'
 import { authorizeAdmin } from '../lib/auth.js'
 import { withApi } from '../lib/handler.js'
+import { logPaymentAttempt } from '../lib/paymentAttemptLog.js'
 
 async function listPaymentAttempts(req, res) {
   await authorizeAdmin(req)
@@ -18,10 +19,11 @@ async function listPaymentAttempts(req, res) {
       orderId: att.order_id || att.razorpay_order_id || 'N/A',
       customerEmail: att.customer_email || 'Anonymous',
       customerName: att.customer_name || 'Customer',
+      customerPhone: att.customer_phone || '',
       amount: Number(att.amount || 0),
       currency: att.currency || 'INR',
       status: att.status || 'initiated',
-      errorReason: att.error_description || att.error_code || 'GATEWAY_DROPPED',
+      errorReason: att.error_description || att.error_code || 'Customer - Payment Timed Out',
       createdAt: att.created_at,
     }))
     return res.json({ success: true, data: formatted, attempts: formatted })
@@ -38,14 +40,51 @@ async function listPaymentAttempts(req, res) {
     orderId: o.razorpay_order_id || o.order_id || o.id,
     customerEmail: o.customer_email || o.user_email || o.email || '',
     customerName: o.customer_name || 'Customer',
+    customerPhone: o.customer_phone || '',
     amount: Number(o.amount || 0),
     currency: o.currency || 'INR',
-    status: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'captured' : 'pending',
-    errorReason: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'SUCCESS' : 'CHECKOUT_PENDING',
+    status: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'captured' : 'failed',
+    errorReason: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'SUCCESS' : 'Customer - Payment Timed Out',
     createdAt: o.created_at,
   }))
 
   return res.json({ success: true, data: liveAttempts, attempts: liveAttempts })
 }
 
-export default withApi(['GET'], listPaymentAttempts)
+async function recordPaymentAttempt(req, res) {
+  const {
+    order_id,
+    razorpay_order_id,
+    razorpay_payment_id,
+    amount,
+    currency,
+    status,
+    payment_method,
+    customer_name,
+    customer_email,
+    customer_phone,
+    error_code,
+    error_description,
+    raw_response,
+  } = req.body || {}
+
+  const result = await logPaymentAttempt({
+    order_id,
+    razorpay_order_id,
+    razorpay_payment_id,
+    amount,
+    currency: currency || 'INR',
+    status: status || 'failed',
+    payment_method: payment_method || 'razorpay',
+    customer_name,
+    customer_email,
+    customer_phone,
+    error_code: error_code || 'BAD_REQUEST_PAYMENT_TIMED_OUT',
+    error_description: error_description || 'Customer - Payment Timed Out',
+    raw_response: raw_response || {},
+  })
+
+  return res.status(201).json({ success: true, data: result })
+}
+
+export default withApi({ GET: listPaymentAttempts, POST: recordPaymentAttempt })

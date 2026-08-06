@@ -20,17 +20,24 @@ export default function PaymentAttemptsPage() {
 
       // Fallback: Query live orders from Supabase orders table
       const { data: orders = [] } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
-      return (orders || []).map((o) => ({
-        id: o.id,
-        orderId: o.razorpay_order_id || o.order_id || o.id,
-        customerEmail: o.customer_email || o.user_email || o.email || '',
-        customerName: o.customer_name || 'Customer',
-        amount: Number(o.amount || 0),
-        currency: o.currency || 'INR',
-        status: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'captured' : 'pending',
-        errorReason: (o.payment_status || o.status || 'pending').toLowerCase() === 'paid' ? 'GATEWAY_CAPTURED' : 'CHECKOUT_PENDING',
-        createdAt: o.created_at,
-      }))
+      return (orders || []).map((o) => {
+        const statusLower = (o.payment_status || o.status || 'pending').toLowerCase()
+        const isPaid = statusLower === 'paid'
+        const isFailed = statusLower === 'failed'
+
+        return {
+          id: o.id,
+          orderId: o.razorpay_payment_id || o.razorpay_order_id || o.order_id || o.id,
+          customerEmail: o.customer_email || o.user_email || o.email || '',
+          customerName: o.customer_name || 'Customer',
+          customerPhone: o.customer_phone || '',
+          amount: Number(o.amount || 0),
+          currency: 'INR',
+          status: isPaid ? 'captured' : isFailed ? 'failed' : 'pending',
+          errorReason: isPaid ? 'GATEWAY_CAPTURED' : isFailed ? 'Customer - Payment Timed Out' : 'CHECKOUT_PENDING',
+          createdAt: o.created_at,
+        }
+      })
     },
   })
 
@@ -45,7 +52,7 @@ export default function PaymentAttemptsPage() {
 
   const handleSendRecoveryEmail = (email) => {
     if (!email) return
-    alert(`Checkout recovery email sent to ${email}`)
+    alert(`Checkout recovery link sent to ${email}`)
   }
 
   return (
@@ -65,7 +72,7 @@ export default function PaymentAttemptsPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-base font-bold text-white">Razorpay Payment Attempts & Gateway Logs</h3>
-            <p className="text-xs text-text-muted">Reading strictly from live PostgreSQL payment_attempts table ({filteredAttempts.length} records)</p>
+            <p className="text-xs text-text-muted">Reading strictly from live PostgreSQL gateway logs ({filteredAttempts.length} records)</p>
           </div>
           <button
             onClick={() => refetch()}
@@ -88,10 +95,10 @@ export default function PaymentAttemptsPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-white/10 text-text-muted uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Attempt / Order ID</th>
+                  <th className="py-3.5 px-4">Razorpay Payment / Order ID</th>
                   <th className="py-3.5 px-4">Customer Email</th>
                   <th className="py-3.5 px-4">Amount</th>
-                  <th className="py-3.5 px-4">Gateway Result / Reason</th>
+                  <th className="py-3.5 px-4">Gateway Status & Reason</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
@@ -99,24 +106,41 @@ export default function PaymentAttemptsPage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {filteredAttempts.map((att) => {
-                  const isSuccess = (att.status || '').toLowerCase() === 'captured' || (att.status || '').toLowerCase() === 'paid'
+                  const statusLower = (att.status || '').toLowerCase()
+                  const isSuccess = statusLower === 'captured' || statusLower === 'paid'
+                  const isFailed = statusLower === 'failed'
 
                   return (
                     <tr key={att.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-white">#{att.id.slice(0, 8)}</td>
-                      <td className="py-3.5 px-4 text-text-muted">{att.customerEmail || 'Anonymous'}</td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-white">
+                        {att.orderId || `#${att.id.slice(0, 8)}`}
+                      </td>
+                      <td className="py-3.5 px-4 text-text-muted">
+                        <div>
+                          <p className="font-semibold text-white">{att.customerEmail || 'Anonymous'}</p>
+                          {att.customerPhone && <p className="text-[10px] text-text-muted">{att.customerPhone}</p>}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 font-bold text-white">₹{att.amount || 0}</td>
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-text-muted">{att.errorReason || 'GATEWAY_INITIATED'}</td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-rose-300">
+                        {att.errorReason || 'Customer - Payment Timed Out'}
+                      </td>
                       <td className="py-3.5 px-4">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-semibold text-[10px] ${
                             isSuccess
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : isFailed
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                               : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                           }`}
                         >
-                          {isSuccess ? <FiCheckCircle className="text-[10px]" /> : <FiAlertTriangle className="text-[10px]" />}
-                          {(att.status || 'initiated').toUpperCase()}
+                          {isSuccess ? (
+                            <FiCheckCircle className="text-[10px]" />
+                          ) : (
+                            <FiAlertTriangle className="text-[10px]" />
+                          )}
+                          {(att.status || 'failed').toUpperCase()}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-text-muted">

@@ -4,26 +4,56 @@ import ProductForm from '../../../components/admin/ProductForm'
 import { useProducts } from '../../../hooks/useProducts'
 
 const parseList = (value) =>
-  value
+  typeof value === 'string'
+    ? value.split(',').map((item) => item.trim()).filter(Boolean)
+    : Array.isArray(value)
     ? value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
     : []
 
 export default function EditProduct() {
   const { id } = useParams()
-  const { getProducts, updateProduct } = useProducts()
+  const { getProduct, updateProduct } = useProducts()
   const navigate = useNavigate()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { getProducts().then(({ products }) => setProduct(products.find((item) => String(item.id) === String(id)) || null)).catch((err) => setError(err.message)).finally(() => setLoading(false)) }, [getProducts, id])
+  useEffect(() => {
+    let mounted = true
+    getProduct(id)
+      .then((data) => {
+        if (mounted) {
+          if (data) setProduct(data)
+          else setError('Product not found in database.')
+        }
+      })
+      .catch((err) => {
+        if (mounted) setError(err.message || 'Error fetching product.')
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [getProduct, id])
 
-  if (loading) return <div className="rounded-xl border border-white/10 bg-white/[0.055] p-8 text-text-muted">Loading product…</div>
-  if (!product) return <div className="rounded-xl border border-white/10 bg-white/[0.055] p-8 text-text-muted">{error || 'Product not found.'}</div>
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-8 text-center text-xs text-text-muted backdrop-blur-xl">
+        Loading product asset details...
+      </div>
+    )
+  }
+
+  if (!product) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-8 text-center text-xs text-rose-300 backdrop-blur-xl">
+        {error || 'Product asset not found.'}
+      </div>
+    )
+  }
 
   const onSubmit = async (data) => {
     setError('')
@@ -32,46 +62,58 @@ export default function EditProduct() {
     try {
       const patch = {
         title: data.title || 'Untitled',
+        slug: data.slug,
         category: data.category || 'Uncategorized',
-        thumbnail: data.thumbnail || '',
+        thumbnail: data.thumbnail || data.thumbnail_path || '',
+        downloadUrl: data.downloadUrl || data.zip_path || '',
         screenshots: parseList(data.screenshots),
-        demoVideo: data.demoVideo || '',
+        demoVideo: data.demoVideo || data.demo_video || '',
         description: data.description || '',
         features: parseList(data.features),
         price: Number(data.price) || 0,
-        discountPrice: data.discountPrice ? Number(data.discountPrice) : null,
+        discountPrice: data.discountPrice !== '' && data.discountPrice !== null && data.discountPrice !== undefined ? Number(data.discountPrice) : null,
         tags: parseList(data.tags),
-        status: data.status || 'draft',
+        status: data.status || 'published',
       }
       await updateProduct(id, patch)
       navigate('/admin/products')
     } catch (err) {
-      setError(err.message || 'Unable to update product.')
+      setError(err.message || 'Unable to update product asset.')
     } finally {
       setSaving(false)
     }
   }
 
   const defaults = {
-    title: product.title,
-    category: product.category,
-    thumbnail: product.thumbnail,
-    screenshots: (product.screenshots || []).join(', '),
-    demoVideo: product.demoVideo,
-    description: product.description,
-    features: (product.features || []).join(', '),
-    price: product.price,
-    discountPrice: product.discountPrice || '',
-    tags: (product.tags || []).join(', '),
-    status: product.status,
+    title: product.title || '',
+    slug: product.slug || '',
+    category: product.category || '',
+    thumbnail: product.thumbnail || product.thumbnail_path || '',
+    mainImage: product.mainImage || product.thumbnail || product.thumbnail_path || '',
+    downloadUrl: product.downloadUrl || product.zip_path || '',
+    screenshots: Array.isArray(product.screenshots) ? product.screenshots.join(', ') : product.screenshots || '',
+    demoVideo: product.demoVideo || product.demo_video || '',
+    description: product.description || '',
+    features: Array.isArray(product.features) ? product.features.join(', ') : product.features || '',
+    price: product.price ?? 0,
+    discountPrice: product.discountPrice ?? product.discount_price ?? '',
+    tags: Array.isArray(product.tags) ? product.tags.join(', ') : product.tags || '',
+    status: product.status || (product.published ? 'published' : 'draft'),
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.055] p-6 shadow-xl shadow-black/20 backdrop-blur-xl">
-      <h2 className="mb-4 text-2xl font-bold text-white">Edit Product</h2>
-      {error && <p className="mb-4 rounded-lg border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-      <ProductForm defaultValues={defaults} onSubmit={onSubmit} />
-      {saving && <p className="mt-4 text-sm text-text-muted">Saving product...</p>}
+    <div className="space-y-4">
+      {error && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-xs font-semibold text-red-200">
+          {error}
+        </div>
+      )}
+      <ProductForm defaultValues={defaults} onSubmit={onSubmit} isEditing={true} />
+      {saving && (
+        <p className="text-center text-xs font-medium text-text-muted animate-pulse">
+          Saving product asset to PostgreSQL database...
+        </p>
+      )}
     </div>
   )
 }

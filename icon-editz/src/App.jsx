@@ -45,6 +45,8 @@ function AppChrome() {
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/hire" element={<HireFromUsPage />} />
+              <Route path="/hire-from-us" element={<HireFromUsPage />} />
+              <Route path="/contact" element={<HireFromUsPage />} />
               <Route path="/legal/:slug" element={<LegalPage />} />
               <Route path="/store/*" element={<StoreRoutes />} />
               <Route path="/payments/*" element={<PaymentRoutes />} />
@@ -58,6 +60,7 @@ function AppChrome() {
     </>
   )
 }
+
 export default function App() {
   return (
     <Router>

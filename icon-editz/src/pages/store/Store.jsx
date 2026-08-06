@@ -52,19 +52,19 @@ export default function Store() {
   const resetFilters = () => setDraft(initialFilters)
 
   return (
-    <main className="relative mx-auto max-w-7xl px-4 pb-24 pt-28 sm:px-6 lg:px-8 space-y-8">
+    <main className="relative mx-auto max-w-7xl px-3 pb-24 pt-24 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
       {/* Top Banner Box */}
-      <header className="rounded-2xl border border-white/10 bg-[#120a22]/90 p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
-        <h1 className="text-3xl font-extrabold text-white sm:text-4xl lg:text-5xl">
+      <header className="rounded-2xl border border-white/10 bg-[#120a22]/90 p-5 sm:p-10 shadow-2xl backdrop-blur-xl">
+        <h1 className="text-2xl font-extrabold text-white sm:text-4xl lg:text-5xl">
           {hero.heading || 'Creative Assets Store'}
         </h1>
-        <p className="mt-3 max-w-3xl text-sm font-medium leading-relaxed text-white/60 sm:text-base">
+        <p className="mt-2 text-xs font-medium leading-relaxed text-white/60 sm:mt-3 sm:text-base">
           {hero.description || 'Premium LUTs, sound packs, motion templates and more - built for editors.'}
         </p>
       </header>
 
       {/* Horizontal Category Filter Pills */}
-      <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {categories.map((cat) => {
           const isActive = filters.category === cat
           return (
@@ -72,7 +72,7 @@ export default function Store() {
               key={cat}
               type="button"
               onClick={() => setFilters((prev) => ({ ...prev, category: cat }))}
-              className={`whitespace-nowrap rounded-full px-5 py-2.5 text-xs font-bold transition-all duration-200 ${
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 sm:px-5 sm:py-2.5 sm:text-sm ${
                 isActive
                   ? 'bg-gradient-to-r from-violet-600 to-purple-500 text-white shadow-lg shadow-violet-950/50 scale-105'
                   : 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10 hover:text-white'
@@ -88,20 +88,20 @@ export default function Store() {
       <button
         type="button"
         onClick={openDrawer}
-        className="flex h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-500/15 px-4 text-xs font-semibold text-white shadow-lg shadow-violet-950/30 backdrop-blur-xl transition hover:bg-violet-500/25 lg:hidden"
+        className="flex h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-500/15 px-4 text-xs font-semibold text-white shadow-lg shadow-violet-950/30 backdrop-blur-xl transition hover:bg-violet-500/25 lg:hidden"
       >
         <SlidersHorizontal className="h-4 w-4 text-violet-200" />
         FILTERS & CATEGORIES
       </button>
 
-      {/* Main Grid Layout (Sidebar + 4 Column Product Cards) */}
-      <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">
+      {/* Main Grid Layout (Sidebar + 2-Col Mobile / 4-Col Desktop Product Cards) */}
+      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">
         {/* Left Sidebar Filters */}
         <aside className="hidden h-fit rounded-2xl border border-white/10 bg-[#120a22]/90 p-5 shadow-xl backdrop-blur-xl lg:sticky lg:top-28 lg:block">
           <FilterSidebar filters={filters} setFilters={setFilters} />
         </aside>
 
-        {/* Product Results */}
+        {/* Product Results Grid */}
         <ProductResults loading={loading} error={error?.message} products={displayed} />
       </div>
 
@@ -225,7 +225,7 @@ function MobileFilterDrawer({ draft, setDraft, onApply, onReset, onClose }) {
 function ProductResults({ loading, error, products }) {
   if (loading) {
     return (
-      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, index) => (
           <div key={index} className="aspect-square animate-pulse rounded-2xl border border-white/10 bg-white/5" />
         ))}
@@ -250,7 +250,7 @@ function ProductResults({ loading, error, products }) {
   }
 
   return (
-    <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+    <section className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
