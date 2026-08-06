@@ -37,18 +37,18 @@ export default function AdminRoutes() {
       <Routes>
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-        
+
         {/* Main 10 Modules */}
         <Route path="/dashboard" element={<AdminPage title="Enterprise Dashboard"><AdminDashboard /></AdminPage>} />
-        
-        {/* Website CMS Editors */}
+
+        {/* Website CMS Editors (Clean, non-duplicate sections) */}
         <Route path="/content" element={<AdminPage title="Website Pages Overview"><WebsitePagesPage /></AdminPage>} />
-        <Route path="/content/homepage" element={<AdminPage title="Home Page CMS"><PageContentCms page="Homepage" sections={['Hero', 'Showreel', 'Featured Services', 'Services', 'Featured Projects', 'Projects', 'Featured Products', 'Testimonials', 'Tools', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
-        <Route path="/content/about" element={<AdminPage title="About Page CMS"><PageContentCms page="About Page" sections={['Hero', 'Story', 'About', 'Skills', 'Stats', 'Timeline', 'Tools', 'CTA', 'SEO']} /></AdminPage>} />
-        <Route path="/content/services" element={<AdminPage title="Services Page CMS"><PageContentCms page="Services Page" sections={['Hero', 'Services', 'Process', 'Features', 'Industries', 'Software', 'Pricing', 'FAQ', 'Testimonials', 'CTA', 'SEO']} /></AdminPage>} />
-        <Route path="/content/projects" element={<AdminPage title="Projects Page CMS"><PageContentCms page="Projects Page" sections={['Hero', 'Categories', 'Portfolio', 'Projects', 'Filters', 'CTA', 'SEO']} /></AdminPage>} />
-        <Route path="/content/store" element={<AdminPage title="Store Page CMS"><PageContentCms page="Store Page" sections={['Hero', 'Categories', 'Featured Products', 'Banner', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
-        <Route path="/content/hire-from-us" element={<AdminPage title="Hire Page CMS"><PageContentCms page="Hire From Us Page" sections={['Hero', 'Services', 'Features', 'Process', 'Enquiry Form', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
+        <Route path="/content/homepage" element={<AdminPage title="Home Page CMS"><PageContentCms page="Homepage" sections={['Hero', 'Showreel', 'Services', 'Projects', 'Tools', 'Testimonials', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
+        <Route path="/content/about" element={<AdminPage title="About Page CMS"><PageContentCms page="About Page" sections={['Hero', 'Story', 'Skills', 'Stats', 'Timeline', 'Tools', 'CTA', 'SEO']} /></AdminPage>} />
+        <Route path="/content/services" element={<AdminPage title="Services Page CMS"><PageContentCms page="Services Page" sections={['Hero', 'Services', 'Pricing', 'FAQ', 'Testimonials', 'CTA', 'SEO']} /></AdminPage>} />
+        <Route path="/content/projects" element={<AdminPage title="Projects Page CMS"><PageContentCms page="Projects Page" sections={['Hero', 'Portfolio', 'CTA', 'SEO']} /></AdminPage>} />
+        <Route path="/content/store" element={<AdminPage title="Store Page CMS"><PageContentCms page="Store Page" sections={['Hero', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
+        <Route path="/content/hire-from-us" element={<AdminPage title="Hire Page CMS"><PageContentCms page="Hire From Us Page" sections={['Hero', 'Services', 'Process', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
         <Route path="/content/footer" element={<AdminPage title="Footer CMS"><SingletonContentCms table="footer_content" title="Footer CMS" /></AdminPage>} />
         <Route path="/content/seo" element={<AdminPage title="SEO Defaults"><SingletonContentCms table="settings" title="SEO Defaults" /></AdminPage>} />
 

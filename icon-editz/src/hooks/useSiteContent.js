@@ -26,13 +26,13 @@ export const useSiteContent = () => {
     const cmsTestimonialsSection = servicesPage.Testimonials || {}
     const cmsHeroSection = servicesPage.Hero || {}
     const cmsCtaSection = servicesPage.CTA || {}
-    const featuredServicesSection = sections['Featured Services'] || servicesPage['Featured Services'] || {}
+    const featuredServicesSection = sections.Services || sections['Featured Services'] || servicesPage.Services || servicesPage['Featured Services'] || {}
 
     return {
       hero: { ...DEFAULT_HERO, ...(sections.Hero || {}) },
       showreel: { ...DEFAULT_SHOWREEL, ...(sections.Showreel || {}) },
-      services: sections.Services || {},
-      projects: sections.Projects || {},
+      services: sections.Services || sections['Featured Services'] || {},
+      projects: sections.Projects || sections['Featured Projects'] || {},
       tools: sections.Tools || {},
       testimonials: sections.Testimonials || {},
       faq: sections.FAQ || {},

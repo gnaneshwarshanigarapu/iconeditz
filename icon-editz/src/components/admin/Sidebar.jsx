@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   FiGrid,
@@ -34,7 +34,14 @@ export default function Sidebar() {
   const { logout, user } = useAuth()
   const location = useLocation()
   const isWebsiteActive = location.pathname.startsWith('/admin/content')
-  const [websiteOpen, setWebsiteOpen] = useState(isWebsiteActive || true)
+  const [websiteOpen, setWebsiteOpen] = useState(isWebsiteActive)
+
+  // Expand website dropdown when navigating to any website content page
+  useEffect(() => {
+    if (isWebsiteActive) {
+      setWebsiteOpen(true)
+    }
+  }, [isWebsiteActive])
 
   const navClass = ({ isActive }) =>
     `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 ${
