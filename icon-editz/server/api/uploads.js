@@ -1,10 +1,11 @@
 import multer from 'multer';
-import { uploadToR2 } from '../lib/r2.js';
+import { storageService } from '../lib/storage/StorageService.js';
 import { authorizeAdmin } from '../lib/auth.js';
 import { withApi } from '../lib/handler.js';
 
 const ALLOWED_MIME_TYPES = [
     'image/jpeg',
+    'image/jpg',
     'image/png',
     'image/gif',
     'image/webp',
@@ -12,7 +13,8 @@ const ALLOWED_MIME_TYPES = [
     'video/mp4',
     'video/webm',
     'video/quicktime',
-    'application/zip'
+    'application/zip',
+    'application/pdf'
 ];
 
 const upload = multer({
@@ -22,20 +24,34 @@ const upload = multer({
         if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only images, videos, and zip files are allowed.'), false);
+            cb(new Error('Invalid file type. Only images, videos, PDFs, and zip files are allowed.'), false);
         }
     }
 });
 
 export const config = { api: { bodyParser: false } };
 
-export default withApi(['POST'], async (req, res) => {
+export default withApi(['POST', 'DELETE', 'GET'], async (req, res) => {
+    if (req.method === 'GET') {
+        const folder = req.query.folder || 'uploads';
+        const items = await storageService.list({ folder });
+        return res.status(200).json({ success: true, data: items });
+    }
+
     await authorizeAdmin(req);
-    
+
+    if (req.method === 'DELETE') {
+        const key = req.body?.key || req.query.key;
+        if (!key) {
+            return res.status(400).json({ success: false, message: 'Key parameter is required for deletion' });
+        }
+        await storageService.delete({ key });
+        return res.status(200).json({ success: true, message: 'File deleted successfully' });
+    }
+
     await new Promise((resolve, reject) => {
         upload.single('file')(req, res, (error) => {
             if (error) {
-                // Make multer errors more specific
                 if (error instanceof multer.MulterError) {
                     return reject(Object.assign(new Error(error.message), { status: 400 }));
                 }
@@ -49,7 +65,8 @@ export default withApi(['POST'], async (req, res) => {
         throw Object.assign(new Error('File is required'), { status: 400 });
     }
 
-    const uploadResult = await uploadToR2(req.file, req.body.folder || 'uploads');
-    
+    const folder = req.body?.folder || 'uploads';
+    const uploadResult = await storageService.upload({ file: req.file, folder });
+
     return res.status(201).json({ success: true, data: uploadResult });
 });

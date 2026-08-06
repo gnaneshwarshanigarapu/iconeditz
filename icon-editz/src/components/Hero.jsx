@@ -240,7 +240,7 @@ export default function Hero() {
                 <FiX className="text-2xl group-hover:rotate-90 transition-transform duration-300" />
               </button>
               <video 
-                src="/assets/videos/3d-lyrics-video-1.mp4" 
+                src={showreel?.videoUrl || hero?.videoUrl || "https://airzrnsiuzbdugmmcmts.supabase.co/storage/v1/object/public/uploads/videos/1786031466505-37054005-3d-lyrics-video-1.mp4"} 
                 className="w-full h-full object-cover"
                 controls 
                 autoPlay 

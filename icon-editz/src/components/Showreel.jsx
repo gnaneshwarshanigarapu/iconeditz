@@ -24,11 +24,11 @@ export default function Showreel() {
             <div className="glass-panel overflow-hidden rounded-xl border border-primary/20">
               <div className="relative aspect-video bg-surface">
                 <video
-                  src="/assets/videos/3d-lyrics-video-1.mp4"
+                  src={showreel?.videoUrl || "https://airzrnsiuzbdugmmcmts.supabase.co/storage/v1/object/public/uploads/videos/1786031466505-37054005-3d-lyrics-video-1.mp4"}
                   className="h-full w-full object-cover"
                   controls
                   playsInline
-                  poster="/assets/images/og-icon-editz.png"
+                  poster={showreel?.thumbnail || "/assets/images/og-icon-editz.png"}
                 />
               </div>
             </div>

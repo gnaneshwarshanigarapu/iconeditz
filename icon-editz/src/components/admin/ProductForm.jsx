@@ -63,7 +63,7 @@ export default function ProductForm({ defaultValues, onSubmit }) {
 
       <div>
         <label className={labelClass}>Demo Video URL</label>
-        <input {...register('demoVideo')} className={inputClass} placeholder="/assets/videos/3d-lyrics-video-1.mp4" />
+        <input {...register('demoVideo')} className={inputClass} placeholder="https://airzrnsiuzbdugmmcmts.supabase.co/storage/v1/object/public/uploads/videos/1786031466505-37054005-3d-lyrics-video-1.mp4" />
       </div>
 
       <div>
