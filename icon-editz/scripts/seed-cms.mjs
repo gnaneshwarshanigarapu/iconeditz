@@ -27,26 +27,24 @@ const db = createClient(url, serviceKey, { auth: { persistSession: false } })
 console.log('✅ Supabase client created.')
 
 // --- Deep Merge Utility ---
-const isObject = (item) => (item && typeof item === 'object' && !Array.isArray(item))
+const isObject = (item) => Boolean(item && typeof item === 'object' && !Array.isArray(item))
 
-const mergeDeep = (source, target) => { // source is from file, target is from DB
+const mergeDeep = (source, target) => {
+  const result = { ...target }
   for (const key in source) {
     if (isObject(source[key])) {
-      if (!target[key]) {
-        Object.assign(target, { [key]: {} });
+      if (!result[key]) {
+        result[key] = {}
       }
-      mergeDeep(source[key], target[key]);
-    } else {
-      if (!target.hasOwnProperty(key)) {
-        target[key] = source[key];
-      }
+      result[key] = mergeDeep(source[key], result[key])
+    } else if (!Object.prototype.hasOwnProperty.call(result, key)) {
+      result[key] = source[key]
     }
   }
-  return target;
+  return result
 }
 
-
-// --- Upsert Logic ---
+// --- Upsert Logic for Page Content ---
 const upsertPageSection = async (page, section, content, sortOrder) => {
   const { data: existing, error: fetchError } = await db
     .from('page_content')
@@ -62,15 +60,15 @@ const upsertPageSection = async (page, section, content, sortOrder) => {
 
   let finalContent = content
   let action = 'INSERT'
-  if (existing?.content) {
+  if (existing?.content && Object.keys(existing.content).length > 0) {
     action = 'UPDATE (merged)'
-    finalContent = mergeDeep(content, existing.content) // Add missing fields from file to DB content
+    finalContent = mergeDeep(content, existing.content)
   }
 
   const { error: upsertError } = await db
     .from('page_content')
     .upsert(
-      { page, section, content: finalContent, status: 'published', sort_order: sortOrder },
+      { page, section, content: finalContent, status: 'published', sort_order: sortOrder, updated_at: new Date().toISOString() },
       { onConflict: 'page,section', ignoreDuplicates: false }
     )
 
@@ -81,28 +79,22 @@ const upsertPageSection = async (page, section, content, sortOrder) => {
   console.log(`  ✓ ${action}: ${page} -> ${section}`)
 }
 
-const upsertCollection = async (tableName, data, conflictColumn = 'id') => {
-    console.log(`
-Processing collection: ${tableName}...`);
-    const { error } = await db.from(tableName).upsert(data, { onConflict: conflictColumn, ignoreDuplicates: false });
-    if (error) {
-      console.error(`🔴 Error upserting collection '${tableName}':`, error.message);
-      throw error;
-    }
-    console.log(`  ✓ UPSERT: ${data.length} records into ${tableName}`);
-};
-
 // --- Data Definitions ---
 const pagesToMigrate = {
   'Homepage': [
     ['Hero', defaultSiteContent.hero],
+    ['Showreel', defaultSiteContent.showreel],
     ['Featured Services', defaultServicesPage.homeServices],
-    ['Featured Projects', { items: projectsData.slice(0, 3) }],
-    ['Featured Products', { items: [] }], // Assuming no featured products initially
+    ['Services', defaultSiteContent.services],
+    ['Featured Projects', { items: projectsData.slice(0, 3), categories: projectCategories.slice(1) }],
+    ['Projects', defaultSiteContent.projects],
+    ['Featured Products', { items: [] }],
     ['Testimonials', defaultSiteContent.testimonials],
-    ['Tools', {items: toolsData}],
+    ['Tools', { items: toolsData }],
+    ['FAQ', defaultSiteContent.faq],
     ['CTA', defaultSiteContent.cta],
-    ['SEO', { title: 'Icon Editz - Premium Video Editing & Motion Graphics', description: 'Premium visual storytelling by Icon Editz.' }],
+    ['Site', defaultSiteContent.site],
+    ['SEO', { title: 'Icon Editz - Premium Video Editing & Motion Graphics', description: 'Premium visual storytelling by Icon Editz.', canonical: 'https://iconeditz.com/' }],
   ],
   'Services Page': [
     ['Hero', defaultServicesPage.hero],
@@ -118,76 +110,131 @@ const pagesToMigrate = {
     ['SEO', { title: 'Services | Icon Editz', description: defaultServicesPage.hero.description }],
   ],
   'Projects Page': [
-      ['Hero', { eyebrow: 'Projects', heading: 'Featured Projects', description: 'Selected creative work from Icon Editz.'}],
-      ['Categories', { items: projectCategories }],
-      ['Portfolio', { items: projectsData }],
-      ['Filters', { items: projectCategories.filter(c => c !== 'All') }],
-      ['CTA', defaultSiteContent.cta],
-      ['SEO', { title: 'Projects | Icon Editz', description: 'Browse featured creative work from Icon Editz.' }]
+    ['Hero', { eyebrow: 'Projects', heading: 'Featured Projects', description: 'Selected creative work from Icon Editz.', primaryLabel: 'Hire Me', primaryUrl: '/hire' }],
+    ['Categories', { items: projectCategories }],
+    ['Portfolio', { items: projectsData, categories: projectCategories }],
+    ['Projects', { items: projectsData, categories: projectCategories }],
+    ['Filters', { items: projectCategories.filter((c) => c !== 'All') }],
+    ['CTA', defaultSiteContent.cta],
+    ['SEO', { title: 'Projects | Icon Editz', description: 'Browse featured creative work from Icon Editz.' }],
   ],
   'Store Page': [
-      ['Hero', { eyebrow: 'Store', heading: 'Premium creative assets', description: 'Templates, edits, presets, and creative tools to elevate your projects.' }],
-      ['Categories', { items: ['All Assets', 'PSD', 'Wedding Invitation', 'After Effects', 'Premiere Pro', 'Photoshop', 'LUTs', 'Sound Packs']}],
-      ['Featured Products', { items: [] }],
-      ['FAQ', { items: defaultSiteContent.faq.items }],
-      ['CTA', defaultSiteContent.cta],
-      ['SEO', { title: 'Store | Icon Editz', description: 'Premium creative assets from Icon Editz.' }]
+    ['Hero', { eyebrow: 'Store', heading: 'Premium creative assets', description: 'Templates, edits, presets, and creative tools to elevate your projects.', primaryLabel: 'Browse Products', primaryUrl: '/products' }],
+    ['Categories', { items: ['All Assets', 'PSD', 'Wedding Invitation', 'After Effects', 'Premiere Pro', 'Photoshop', 'LUTs', 'Sound Packs'] }],
+    ['Featured Products', { items: [] }],
+    ['Banner', { heading: 'Premium assets for modern creators', description: 'Use polished templates and assets to launch faster with a polished finish.' }],
+    ['FAQ', { items: defaultSiteContent.faq.items }],
+    ['CTA', defaultSiteContent.cta],
+    ['SEO', { title: 'Store | Icon Editz', description: 'Premium creative assets from Icon Editz.' }],
   ],
   'About Page': [
-      ['Hero', { eyebrow: 'About', heading: 'About Icon Editz', description: 'Creative video editing, motion graphics, and visual storytelling.' }],
-      ['About', { heading: 'A story-led creative studio', description: 'I turn raw ideas into premium visual storytelling through editing, motion, branding, and creative direction.' }],
-      ['Skills', { items: skillsData }],
-      ['Stats', { items: [{ id: 'stat-1', label: 'Lyric Videos', value: '3D' }, { id: 'stat-2', label: 'Projects Done', value: '10+' }, { id: 'stat-3', label: 'Pro Tools', value: '4+' }, { id: 'stat-4', label: 'Creativity', value: '100%' }] }],
-      ['Timeline', { items: [{ id: 'timeline-1', year: '2022', title: 'Founded Icon Editz', description: 'Started building a studio around storytelling, motion, and polished digital media.' }, { id: 'timeline-2', year: '2024', title: 'Expanded into branding and motion systems', description: 'Created a broader offering for creators, launches, and premium campaigns.' }] }],
-      ['CTA', defaultSiteContent.cta],
-      ['SEO', { title: 'About | Icon Editz', description: 'Learn more about Icon Editz and the creative story behind the studio.' }]
+    ['Hero', { eyebrow: 'About', heading: 'About Icon Editz', description: 'Creative video editing, motion graphics, and visual storytelling.', primaryLabel: 'View Projects', primaryUrl: '/projects', secondaryLabel: 'Hire Me', secondaryUrl: '/hire' }],
+    ['Story', { eyebrow: 'Who I am', heading: 'A story-led creative studio', description: 'I turn raw ideas into premium visual storytelling through editing, motion, branding, and creative direction.' }],
+    ['About', { heading: 'A story-led creative studio', description: 'I turn raw ideas into premium visual storytelling through editing, motion, branding, and creative direction.' }],
+    ['Skills', { items: skillsData.map((item) => ({ id: item.skill.toLowerCase().replace(/\s+/g, '-'), ...item })) }],
+    ['Stats', { items: [{ id: 'stat-1', label: 'Lyric Videos', value: '3D' }, { id: 'stat-2', label: 'Projects Done', value: '10+' }, { id: 'stat-3', label: 'Pro Tools', value: '4+' }, { id: 'stat-4', label: 'Creativity', value: '100%' }] }],
+    ['Timeline', { items: [{ id: 'timeline-1', year: '2022', title: 'Founded Icon Editz', description: 'Started building a studio around storytelling, motion, and polished digital media.' }, { id: 'timeline-2', year: '2024', title: 'Expanded into branding and motion systems', description: 'Created a broader offering for creators, launches, and premium campaigns.' }] }],
+    ['Tools', { items: toolsData }],
+    ['CTA', defaultSiteContent.cta],
+    ['SEO', { title: 'About | Icon Editz', description: 'Learn more about Icon Editz and the creative story behind the studio.' }],
   ],
-  'Hire From Us Page': [ // Mapped to 'Hire'
-      ['Hero', { eyebrow: 'Hire Icon Editz', heading: 'Let’s create something iconic.', description: 'Tell us your story and we will bring it to life.' }],
-      ['Services', { items: defaultServicesPage.services.slice(0, 6) }], // Subset of services
-      ['Process', { items: defaultServicesPage.process }],
-      ['FAQ', { items: defaultServicesPage.faq }],
-      ['CTA', defaultServicesPage.cta],
-      ['SEO', { title: 'Hire Icon Editz', description: 'Start your next creative project with Icon Editz.' }]
-  ]
-};
+  'Hire From Us Page': [
+    ['Hero', { eyebrow: 'Hire Icon Editz', heading: 'Let’s create something iconic.', description: 'Tell us your story and we will bring it to life.', primaryLabel: 'Get Started', primaryUrl: '/hire' }],
+    ['Services', { items: defaultServicesPage.services.slice(0, 6) }],
+    ['Features', { items: defaultServicesPage.features }],
+    ['Process', { items: defaultServicesPage.process }],
+    ['Enquiry Form', { heading: 'Tell us about your project', description: 'Share your goals, timeline, and the kind of creative support you need.' }],
+    ['FAQ', { items: defaultServicesPage.faq }],
+    ['CTA', defaultServicesPage.cta],
+    ['SEO', { title: 'Hire Icon Editz', description: 'Start your next creative project with Icon Editz.' }],
+  ],
+}
 
 // --- Main Execution ---
-(async () => {
+;(async () => {
   try {
     for (const [page, sections] of Object.entries(pagesToMigrate)) {
-      console.log(`
-Processing page: ${page}...`)
+      console.log(`\nProcessing page: ${page}...`)
       for (const [sortOrder, [section, content]] of sections.entries()) {
         await upsertPageSection(page, section, content, sortOrder)
       }
     }
 
     // Handle Singletons
-    console.log('
-Processing singletons...')
-    const { error: footerError } = await db.from('footer_content').upsert({ id: true, content: defaultSiteContent.site, status: 'published' }, { onConflict: 'id' });
-    if (footerError) throw footerError;
-    console.log('  ✓ UPSERT: Footer');
+    console.log('\nProcessing singletons...')
+    const fullFooter = {
+      brandName: defaultSiteContent.site.brandName || 'ICON EDITZ',
+      description: 'Creative editing, motion, and digital assets.',
+      quickLinks: [
+        { label: 'Home', url: '/' },
+        { label: 'Services', url: '/services' },
+        { label: 'Projects', url: '/projects' },
+        { label: 'Store', url: '/store' },
+        { label: 'Hire', url: '/hire' },
+      ],
+      socialLinks: {
+        instagram: defaultSiteContent.site.instagram,
+        linkedin: defaultSiteContent.site.linkedin,
+        youtube: defaultSiteContent.site.youtube,
+        github: defaultSiteContent.site.github,
+      },
+      email: defaultSiteContent.site.email,
+      backgroundColor: '#0f0a1f',
+      accentColor: '#9d5cff',
+      copyrightText: defaultSiteContent.site.copyright,
+    }
 
-    const { error: settingsError } = await db.from('settings').upsert({ key: 'site', value: defaultSiteContent.site }, { onConflict: 'key' });
-    if (settingsError) throw settingsError;
-    console.log('  ✓ UPSERT: Settings (site)');
-    
-    // For global SEO, maybe we add a 'Global' page with an 'SEO' section
-    await upsertPageSection('Global', 'SEO', { title: 'Icon Editz', description: 'Premium video editing, motion graphics, and creative assets.' }, 0);
-    
-    // --- Seed Collections ---
-    await upsertCollection('projects', projectsData);
-    await upsertCollection('tools', toolsData);
-    await upsertCollection('skills', skillsData.map(s => ({ name: s.skill, level: s.level })), 'name');
+    const { error: footerError } = await db
+      .from('footer_content')
+      .upsert({ id: true, content: fullFooter, status: 'published', updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    if (footerError) throw footerError
+    console.log('  ✓ UPSERT: Footer')
 
+    const { error: ctaError } = await db
+      .from('cta_content')
+      .upsert({ id: true, content: defaultSiteContent.cta, status: 'published', updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    if (ctaError) throw ctaError
+    console.log('  ✓ UPSERT: CTA Singleton')
 
-    console.log('
-✅ CMS data migration script completed successfully.')
+    const { error: settingsError } = await db
+      .from('settings')
+      .upsert({ key: 'site', value: defaultSiteContent.site, status: 'published', updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    if (settingsError) throw settingsError
+    console.log('  ✓ UPSERT: Settings (site)')
+
+    // Global SEO
+    await upsertPageSection('Global', 'SEO', { title: 'Icon Editz', description: 'Premium video editing, motion graphics, and creative assets.' }, 0)
+
+    // Populate website_sections for Hire From Us Page
+    console.log('\nProcessing website_sections...')
+    const websiteSections = [
+      { page: 'Hire From Us Page', section_key: 'hero', title: 'Hero', content: pagesToMigrate['Hire From Us Page'].find(([s]) => s === 'Hero')[1], status: 'published', sort_order: 0 },
+      { page: 'Hire From Us Page', section_key: 'features', title: 'Features', content: { items: defaultServicesPage.features }, status: 'published', sort_order: 1 },
+      { page: 'Hire From Us Page', section_key: 'services', title: 'Services', content: { items: defaultServicesPage.services }, status: 'published', sort_order: 2 },
+      { page: 'Hire From Us Page', section_key: 'process', title: 'Process', content: { items: defaultServicesPage.process }, status: 'published', sort_order: 3 },
+      { page: 'Hire From Us Page', section_key: 'faq', title: 'FAQ', content: { items: defaultServicesPage.faq }, status: 'published', sort_order: 4 },
+      { page: 'Hire From Us Page', section_key: 'cta', title: 'CTA', content: defaultServicesPage.cta, status: 'published', sort_order: 5 },
+    ]
+    for (const ws of websiteSections) {
+      const { error } = await db.from('website_sections').upsert(ws, { onConflict: 'page,section_key' })
+      if (error) console.warn(`Website sections notice (${ws.section_key}):`, error.message)
+    }
+
+    // Categories collection
+    console.log('\nProcessing collection: categories...')
+    const categoryCollectionItems = projectCategories.map((c) => ({
+      name: c,
+      slug: c.toLowerCase().replace(/\s+/g, '-'),
+      description: `${c} projects`,
+      status: 'published',
+    }))
+    const { error: catErr } = await db.from('categories').upsert(categoryCollectionItems, { onConflict: 'slug' })
+    if (catErr) console.warn('Categories notice:', catErr.message)
+    else console.log(`  ✓ UPSERT: ${categoryCollectionItems.length} records into categories`)
+
+    console.log('\n✅ CMS data migration script completed successfully.')
   } catch (error) {
-    console.error('
-🔴 CMS data migration failed.', error)
+    console.error('\n🔴 CMS data migration failed.', error)
     process.exit(1)
   }
 })()
