@@ -3,34 +3,40 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useCmsPage } from '../services/cms'
 import { staggerContainer, fadeInUp, scaleIn } from '../utils/animations'
 import { FiPlay, FiX } from 'react-icons/fi'
+import { resolveVideoUrl } from '../utils/media'
 
 function ProjectPreview({ project }) {
   const videoRef = useRef(null)
+  const videoSrc = resolveVideoUrl(project.videoUrl)
+
   const playPreview = () => videoRef.current?.play().catch(() => {})
   const stopPreview = () => {
     if (!videoRef.current) return
     videoRef.current.pause()
-    videoRef.current.currentTime = 0
   }
 
   return (
     <div
       className="relative h-full w-full overflow-hidden"
-      style={{ background: project.accent }}
+      style={{ background: project.accent || 'linear-gradient(135deg, rgba(157,92,255,.95), rgba(179,136,255,.45))' }}
       onMouseEnter={playPreview}
       onMouseLeave={stopPreview}
     >
-      {project.videoUrl && (
+      {videoSrc ? (
         <video
           ref={videoRef}
-          src={project.videoUrl}
+          src={videoSrc}
           muted
           autoPlay
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-90 transition-opacity duration-300 group-hover:opacity-100"
         />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white/50">
+          Video Preview
+        </div>
       )}
     </div>
   )
@@ -38,7 +44,13 @@ function ProjectPreview({ project }) {
 
 export default function Projects() {
   const { content } = useCmsPage('Projects Page')
-  const projectsData = content.Projects?.items || content.Portfolio?.items || []
+  const rawData = content.Projects?.items || content.Portfolio?.items || []
+
+  const projectsData = rawData.map((item) => ({
+    ...item,
+    videoUrl: resolveVideoUrl(item.videoUrl),
+  }))
+
   const categories = ['All', ...new Set(projectsData.map((project) => project.category).filter(Boolean))]
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedProject, setSelectedProject] = useState(null)
@@ -89,25 +101,25 @@ export default function Projects() {
             <AnimatePresence>
               {filteredProjects.map((project, index) => (
                 <motion.div
-                  key={project.id}
+                  key={project.id || project.title}
                   variants={scaleIn}
                   initial="hidden"
                   animate="visible"
                   exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -10 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -6 }}
                   onClick={() => setSelectedProject(project)}
                   className="group cursor-pointer"
                 >
                   <div className="glass-effect rounded-xl overflow-hidden hover:border-primary/50 transition-all h-full flex flex-col">
-                    {/* Image Container */}
+                    {/* Image / Video Container */}
                     <div className="relative overflow-hidden h-48 md:h-56 bg-surface">
-                      <div className="h-full w-full transition-transform duration-300 group-hover:scale-110">
+                      <div className="h-full w-full transition-transform duration-300 group-hover:scale-105">
                         <ProjectPreview project={project} />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                         <motion.div
-                          whileHover={{ scale: 1.2 }}
+                          whileHover={{ scale: 1.15 }}
                           className="bg-primary rounded-full p-4 shadow-glow-purple-lg"
                         >
                           <FiPlay className="text-2xl text-text" />
@@ -129,7 +141,7 @@ export default function Projects() {
 
                       {/* Tags */}
                       <div className="flex flex-wrap gap-2 mt-auto">
-                        {project.tags.map((tag) => (
+                        {(project.tags || []).map((tag) => (
                           <span
                             key={tag}
                             className="text-xs px-3 py-1 bg-primary/20 text-primary rounded-full"
@@ -168,7 +180,7 @@ export default function Projects() {
               <div className="aspect-video bg-surface relative">
                 {selectedProject.videoUrl ? (
                   <video
-                    src={selectedProject.videoUrl}
+                    src={resolveVideoUrl(selectedProject.videoUrl)}
                     controls
                     autoPlay
                     playsInline
@@ -195,7 +207,7 @@ export default function Projects() {
                 <p className="text-text-muted mb-6">{selectedProject.description}</p>
 
                 <div className="flex flex-wrap gap-2 mb-6">
-                  {selectedProject.tags.map((tag) => (
+                  {(selectedProject.tags || []).map((tag) => (
                     <span
                       key={tag}
                       className="text-sm px-4 py-2 bg-primary/20 text-primary rounded-full"

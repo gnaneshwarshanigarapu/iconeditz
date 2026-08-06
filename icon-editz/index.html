@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -20,10 +20,16 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#8B5CF6">
 
+    <!-- Preload Hero Brand Logo Image -->
+    <link rel="preload" as="image" href="/assets/logos/icon-editz.jpg" fetchpriority="high" />
+
+    <!-- Google Fonts Optimization -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <!-- Non-blocking Third-Party Scripts -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
   </head>
   <body class="bg-background text-text overflow-x-hidden">
     <div id="root"></div>

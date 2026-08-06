@@ -9,13 +9,24 @@ import settings from '../server/api/settings.js'
 import newsletter from '../server/api/newsletter.js'
 import admin from '../server/api/admin.js'
 import hireRequests from '../server/api/hire-requests.js'
+import health from '../server/api/health.js'
 
-// One Vercel function dispatches every legacy /api/* URL. Keeping request
-// parsing here lets multipart uploads reach multer while JSON handlers retain
-// their existing req.body contract.
 export const config = { api: { bodyParser: false } }
 
-const handlers = { auth, products, categories, cms, orders, downloads, uploads, settings, newsletter, admin, 'hire-requests': hireRequests }
+const handlers = {
+  auth,
+  products,
+  categories,
+  cms,
+  orders,
+  downloads,
+  uploads,
+  settings,
+  newsletter,
+  admin,
+  'hire-requests': hireRequests,
+  health,
+}
 
 const parseJsonBody = async (req) => {
   if (req.body || req.method === 'GET' || req.headers['content-type']?.includes('multipart/form-data')) return

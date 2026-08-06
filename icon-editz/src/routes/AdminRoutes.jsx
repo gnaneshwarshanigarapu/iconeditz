@@ -6,6 +6,7 @@ import AdminLayout from '../layouts/AdminLayout'
 
 const AdminLogin = lazy(() => import('../pages/AdminLogin'))
 const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'))
+const WebsitePagesPage = lazy(() => import('../pages/admin/WebsitePagesPage'))
 const MediaLibraryPage = lazy(() => import('../pages/admin/MediaLibraryPage'))
 const OrdersPage = lazy(() => import('../pages/admin/OrdersPage'))
 const PaymentAttemptsPage = lazy(() => import('../pages/admin/PaymentAttemptsPage'))
@@ -41,7 +42,7 @@ export default function AdminRoutes() {
         <Route path="/dashboard" element={<AdminPage title="Enterprise Dashboard"><AdminDashboard /></AdminPage>} />
         
         {/* Website CMS Editors */}
-        <Route path="/content" element={<Navigate to="/admin/content/homepage" replace />} />
+        <Route path="/content" element={<AdminPage title="Website Pages Overview"><WebsitePagesPage /></AdminPage>} />
         <Route path="/content/homepage" element={<AdminPage title="Home Page CMS"><PageContentCms page="Homepage" sections={['Hero', 'Showreel', 'Featured Services', 'Services', 'Featured Projects', 'Projects', 'Featured Products', 'Testimonials', 'Tools', 'FAQ', 'CTA', 'SEO']} /></AdminPage>} />
         <Route path="/content/about" element={<AdminPage title="About Page CMS"><PageContentCms page="About Page" sections={['Hero', 'Story', 'About', 'Skills', 'Stats', 'Timeline', 'Tools', 'CTA', 'SEO']} /></AdminPage>} />
         <Route path="/content/services" element={<AdminPage title="Services Page CMS"><PageContentCms page="Services Page" sections={['Hero', 'Services', 'Process', 'Features', 'Industries', 'Software', 'Pricing', 'FAQ', 'Testimonials', 'CTA', 'SEO']} /></AdminPage>} />
