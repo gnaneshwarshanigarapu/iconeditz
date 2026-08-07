@@ -272,19 +272,27 @@ async function createOrder(req, res) {
     }
     endRzpTimer()
 
-    // Step 6: Background Async Operations
-    currentStep = 'background_sync'
-    const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
+    // Step 6: Synchronous DB Bind & Background Operations
+    currentStep = 'database_bind'
+    const endBindTimer = stepTimer('database_bind')
 
+    // SYNCHRONOUSLY AWAIT updating razorpay_order_id in database BEFORE returning response to client!
+    const { error: bindErr } = await supabaseAdmin
+      .from('orders')
+      .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
+      .eq('id', localOrderId)
+
+    if (bindErr) {
+      console.error(`[POST /api/orders] Database binding notice:`, bindErr.message)
+    } else {
+      console.log(`[POST /api/orders] Database bind SUCCESS: razorpay_order_id=${razorpayOrder.id} bound to local order ${localOrderId}`)
+    }
+    endBindTimer()
+
+    // Async order items & customer sync
+    const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
     Promise.resolve(supabaseAdmin.from('order_items').insert(itemsWithOrderId))
       .catch((err) => console.warn('[POST /api/orders] Order items insert notice:', err.message))
-
-    Promise.resolve(
-      supabaseAdmin
-        .from('orders')
-        .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
-        .eq('id', localOrderId)
-    ).catch((err) => console.warn('[POST /api/orders] Razorpay order ID update notice:', err.message))
 
     syncCustomerOnPayment({ name: customer_name, email: customer_email, phone: customer_phone }).catch(() => {})
     logPaymentAttempt({
@@ -306,6 +314,7 @@ async function createOrder(req, res) {
       success: true,
       key_id: process.env.RAZORPAY_KEY_ID,
       order_id: razorpayOrder.id,
+      local_order_id: localOrderId,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
       step: 'order_creation_success',
@@ -321,12 +330,14 @@ async function createOrder(req, res) {
 async function verifyPayment(req, res) {
   const user = await tryAuthenticate(req)
   const parsed = verificationSchema.safeParse(req.body)
-  if (!parsed.success) throw httpError('Missing or invalid payment verification fields', 400)
+  if (!parsed.success) throw httpError('Missing or invalid payment verification fields', 400, 'request_validation')
   const input = parsed.data
   const secret = process.env.RAZORPAY_KEY_SECRET
   const razorpay = getRazorpay()
 
-  // 1. Instant HMAC SHA256 Signature Check
+  console.log(`[PUT /api/orders/verify] Incoming request: razorpay_order_id=${input.razorpay_order_id}, razorpay_payment_id=${input.razorpay_payment_id}`)
+
+  // 1. Instant HMAC SHA256 Signature Verification
   const expected = crypto
     .createHmac('sha256', secret)
     .update(`${input.razorpay_order_id}|${input.razorpay_payment_id}`)
@@ -344,24 +355,51 @@ async function verifyPayment(req, res) {
       gateway_error_description: 'HMAC SHA256 signature verification failed',
       webhook_event: 'payment.failed',
     }).catch(() => {})
-    throw httpError('Invalid payment signature', 400)
+    throw httpError('Invalid payment signature', 400, 'signature_verification')
   }
 
-  // 2. Concurrent DB Order retrieval and Razorpay API Payment Verification
-  const [orderResult, payment] = await Promise.all([
-    supabaseAdmin
-      .from('orders')
-      .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,products(download_key,download_filename)')
-      .or(`razorpay_order_id.eq.${input.razorpay_order_id},order_id.eq.${input.razorpay_order_id}`)
-      .maybeSingle(),
-    razorpay.payments.fetch(input.razorpay_payment_id),
-  ])
-
-  const order = orderResult.data
-  if (orderResult.error || !order) {
-    console.error(`[Order Verification] Order ${input.razorpay_order_id} not found in database`)
-    throw httpError('Order not found', 404)
+  // 2. Fetch Razorpay Payment details first so we have notes metadata available
+  let payment
+  try {
+    payment = await razorpay.payments.fetch(input.razorpay_payment_id)
+    console.log(`[Payment Verification] Fetched Razorpay payment ${payment.id}, status=${payment.status}, amount=${payment.amount}`)
+  } catch (err) {
+    console.error(`[Payment Verification] Failed to fetch Razorpay payment ${input.razorpay_payment_id}:`, err.message)
+    throw httpError('Failed to fetch payment details from Razorpay', 502, 'razorpay_payment_fetch')
   }
+
+  // 3. Multi-Layer Order Lookup
+  const targetRazorpayOrderId = input.razorpay_order_id
+  const targetLocalOrderId = payment.notes?.local_order_id || null
+
+  let queryFilter = `razorpay_order_id.eq.${targetRazorpayOrderId},order_id.eq.${targetRazorpayOrderId},id.eq.${targetRazorpayOrderId}`
+  if (targetLocalOrderId) {
+    queryFilter += `,id.eq.${targetLocalOrderId}`
+  }
+
+  console.log(`[Order Verification] Executing Supabase query for order... Filter: ${queryFilter}`)
+  const { data: orderList, error: orderErr } = await supabaseAdmin
+    .from('orders')
+    .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,products(download_key,download_filename)')
+    .or(queryFilter)
+
+  const order = orderList && orderList.length > 0 ? orderList[0] : null
+  const rowsReturned = orderList ? orderList.length : 0
+
+  if (orderErr || !order) {
+    console.error('[Order Verification Failure] Detailed Diagnostic Summary:', {
+      received_razorpay_order_id: input.razorpay_order_id,
+      received_razorpay_payment_id: input.razorpay_payment_id,
+      payment_notes_local_order_id: targetLocalOrderId,
+      database_query_used: queryFilter,
+      rows_returned: rowsReturned,
+      db_error: orderErr?.message || null,
+      exact_reason: 'No order record matching razorpay_order_id or local_order_id exists in the database',
+    })
+    throw httpError(`Order not found. (Searched razorpay_order_id: ${input.razorpay_order_id})`, 404, 'order_lookup')
+  }
+
+  console.log(`[Order Verification] Order FOUND: ID=${order.id}, customer=${order.customer_email}, current_status=${order.payment_status}`)
 
   if (
     payment.order_id !== input.razorpay_order_id ||
@@ -369,12 +407,13 @@ async function verifyPayment(req, res) {
     payment.amount !== Math.round(Number(order.amount) * 100) ||
     payment.status !== 'captured'
   ) {
-    console.error(`[Payment Verification] Payment mismatch or invalid status: ${payment.status}`)
-    throw httpError('Payment details do not match the order', 400)
+    console.error(`[Payment Verification] Payment mismatch: rzp_order=${payment.order_id}, rzp_amount=${payment.amount}, expected_amount=${Math.round(Number(order.amount) * 100)}, status=${payment.status}`)
+    throw httpError('Payment details do not match the order', 400, 'payment_validation')
   }
 
-  // 3. Concurrently Update Order to PAID + Generate Signed Download URL
-  const [delivery] = await Promise.all([
+  // 4. Update Order to PAID + Generate Signed Download URL
+  console.log(`[Order Verification] Updating order ${order.id} payment_status to PAID...`)
+  const [delivery, updateRes] = await Promise.all([
     createDelivery(order),
     supabaseAdmin
       .from('orders')
@@ -388,7 +427,13 @@ async function verifyPayment(req, res) {
       .eq('id', order.id),
   ])
 
-  // 4. Non-blocking Background Tasks
+  if (updateRes.error) {
+    console.error(`[Order Update Error] Failed to update order status:`, updateRes.error.message)
+  } else {
+    console.log(`[Order Update Success] Order ${order.id} updated to PAID with payment ${input.razorpay_payment_id}`)
+  }
+
+  // 5. Non-blocking Background Tasks
   syncCustomerOnPayment({
     name: order.customer_name,
     email: order.customer_email,
@@ -420,7 +465,7 @@ async function verifyPayment(req, res) {
     raw_response: payment,
   }).catch(() => {})
 
-  // 5. Background Email Dispatch (Strictly when RESEND_ENABLED === 'true')
+  // 6. Background Email Dispatch (Strictly when RESEND_ENABLED === 'true')
   if (process.env.RESEND_ENABLED === 'true') {
     sendDeliveryEmail(order, delivery)
       .then(() => {
@@ -431,9 +476,11 @@ async function verifyPayment(req, res) {
       })
   }
 
-  // 6. Instant Response (<300ms)
+  // 7. Return payload immediately
   const eventId = `purchase_${order.id}`
   sendMetaPurchase(req, order, eventId).catch(() => {})
+
+  console.log(`[PUT /api/orders/verify] SUCCESS: Payment verified for order ${order.id}. Download URL generated: ${Boolean(delivery?.downloadUrl)}`)
 
   return res.json({
     success: true,
