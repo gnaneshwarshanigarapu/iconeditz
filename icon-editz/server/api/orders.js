@@ -199,43 +199,13 @@ async function createOrder(req, res) {
     }
     endDbLookupTimer()
 
-    // Step 4: Database Order Insert
-    currentStep = 'database_insert'
-    const endDbInsertTimer = stepTimer('database_insert')
+    // Step 4: Prepare Local Order ID & Notes
+    currentStep = 'razorpay_request'
     const localOrderId = crypto.randomUUID()
     const firstProduct = dbProducts[0] || {}
     const firstProdName = orderItemsData[0]?.product_name || firstProduct.title || 'Creative Asset'
     const couponCode = rawBody.couponCode || rawBody.coupon || 'none'
 
-    const { data: databaseOrder, error: databaseError } = await supabaseAdmin
-      .from('orders')
-      .insert({
-        id: localOrderId,
-        user_id: user?.sub || null,
-        product_id: orderItemsData[0]?.product_id || null,
-        product_name: firstProdName,
-        customer_name,
-        customer_email,
-        customer_phone,
-        amount: totalAmountPaise / 100,
-        total_amount: totalAmountPaise / 100,
-        currency: 'INR',
-        payment_status: 'pending',
-        status: 'pending',
-        payment_method: 'razorpay',
-      })
-      .select('id')
-      .single()
-
-    if (databaseError || !databaseOrder) {
-      console.error('[POST /api/orders DB Insert Error]', databaseError)
-      throw httpError(databaseError?.message || 'Database order creation failed', 500, 'database_insert')
-    }
-    endDbInsertTimer()
-
-    // Step 5: Razorpay Order Creation Request
-    currentStep = 'razorpay_request'
-    const endRzpTimer = stepTimer('razorpay_request')
     const notes = {
       customer_name,
       customer_email,
@@ -252,6 +222,8 @@ async function createOrder(req, res) {
       created_by: 'website_checkout',
     }
 
+    // Step 5: Razorpay Order Creation Request First
+    const endRzpTimer = stepTimer('razorpay_request')
     let razorpayOrder
     try {
       razorpayOrder = await razorpay.orders.create({
@@ -260,36 +232,51 @@ async function createOrder(req, res) {
         receipt: localOrderId,
         notes,
       })
+      console.log("Creating pending order", razorpayOrder.id)
     } catch (rzpErr) {
       console.error('[POST /api/orders Razorpay Error]', rzpErr.message || rzpErr)
-      await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
       throw httpError(rzpErr.message || 'Payment gateway order creation failed', 502, 'razorpay_request')
     }
 
     if (!razorpayOrder?.id) {
-      await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
       throw httpError('Razorpay returned an invalid order response', 502, 'razorpay_request')
     }
     endRzpTimer()
 
-    // Step 6: Synchronous DB Bind & Background Operations
-    currentStep = 'database_bind'
-    const endBindTimer = stepTimer('database_bind')
-
-    // SYNCHRONOUSLY AWAIT updating razorpay_order_id in database BEFORE returning response to client!
-    const { error: bindErr } = await supabaseAdmin
+    // Step 6: Single-Step Awaited Supabase Pending Order Insertion (Contains razorpay_order_id upfront)
+    currentStep = 'database_insert'
+    const endDbInsertTimer = stepTimer('database_insert')
+    const { data: databaseOrder, error: databaseError } = await supabaseAdmin
       .from('orders')
-      .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
-      .eq('id', localOrderId)
+      .insert({
+        id: localOrderId,
+        razorpay_order_id: razorpayOrder.id,
+        order_id: razorpayOrder.id,
+        user_id: user?.sub || null,
+        product_id: orderItemsData[0]?.product_id || null,
+        product_name: firstProdName,
+        customer_name,
+        customer_email,
+        customer_phone,
+        amount: totalAmountPaise / 100,
+        total_amount: totalAmountPaise / 100,
+        currency: 'INR',
+        payment_status: 'pending',
+        status: 'pending',
+        payment_method: 'razorpay',
+      })
+      .select('id, razorpay_order_id, customer_email, amount, status')
+      .single()
 
-    if (bindErr) {
-      console.error(`[POST /api/orders] Database binding notice:`, bindErr.message)
-    } else {
-      console.log(`[POST /api/orders] Database bind SUCCESS: razorpay_order_id=${razorpayOrder.id} bound to local order ${localOrderId}`)
+    if (databaseError || !databaseOrder) {
+      console.error("Supabase insert failed", databaseError)
+      throw httpError(databaseError?.message || 'Database order creation failed', 500, 'database_insert')
     }
-    endBindTimer()
 
-    // Async order items & customer sync
+    console.log("Inserted pending order", databaseOrder)
+    endDbInsertTimer()
+
+    // Step 7: Async Order Items & Background Sync
     const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
     Promise.resolve(supabaseAdmin.from('order_items').insert(itemsWithOrderId))
       .catch((err) => console.warn('[POST /api/orders] Order items insert notice:', err.message))
@@ -308,7 +295,7 @@ async function createOrder(req, res) {
     }).catch(() => {})
 
     const totalDuration = Date.now() - apiStart
-    console.log(`[POST /api/orders] SUCCESS: Created Razorpay Order ${razorpayOrder.id} for Local Order ${localOrderId} in ${totalDuration}ms`)
+    console.log(`[POST /api/orders] SUCCESS: Created & Inserted Pending Order ${razorpayOrder.id} in ${totalDuration}ms`)
 
     return res.status(201).json({
       success: true,
@@ -335,20 +322,21 @@ async function verifyPayment(req, res) {
   const secret = process.env.RAZORPAY_KEY_SECRET
   const razorpay = getRazorpay()
 
-  console.log(`[PUT /api/orders/verify] Incoming request: razorpay_order_id=${input.razorpay_order_id}, razorpay_payment_id=${input.razorpay_payment_id}`)
+  const normalizedRazorpayOrderId = String(input.razorpay_order_id || '').trim()
+  console.log(`[PUT /api/orders/verify] Incoming request: razorpay_order_id=${normalizedRazorpayOrderId}, razorpay_payment_id=${input.razorpay_payment_id}`)
 
   // 1. Instant HMAC SHA256 Signature Verification
   const expected = crypto
     .createHmac('sha256', secret)
-    .update(`${input.razorpay_order_id}|${input.razorpay_payment_id}`)
+    .update(`${normalizedRazorpayOrderId}|${input.razorpay_payment_id}`)
     .digest('hex')
 
   const expectedBuffer = Buffer.from(expected, 'utf8')
   const signatureBuffer = Buffer.from(input.razorpay_signature, 'utf8')
   if (expectedBuffer.length !== signatureBuffer.length || !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)) {
-    console.error(`[Payment Verification] Signature verification FAILED for order ${input.razorpay_order_id}`)
+    console.error(`[Payment Verification] Signature verification FAILED for order ${normalizedRazorpayOrderId}`)
     logPaymentAttempt({
-      razorpay_order_id: input.razorpay_order_id,
+      razorpay_order_id: normalizedRazorpayOrderId,
       razorpay_payment_id: input.razorpay_payment_id,
       status: 'failed',
       gateway_error_code: 'BAD_SIGNATURE',
@@ -358,7 +346,7 @@ async function verifyPayment(req, res) {
     throw httpError('Invalid payment signature', 400, 'signature_verification')
   }
 
-  // 2. Fetch Razorpay Payment details first so we have notes metadata available
+  // 2. Fetch Razorpay Payment details for validation and fallback metadata
   let payment
   try {
     payment = await razorpay.payments.fetch(input.razorpay_payment_id)
@@ -368,41 +356,51 @@ async function verifyPayment(req, res) {
     throw httpError('Failed to fetch payment details from Razorpay', 502, 'razorpay_payment_fetch')
   }
 
-  // 3. Multi-Layer Order Lookup
-  const targetRazorpayOrderId = input.razorpay_order_id
-  const targetLocalOrderId = payment.notes?.local_order_id || null
-
-  let queryFilter = `razorpay_order_id.eq.${targetRazorpayOrderId},order_id.eq.${targetRazorpayOrderId},id.eq.${targetRazorpayOrderId}`
-  if (targetLocalOrderId) {
-    queryFilter += `,id.eq.${targetLocalOrderId}`
-  }
-
-  console.log(`[Order Verification] Executing Supabase query for order... Filter: ${queryFilter}`)
+  // 3. Search Database Order strictly by razorpay_order_id
+  console.log(`[Payment Verification] Searching order where razorpay_order_id = ${normalizedRazorpayOrderId}`)
   const { data: orderList, error: orderErr } = await supabaseAdmin
     .from('orders')
     .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,products(download_key,download_filename)')
-    .or(queryFilter)
+    .or(`razorpay_order_id.eq.${normalizedRazorpayOrderId},order_id.eq.${normalizedRazorpayOrderId},id.eq.${normalizedRazorpayOrderId}`)
 
-  const order = orderList && orderList.length > 0 ? orderList[0] : null
-  const rowsReturned = orderList ? orderList.length : 0
+  let order = orderList && orderList.length > 0 ? orderList[0] : null
+  let rowsReturned = orderList ? orderList.length : 0
+
+  // Fallback search using local_order_id from Razorpay payment notes if initial lookup returned 0 rows
+  if (!order && payment.notes?.local_order_id) {
+    const targetLocalOrderId = String(payment.notes.local_order_id).trim()
+    console.log(`[Payment Verification] Initial lookup empty. Retrying lookup using payment.notes.local_order_id = ${targetLocalOrderId}`)
+    const { data: fallbackList } = await supabaseAdmin
+      .from('orders')
+      .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,products(download_key,download_filename)')
+      .eq('id', targetLocalOrderId)
+
+    if (fallbackList && fallbackList.length > 0) {
+      order = fallbackList[0]
+      rowsReturned = fallbackList.length
+      Promise.resolve(
+        supabaseAdmin.from('orders').update({ razorpay_order_id: normalizedRazorpayOrderId, order_id: normalizedRazorpayOrderId }).eq('id', order.id)
+      ).catch(() => {})
+    }
+  }
 
   if (orderErr || !order) {
     console.error('[Order Verification Failure] Detailed Diagnostic Summary:', {
-      received_razorpay_order_id: input.razorpay_order_id,
+      received_razorpay_order_id: normalizedRazorpayOrderId,
       received_razorpay_payment_id: input.razorpay_payment_id,
-      payment_notes_local_order_id: targetLocalOrderId,
-      database_query_used: queryFilter,
-      rows_returned: rowsReturned,
+      sql_filter_used: `razorpay_order_id = '${normalizedRazorpayOrderId}'`,
+      number_of_rows_returned: rowsReturned,
+      available_database_columns: ['id', 'razorpay_order_id', 'order_id', 'product_id', 'product_name', 'customer_name', 'customer_email', 'customer_phone', 'amount', 'currency', 'status', 'payment_status', 'created_at'],
       db_error: orderErr?.message || null,
-      exact_reason: 'No order record matching razorpay_order_id or local_order_id exists in the database',
+      exact_reason: 'No matching record exists in Supabase orders table for razorpay_order_id',
     })
-    throw httpError(`Order not found. (Searched razorpay_order_id: ${input.razorpay_order_id})`, 404, 'order_lookup')
+    throw httpError(`Order not found. (Searched razorpay_order_id: ${normalizedRazorpayOrderId})`, 404, 'order_lookup')
   }
 
   console.log(`[Order Verification] Order FOUND: ID=${order.id}, customer=${order.customer_email}, current_status=${order.payment_status}`)
 
   if (
-    payment.order_id !== input.razorpay_order_id ||
+    payment.order_id !== normalizedRazorpayOrderId ||
     payment.currency !== 'INR' ||
     payment.amount !== Math.round(Number(order.amount) * 100) ||
     payment.status !== 'captured'
