@@ -72,10 +72,16 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus
   })
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + Number(o.amount || o.total_amount || 0), 0)
-  const paidOrders = filteredOrders.filter((o) => (o.payment_status || o.status || '').toLowerCase() === 'paid' || (o.payment_status || '').toLowerCase() === 'captured')
+  const paidStatuses = new Set(['paid', 'success', 'captured'])
+  const isPaid = (o) => paidStatuses.has((o.payment_status || o.status || '').toLowerCase())
+
+  const paidOrders = filteredOrders.filter(isPaid)
+  const totalRevenue = paidOrders.reduce((sum, o) => sum + Number(o.amount || o.total_amount || 0), 0)
   const avgOrderValue = paidOrders.length ? Math.round(totalRevenue / paidOrders.length) : 0
+
   const todayOrders = filteredOrders.filter((o) => new Date(o.created_at).toDateString() === new Date().toDateString())
+  const todayPaidOrders = todayOrders.filter(isPaid)
+  const todayRevenue = todayPaidOrders.reduce((sum, o) => sum + Number(o.amount || o.total_amount || 0), 0)
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto space-y-2">
@@ -103,9 +109,9 @@ export default function OrdersPage() {
         </div>
         <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
           <p className="text-[10px] font-bold uppercase text-text-muted">Today's Sales</p>
-          <p className="text-xl font-black text-white mt-1">{todayOrders.length}</p>
+          <p className="text-xl font-black text-white mt-1">{todayPaidOrders.length} paid</p>
           <p className="text-[11px] font-semibold text-emerald-400 mt-1">
-            ₹{todayOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0).toLocaleString('en-IN')}
+            ₹{todayRevenue.toLocaleString('en-IN')}
           </p>
         </div>
       </div>

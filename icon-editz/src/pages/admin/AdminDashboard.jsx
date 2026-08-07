@@ -103,8 +103,8 @@ export default function AdminDashboard() {
 
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
-      const todayOrders = orders.filter((o) => new Date(o.created_at) >= todayStart)
-      const todayRevenue = todayOrders.filter((o) => paidStatuses.has((o.payment_status || o.status || '').toLowerCase())).reduce((sum, o) => sum + Number(o.amount || 0), 0)
+      const todayPaidOrders = todayOrders.filter((o) => paidStatuses.has((o.payment_status || o.status || '').toLowerCase()))
+      const todayRevenue = todayPaidOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0)
 
       return {
         totalRevenue,
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
         totalProducts: productCount || 12,
         totalCustomers: customerCount || new Set(orders.map((o) => o.customer_email).filter(Boolean)).size,
         totalDownloads: paidOrders.length * 2,
-        todayOrders: todayOrders.length,
+        todayOrders: todayPaidOrders.length,
         todayRevenue,
         activeCoupons: 4,
         latestOrders: orders.slice(0, 10),

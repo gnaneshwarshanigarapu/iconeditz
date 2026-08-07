@@ -72,7 +72,8 @@ async function dashboard(req, res) {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   const todayOrders = allOrders.filter((o) => new Date(o.created_at) >= todayStart)
-  const todayRevenue = todayOrders.filter((o) => paidStatuses.has((o.payment_status || o.status || '').toLowerCase())).reduce((sum, o) => sum + Number(o.amount || 0), 0)
+  const todayPaidOrders = todayOrders.filter((o) => paidStatuses.has((o.payment_status || o.status || '').toLowerCase()))
+  const todayRevenue = todayPaidOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0)
 
   return res.json({
     success: true,
@@ -94,7 +95,7 @@ async function dashboard(req, res) {
       totalAttempts: recentAttempts.length,
 
       // Today
-      todayOrders: todayOrders.length,
+      todayOrders: todayPaidOrders.length,
       todayRevenue,
 
       // Recent transactions
