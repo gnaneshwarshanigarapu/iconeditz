@@ -194,7 +194,8 @@ async function createOrder(req, res) {
 
   // Insert normalized order_items
   const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: databaseOrder.id }))
-  await supabaseAdmin.from('order_items').insert(itemsWithOrderId).catch(() => {})
+  const { error: itemsErr } = await supabaseAdmin.from('order_items').insert(itemsWithOrderId)
+  if (itemsErr) console.warn('Order items insert notice:', itemsErr.message)
 
   const receipt = databaseOrder.id
   let razorpayOrder
