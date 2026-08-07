@@ -15,13 +15,13 @@ import AdminRoutes from './routes/AdminRoutes'
 import PaymentRoutes from './routes/PaymentRoutes'
 import { ProductsProvider } from './features/admin/productsStore.jsx'
 import { AuthProvider } from './hooks/useAuth.jsx'
+import { LoadingProvider } from './components/loading/LoadingProvider'
 import PageTransition from './components/ui/PageTransition'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import SkipLink from './components/ui/SkipLink'
 import { trackPageView } from './utils/tracking'
-import './styles/global.css'
-
 import Analytics from './components/Analytics'
+import './styles/global.css'
 
 function AppChrome() {
   const location = useLocation()
@@ -66,10 +66,12 @@ export default function App() {
     <Router>
       <ProductsProvider>
         <AuthProvider>
-          <ErrorBoundary>
-            <Analytics />
-            <AppChrome />
-          </ErrorBoundary>
+          <LoadingProvider>
+            <ErrorBoundary>
+              <Analytics />
+              <AppChrome />
+            </ErrorBoundary>
+          </LoadingProvider>
         </AuthProvider>
       </ProductsProvider>
     </Router>

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import PremiumHomepage from '../components/PremiumHomepage'
-import HomeSkeleton from '../components/HomeSkeleton'
+import PageSkeleton from '../components/loading/PageSkeleton'
 import Seo from '../components/Seo'
 import { useCmsPage } from '../services/cms'
 import { useSiteContent } from '../hooks/useSiteContent'
@@ -25,8 +25,6 @@ export default function Home() {
       'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&auto=format&fit=crop&q=80',
       'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800&auto=format&fit=crop&q=80',
       'https://images.unsplash.com/photo-1518173946687-a4c8a383392e?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1574717024453-354056aafd9d?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
     ]
     assetsToPreload.forEach((src) => {
       const img = new Image()
@@ -44,13 +42,14 @@ export default function Home() {
       />
       <AnimatePresence mode="wait">
         {isLoading ? (
-          <HomeSkeleton key="home-skeleton" />
+          <PageSkeleton key="home-skeleton" page="Home" />
         ) : (
           <motion.div
             key="home-content"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            exit={{ opacity: 0, filter: 'blur(4px)', transition: { duration: 0.35 } }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
           >
             <PremiumHomepage />
           </motion.div>

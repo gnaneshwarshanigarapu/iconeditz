@@ -27,7 +27,15 @@ export const rowsToSections = (rows) =>
 export const useCmsPage = (page) => {
   const query = useCMS({ page })
   const content = useMemo(() => rowsToSections(query.data), [query.data])
-  return { content, loading: query.isLoading, error: query.error, refetch: query.refetch }
+  return {
+    content,
+    loading: query.isLoading,
+    hasLoading: query.isLoading,
+    isReady: !query.isLoading && !query.isError,
+    hasError: Boolean(query.error),
+    error: query.error,
+    refetch: query.refetch,
+  }
 }
 
 export const useCmsSingleton = (section) => {

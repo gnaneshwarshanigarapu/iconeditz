@@ -9,7 +9,7 @@ import { api } from '../../services/api'
 export default function CheckoutModal({ product, onClose }) {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    name: user?.user_metadata?.full_name || '',
+    name: user?.user_metadata?.full_name || user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
   });
@@ -69,7 +69,7 @@ export default function CheckoutModal({ product, onClose }) {
               setPurchase(verifyData)
               metaEvent('Purchase', commerceData(product), verifyData.eventId)
               trackGaCommerce('purchase', product, verifyData.orderId)
-              setStatusMessage(verifyData.emailSent ? 'A download link has also been sent to your email.' : 'Payment successful. Download now. Email could not be sent.')
+              setStatusMessage(verifyData.emailSent ? `A download link has been sent to ${formData.email}` : 'Payment successful. Download your file below.')
               setStatusType('success');
             } else {
               throw new Error(verifyData.message || 'Payment verification failed.');
@@ -118,15 +118,37 @@ export default function CheckoutModal({ product, onClose }) {
     }
   };
 
+  const handleDownloadClick = async () => {
+    if (!purchase?.orderId) return
+    try {
+      setStatusMessage('Fetching secure download link...')
+      setStatusType('info')
+      const res = await api.get(`/api/downloads?orderId=${purchase.orderId}`)
+      if (res.data?.downloadUrl) {
+        window.open(res.data.downloadUrl, '_blank')
+        setStatusMessage('Download initiated!')
+        setStatusType('success')
+      } else if (purchase.downloadUrl) {
+        window.open(purchase.downloadUrl, '_blank')
+        setStatusMessage('Download initiated!')
+        setStatusType('success')
+      } else {
+        throw new Error('Download URL generation failed.')
+      }
+    } catch (err) {
+      if (purchase?.downloadUrl) {
+        window.open(purchase.downloadUrl, '_blank')
+      } else {
+        setStatusMessage(err.message || 'Download link unavailable. Please contact support@iconeditz.com.')
+        setStatusType('error')
+      }
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone) {
-      setStatusMessage('Please fill all fields');
-      setStatusType('error');
-      return;
-    }
-    if (!user) {
-      setStatusMessage('You must be logged in to make a purchase.');
+      setStatusMessage('Please fill all required fields');
       setStatusType('error');
       return;
     }
@@ -145,7 +167,18 @@ export default function CheckoutModal({ product, onClose }) {
         </button>
 
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-white mb-2">Guest Checkout</h2>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-2xl font-bold text-white">
+              {user ? 'Secure Checkout' : 'Guest Checkout'}
+            </h2>
+          </div>
+
+          {user && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-300 border border-violet-500/20 mb-3">
+              🔒 Authenticated as {user.email}
+            </div>
+          )}
+
           <p className="text-text-muted text-sm mb-6">You are purchasing <strong className="text-white">{product.title}</strong> for Rs. {amount}</p>
 
           {statusMessage && (
@@ -175,7 +208,7 @@ export default function CheckoutModal({ product, onClose }) {
                 <input type="tel" name="phone" required value={formData.phone} onChange={handleChange} pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="9876543210" />
               </div>
 
-              <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl mt-6 transition-colors disabled:opacity-50">
+              <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl mt-6 transition-colors disabled:opacity-50 shadow-lg">
                 {loading ? 'Processing...' : `Pay Rs. ${amount}`}
               </button>
             </form>
@@ -183,19 +216,33 @@ export default function CheckoutModal({ product, onClose }) {
 
           {statusType === 'success' && purchase && (
             <div className="space-y-4 text-sm">
-              <div className="rounded-xl bg-green-500/10 p-4 text-green-100">
-                <h3 className="text-xl font-bold">✔ Payment Successful</h3>
-                <p className="mt-3">Order ID: {purchase.orderId}</p>
-                <p>Product: {purchase.product || product.title}</p>
-                <p>Amount: ₹{purchase.amount ?? amount}</p>
+              <div className="rounded-xl bg-green-500/10 border border-green-500/30 p-4 text-green-100 space-y-1.5">
+                <h3 className="text-xl font-bold text-green-400">✔ Payment Successful</h3>
+                <p className="pt-1">Order ID: <code className="text-xs bg-black/40 px-2 py-0.5 rounded text-green-200">{purchase.orderId}</code></p>
+                <p>Product: <strong>{purchase.product || product.title}</strong></p>
+                <p>Amount Paid: <strong>₹{purchase.amount ?? amount}</strong></p>
+                <div className="pt-2 text-xs">
+                  {purchase.emailSent || purchase.emailStatus === 'sent' ? (
+                    <span className="text-emerald-300 font-semibold">✉ Delivery email sent to {formData.email}</span>
+                  ) : (
+                    <span className="text-amber-300">⚠️ Email notice: {purchase.emailStatus || 'Email delivery in progress'}</span>
+                  )}
+                </div>
               </div>
+
               {purchase.downloadUrl ? (
-                <a href={purchase.downloadUrl} className="block w-full rounded-xl bg-primary py-3 text-center font-bold text-white" target="_blank" rel="noreferrer">
+                <button 
+                  onClick={handleDownloadClick} 
+                  className="block w-full rounded-xl bg-violet-600 hover:bg-violet-500 py-3 text-center font-bold text-white shadow-xl transition-all"
+                >
                   ⬇ Download Now
-                </a>
+                </button>
               ) : (
-                <p className="text-amber-200">Your payment is confirmed. Please contact support for access.</p>
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200 text-xs">
+                  ⚠️ Your payment is confirmed. Download link is temporarily unavailable. Please contact support@iconeditz.com with your Order ID.
+                </div>
               )}
+
               <button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-surface-dark py-3 font-medium text-white transition-colors hover:bg-white/10">
                 🏠 Back to Store
               </button>
