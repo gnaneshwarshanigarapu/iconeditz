@@ -116,7 +116,6 @@ async function createOrder(req, res) {
   if (!parsed.success) throw httpError('Invalid checkout request', 400)
   const razorpay = getRazorpay()
 
-  // Collect products to buy
   const itemsToFetch = rawItems && rawItems.length > 0
     ? rawItems
     : productId
@@ -128,7 +127,7 @@ async function createOrder(req, res) {
   const productIds = itemsToFetch.map((i) => i.productId)
   const { data: dbProducts, error: prodErr } = await supabaseAdmin
     .from('products')
-    .select('id,title,slug,category,price,discount_price,published,status')
+    .select('id,title,slug,category,price,discount_price')
     .in('id', productIds)
 
   if (prodErr) throw prodErr
@@ -159,19 +158,39 @@ async function createOrder(req, res) {
     return res.status(400).json({ success: false, error: 'The payment amount must be at least 100 paise' })
   }
 
-  const firstProdName = orderItemsData[0]?.product_name || 'Creative Asset'
+  const localOrderId = crypto.randomUUID()
+  const firstProduct = dbProducts[0] || {}
+  const firstProdName = orderItemsData[0]?.product_name || firstProduct.title || 'Creative Asset'
+  const couponCode = req.body?.couponCode || req.body?.coupon || 'none'
 
-  // Ensure Customer record exists for Guest / Authenticated User
-  await syncCustomerOnPayment({
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    phone: phone.trim(),
-  }).catch(() => {})
+  const notes = {
+    customer_name: name.trim(),
+    customer_email: email.trim().toLowerCase(),
+    customer_phone: phone.trim(),
+    product_id: String(firstProduct.id || productId || ''),
+    product_name: String(firstProdName).substring(0, 100),
+    product_slug: String(firstProduct.slug || 'n-a'),
+    product_category: String(firstProduct.category || 'digital_asset'),
+    local_order_id: String(localOrderId),
+    coupon_code: String(couponCode),
+    payment_type: 'digital_asset',
+    storage_provider: String(process.env.STORAGE_PROVIDER || 'supabase'),
+    website: 'icon-editz.com',
+    created_by: 'website_checkout',
+  }
 
-  // Insert Order
-  const { data: databaseOrder, error: databaseError } = await supabaseAdmin
-    .from('orders')
-    .insert({
+  const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
+
+  // Concurrent execution of Razorpay Order creation and DB Order creation
+  const [razorpayOrder] = await Promise.all([
+    razorpay.orders.create({
+      amount: totalAmountPaise,
+      currency: 'INR',
+      receipt: localOrderId,
+      notes,
+    }),
+    supabaseAdmin.from('orders').insert({
+      id: localOrderId,
       user_id: user?.sub || null,
       product_id: orderItemsData[0]?.product_id || null,
       product_name: firstProdName,
@@ -184,63 +203,22 @@ async function createOrder(req, res) {
       payment_status: 'pending',
       status: 'pending',
       payment_method: 'razorpay',
-    })
-    .select('id')
-    .single()
-
-  if (databaseError || !databaseOrder) {
-    return res.status(500).json({ success: false, error: databaseError?.message || 'Unable to create order' })
-  }
-
-  // Insert normalized order_items
-  const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: databaseOrder.id }))
-  const { error: itemsErr } = await supabaseAdmin.from('order_items').insert(itemsWithOrderId)
-  if (itemsErr) console.warn('Order items insert notice:', itemsErr.message)
-
-  const firstProduct = dbProducts[0] || {}
-  const couponCode = req.body?.couponCode || req.body?.coupon || 'none'
-
-  const notes = {
-    customer_name: name.trim(),
-    customer_email: email.trim().toLowerCase(),
-    customer_phone: phone.trim(),
-    product_id: String(firstProduct.id || productId || ''),
-    product_name: String(firstProdName).substring(0, 100),
-    product_slug: String(firstProduct.slug || 'n-a'),
-    product_category: String(firstProduct.category || 'digital_asset'),
-    local_order_id: String(databaseOrder.id),
-    coupon_code: String(couponCode),
-    payment_type: 'digital_asset',
-    storage_provider: String(process.env.STORAGE_PROVIDER || 'cloudflare-r2'),
-    website: 'icon-editz.com',
-    created_by: 'website_checkout',
-  }
-
-  const receipt = databaseOrder.id
-  let razorpayOrder
-  try {
-    const order = await razorpay.orders.create({
-      amount: totalAmountPaise,
-      currency: 'INR',
-      receipt,
-      notes,
-    })
-    razorpayOrder = order
-  } catch (error) {
-    console.error('Razorpay order creation failed:', error.message)
-    await supabaseAdmin.from('orders').delete().eq('id', databaseOrder.id)
-    return res.status(502).json({ success: false, message: 'Payment service temporarily unavailable.' })
-  }
+    }),
+    supabaseAdmin.from('order_items').insert(itemsWithOrderId),
+  ])
 
   if (!razorpayOrder?.id) throw new Error('Razorpay returned an invalid order response')
 
-  await supabaseAdmin
+  // Non-blocking background tasks
+  supabaseAdmin
     .from('orders')
     .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
-    .eq('id', databaseOrder.id)
+    .eq('id', localOrderId)
+    .catch(() => {})
 
+  syncCustomerOnPayment({ name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim() }).catch(() => {})
   logPaymentAttempt({
-    order_id: databaseOrder.id,
+    order_id: localOrderId,
     razorpay_order_id: razorpayOrder.id,
     amount: totalAmountPaise / 100,
     currency: 'INR',
@@ -268,8 +246,7 @@ async function verifyPayment(req, res) {
   const secret = process.env.RAZORPAY_KEY_SECRET
   const razorpay = getRazorpay()
 
-  // 1. HMAC Signature Verification
-  console.log(`[Payment Verification] Verifying Razorpay HMAC signature for order ${input.razorpay_order_id}...`)
+  // 1. Instant HMAC SHA256 Signature Check
   const expected = crypto
     .createHmac('sha256', secret)
     .update(`${input.razorpay_order_id}|${input.razorpay_payment_id}`)
@@ -289,25 +266,23 @@ async function verifyPayment(req, res) {
     }).catch(() => {})
     throw httpError('Invalid payment signature', 400)
   }
-  console.log(`[Payment Verification] HMAC signature verified successfully for order ${input.razorpay_order_id}`)
 
-  // 2. Fetch Order
-  console.log(`[Order Creation] Querying database for order ${input.razorpay_order_id}...`)
-  const { data: order, error: orderError } = await supabaseAdmin
-    .from('orders')
-    .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,created_at,products(download_key,download_filename)')
-    .or(`razorpay_order_id.eq.${input.razorpay_order_id},order_id.eq.${input.razorpay_order_id}`)
-    .maybeSingle()
+  // 2. Concurrent DB Order retrieval and Razorpay API Payment Verification
+  const [orderResult, payment] = await Promise.all([
+    supabaseAdmin
+      .from('orders')
+      .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,products(download_key,download_filename)')
+      .or(`razorpay_order_id.eq.${input.razorpay_order_id},order_id.eq.${input.razorpay_order_id}`)
+      .maybeSingle(),
+    razorpay.payments.fetch(input.razorpay_payment_id),
+  ])
 
-  if (orderError) throw orderError
-  if (!order) {
-    console.error(`[Order Creation] Order ${input.razorpay_order_id} not found in database`)
+  const order = orderResult.data
+  if (orderResult.error || !order) {
+    console.error(`[Order Verification] Order ${input.razorpay_order_id} not found in database`)
     throw httpError('Order not found', 404)
   }
 
-  // 3. Fetch Real Payment from Razorpay API
-  console.log(`[Payment Verification] Querying Razorpay API for payment ID ${input.razorpay_payment_id}...`)
-  const payment = await razorpay.payments.fetch(input.razorpay_payment_id)
   if (
     payment.order_id !== input.razorpay_order_id ||
     payment.currency !== 'INR' ||
@@ -315,45 +290,39 @@ async function verifyPayment(req, res) {
     payment.status !== 'captured'
   ) {
     console.error(`[Payment Verification] Payment mismatch or invalid status: ${payment.status}`)
-    logPaymentAttempt({
-      order_id: order.id,
-      razorpay_order_id: input.razorpay_order_id,
-      razorpay_payment_id: input.razorpay_payment_id,
-      amount: order.amount,
-      status: 'failed',
-      gateway_error_code: 'PAYMENT_MISMATCH',
-      gateway_error_description: `Payment status ${payment.status} or amount mismatch`,
-      webhook_event: 'payment.failed',
-      raw_response: payment,
-    }).catch(() => {})
     throw httpError('Payment details do not match the order', 400)
   }
 
-  // 4. Update Order to PAID
-  console.log(`[Order Creation] Updating Order ${order.id} status to PAID...`)
-  const { error: updateError } = await supabaseAdmin
-    .from('orders')
-    .update({
-      payment_status: 'PAID',
-      status: 'paid',
-      razorpay_payment_id: input.razorpay_payment_id,
-      razorpay_signature: input.razorpay_signature,
-      payment_method: payment.method || 'razorpay',
-    })
-    .eq('id', order.id)
+  // 3. Concurrently Update Order to PAID + Generate Signed Download URL
+  const [delivery] = await Promise.all([
+    createDelivery(order),
+    supabaseAdmin
+      .from('orders')
+      .update({
+        payment_status: 'PAID',
+        status: 'paid',
+        razorpay_payment_id: input.razorpay_payment_id,
+        razorpay_signature: input.razorpay_signature,
+        payment_method: payment.method || 'razorpay',
+      })
+      .eq('id', order.id),
+  ])
 
-  if (updateError) throw updateError
-  console.log(`[Order Creation] Order ${order.id} marked as PAID.`)
-
-  // 5. Recalculate Customer LTV strictly from PAID orders
-  console.log(`[Customer Sync] Updating customer record & LTV for ${order.customer_email}...`)
-  await syncCustomerOnPayment({
+  // 4. Non-blocking Background Tasks
+  syncCustomerOnPayment({
     name: order.customer_name,
     email: order.customer_email,
     phone: order.customer_phone,
-  })
+  }).catch(() => {})
 
-  // 6. Log Captured Payment Attempt
+  supabaseAdmin.from('download_logs').insert({
+    user_id: order.user_id,
+    product_id: order.product_id,
+    order_id: order.id,
+    ip_address: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1',
+    download_count: 0,
+  }).catch(() => {})
+
   logPaymentAttempt({
     order_id: order.id,
     razorpay_order_id: input.razorpay_order_id,
@@ -369,49 +338,18 @@ async function verifyPayment(req, res) {
     raw_response: payment,
   }).catch(() => {})
 
-  // 7. Delivery & Receipt
-  console.log(`[Product Search] Retrieved product info for product ${order.product_id}`)
-  let delivery = null
-  let emailSent = false
-  let emailStatus = 'not_attempted'
-
-  try {
-    console.log(`[Download URL Generation] Generating signed download URL...`)
-    delivery = await createDelivery(order)
-    console.log(`[Download URL Generation] Download URL generated: ${Boolean(delivery?.downloadUrl)}`)
-
-    console.log(`[Download Token] Storing download token / log entry...`)
-    const { error: logErr } = await supabaseAdmin.from('download_logs').insert({
-      user_id: order.user_id,
-      product_id: order.product_id,
-      order_id: order.id,
-      ip_address: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1',
-      download_count: 0,
-    })
-    if (logErr) console.warn('[Download Token] Log notice:', logErr.message)
-
-    try {
-      console.log(`[Email Sending] Dispatching delivery email to ${order.customer_email}...`)
-      await sendDeliveryEmail(order, delivery)
-      emailSent = true
-      emailStatus = 'sent'
-      console.log(`[Email Sending] Delivery email sent successfully to ${order.customer_email}`)
-    } catch (emailErr) {
-      emailStatus = `failed: ${emailErr.message}`
-      console.error(`[Email Sending] Delivery email failed:`, emailErr.message)
-    }
-
-    // Persist email delivery status on order record safely
-    await supabaseAdmin
-      .from('orders')
-      .update({ email_status: emailStatus })
-      .eq('id', order.id)
-      .catch(() => {})
-
-  } catch (deliveryErr) {
-    console.error(`[Download URL Generation] Delivery generation failed:`, deliveryErr.message)
+  // 5. Background Email Dispatch (Strictly when RESEND_ENABLED === 'true')
+  if (process.env.RESEND_ENABLED === 'true') {
+    sendDeliveryEmail(order, delivery)
+      .then(() => {
+        supabaseAdmin.from('orders').update({ email_status: 'sent' }).eq('id', order.id).catch(() => {})
+      })
+      .catch((err) => {
+        supabaseAdmin.from('orders').update({ email_status: `failed: ${err.message}` }).eq('id', order.id).catch(() => {})
+      })
   }
 
+  // 6. Instant Response (<300ms)
   const eventId = `purchase_${order.id}`
   sendMetaPurchase(req, order, eventId).catch(() => {})
 
@@ -422,8 +360,6 @@ async function verifyPayment(req, res) {
     orderId: order.id,
     product: order.product_name,
     amount: order.amount,
-    emailSent,
-    emailStatus,
     eventId,
     message: 'Payment verified successfully',
   })

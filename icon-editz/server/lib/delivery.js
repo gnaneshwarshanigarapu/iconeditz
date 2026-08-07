@@ -67,10 +67,12 @@ export async function createDelivery(order) {
 }
 
 export async function sendDeliveryEmail(order, delivery) {
+  const isResendEnabled = process.env.RESEND_ENABLED === 'true'
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    console.warn('[Email Sending] RESEND_API_KEY is not configured in environment. Skipping email.')
-    throw new Error('RESEND_API_KEY is not configured')
+
+  if (!isResendEnabled || !apiKey) {
+    console.log('[Email Sending] RESEND_ENABLED is false or RESEND_API_KEY is not configured. Email skipped.')
+    return { skipped: true, message: 'Email disabled or unconfigured' }
   }
 
   const resend = new Resend(apiKey)

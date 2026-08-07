@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import ProductCard from '../../components/store/ProductCard'
+import { prefetchRazorpayScript } from '../../components/store/CheckoutModal'
 import { useProductsQuery } from '../../hooks/useProductsQuery'
 import { useCmsPage } from '../../services/cms'
 
@@ -16,6 +17,10 @@ export default function Store() {
   const [filters, setFilters] = useState(initialFilters)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [draft, setDraft] = useState(initialFilters)
+
+  useEffect(() => {
+    prefetchRazorpayScript()
+  }, [])
 
   const displayed = useMemo(
     () =>

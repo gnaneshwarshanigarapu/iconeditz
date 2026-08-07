@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useCreateOrder } from '../../hooks/mutations/useCreateOrder'
 import { useVerifyPayment } from '../../hooks/mutations/useVerifyPayment'
 import { commerceData, metaEvent } from '../../lib/metaPixel'
 import { trackGaCommerce } from '../../utils/tracking'
 import { api } from '../../services/api'
+import { Loader2, CheckCircle2 } from 'lucide-react'
+
+export const prefetchRazorpayScript = () => {
+  if (typeof window === 'undefined' || window.Razorpay) return
+  const script = document.createElement('script')
+  script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+  script.async = true
+  document.head.appendChild(script)
+}
 
 export default function CheckoutModal({ product, onClose }) {
   const { user } = useAuth();
@@ -19,6 +28,10 @@ export default function CheckoutModal({ product, onClose }) {
   const [purchase, setPurchase] = useState(null)
   const createOrder = useCreateOrder()
   const verifyPayment = useVerifyPayment()
+
+  useEffect(() => {
+    prefetchRazorpayScript()
+  }, [])
 
   const amount = product.discountPrice || product.price;
 
@@ -41,16 +54,16 @@ export default function CheckoutModal({ product, onClose }) {
   }
 
   const loadRazorpay = async () => {
-    setStatusMessage('Initiating payment...');
+    setStatusMessage('Initializing secure payment...');
     setStatusType('info');
     setLoading(true);
 
     try {
-      if (!window.Razorpay) throw new Error('Razorpay Checkout could not be loaded. Please refresh and try again.')
+      if (!window.Razorpay) throw new Error('Razorpay Checkout is initializing. Please try again in a moment.')
 
       const razorpayOrder = await createOrder.mutateAsync({ productId: product.id, name: formData.name, email: formData.email, phone: formData.phone })
       metaEvent('InitiateCheckout', commerceData(product)); trackGaCommerce('begin_checkout', product)
-      if (!razorpayOrder.key_id || !razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('The payment service returned an incomplete order.')
+      if (!razorpayOrder.key_id || !razorpayOrder.order_id || !razorpayOrder.amount || !razorpayOrder.currency) throw new Error('Payment initialization failed.')
 
       let paymentReceived = false;
       const options = {
@@ -69,14 +82,14 @@ export default function CheckoutModal({ product, onClose }) {
               setPurchase(verifyData)
               metaEvent('Purchase', commerceData(product), verifyData.eventId)
               trackGaCommerce('purchase', product, verifyData.orderId)
-              setStatusMessage(verifyData.emailSent ? `A download link has been sent to ${formData.email}` : 'Payment successful. Download your file below.')
+              setStatusMessage('Payment verified! Your download is ready.')
               setStatusType('success');
             } else {
               throw new Error(verifyData.message || 'Payment verification failed.');
             }
           } catch (err) {
             reportFailedAttempt(razorpayOrder.order_id, { code: 'VERIFICATION_FAILED', description: err.message })
-            setStatusMessage(err.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.');
+            setStatusMessage(err.message || 'Unable to verify payment. Please try again.');
             setStatusType('error');
           }
         },
@@ -93,7 +106,7 @@ export default function CheckoutModal({ product, onClose }) {
             if (paymentReceived) return;
             setLoading(false);
             reportFailedAttempt(razorpayOrder.order_id, { code: 'BAD_REQUEST_PAYMENT_TIMED_OUT', description: 'Customer - Payment Timed Out' })
-            setStatusMessage('Payment cancelled or timed out.');
+            setStatusMessage('Payment cancelled.');
             setStatusType('info');
           },
         },
@@ -112,35 +125,29 @@ export default function CheckoutModal({ product, onClose }) {
       setStatusMessage('');
 
     } catch (err) {
-      setStatusMessage(err.message || 'Payment service is temporarily unavailable. Please try again in a few minutes.');
+      setStatusMessage(err.message || 'Payment service is temporarily unavailable.');
       setStatusType('error');
       setLoading(false);
     }
   };
 
   const handleDownloadClick = async () => {
-    if (!purchase?.orderId) return
+    if (!purchase?.orderId && !purchase?.downloadUrl) return
     try {
-      setStatusMessage('Fetching secure download link...')
+      if (purchase?.downloadUrl) {
+        window.open(purchase.downloadUrl, '_blank')
+        return
+      }
+      setStatusMessage('Preparing download...')
       setStatusType('info')
       const res = await api.get(`/api/downloads?orderId=${purchase.orderId}`)
       if (res.data?.downloadUrl) {
         window.open(res.data.downloadUrl, '_blank')
-        setStatusMessage('Download initiated!')
-        setStatusType('success')
-      } else if (purchase.downloadUrl) {
-        window.open(purchase.downloadUrl, '_blank')
-        setStatusMessage('Download initiated!')
-        setStatusType('success')
-      } else {
-        throw new Error('Download URL generation failed.')
+        setStatusMessage('')
       }
     } catch (err) {
       if (purchase?.downloadUrl) {
         window.open(purchase.downloadUrl, '_blank')
-      } else {
-        setStatusMessage(err.message || 'Download link unavailable. Please contact support@iconeditz.com.')
-        setStatusType('error')
       }
     }
   }
@@ -181,13 +188,13 @@ export default function CheckoutModal({ product, onClose }) {
 
           <p className="text-text-muted text-sm mb-6">You are purchasing <strong className="text-white">{product.title}</strong> for Rs. {amount}</p>
 
-          {statusMessage && (
-            <div className={`p-3 rounded-lg text-sm mb-4 ${
+          {statusMessage && statusType !== 'success' && (
+            <div className={`flex items-center gap-2 p-3 rounded-lg text-sm mb-4 ${
               statusType === 'error' ? 'bg-red-500/20 text-red-200 border border-red-500/50' : 
-              statusType === 'success' ? 'bg-green-500/20 text-green-200 border border-green-500/50' : 
               'bg-blue-500/20 text-blue-200 border border-blue-500/50'
             }`}>
-              {statusMessage}
+              {loading && <Loader2 className="h-4 w-4 animate-spin text-violet-400" />}
+              <span>{statusMessage}</span>
             </div>
           )}
 
@@ -208,44 +215,47 @@ export default function CheckoutModal({ product, onClose }) {
                 <input type="tel" name="phone" required value={formData.phone} onChange={handleChange} pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" className="w-full bg-surface-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="9876543210" />
               </div>
 
-              <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl mt-6 transition-colors disabled:opacity-50 shadow-lg">
-                {loading ? 'Processing...' : `Pay Rs. ${amount}`}
+              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white font-bold py-3.5 rounded-xl mt-6 transition-all disabled:opacity-60 shadow-lg">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Initializing secure payment...</span>
+                  </>
+                ) : (
+                  `Pay Rs. ${amount}`
+                )}
               </button>
             </form>
           )}
 
           {statusType === 'success' && purchase && (
-            <div className="space-y-4 text-sm">
-              <div className="rounded-xl bg-green-500/10 border border-green-500/30 p-4 text-green-100 space-y-1.5">
-                <h3 className="text-xl font-bold text-green-400">✔ Payment Successful</h3>
-                <p className="pt-1">Order ID: <code className="text-xs bg-black/40 px-2 py-0.5 rounded text-green-200">{purchase.orderId}</code></p>
-                <p>Product: <strong>{purchase.product || product.title}</strong></p>
-                <p>Amount Paid: <strong>₹{purchase.amount ?? amount}</strong></p>
-                <div className="pt-2 text-xs">
-                  {purchase.emailSent || purchase.emailStatus === 'sent' ? (
-                    <span className="text-emerald-300 font-semibold">✉ Delivery email sent to {formData.email}</span>
-                  ) : (
-                    <span className="text-amber-300">⚠️ Email notice: {purchase.emailStatus || 'Email delivery in progress'}</span>
-                  )}
+            <div className="space-y-5 text-sm">
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-emerald-100 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 text-xl font-bold">
+                  <CheckCircle2 className="h-6 w-6" />
+                  <span>Payment Successful</span>
+                </div>
+                <div className="space-y-1 pt-2 text-sm text-emerald-200/90">
+                  <p>Order ID: <code className="text-xs bg-black/40 px-2 py-0.5 rounded text-emerald-300">{purchase.orderId}</code></p>
+                  <p>Product: <strong className="text-white">{purchase.product || product.title}</strong></p>
+                  <p>Amount Paid: <strong className="text-white">₹{purchase.amount ?? amount}</strong></p>
+                </div>
+                <div className="pt-3 border-t border-emerald-500/20 text-xs font-medium text-emerald-200">
+                  Thank you for your purchase. Your download is ready.
                 </div>
               </div>
 
-              {purchase.downloadUrl ? (
+              <div className="space-y-3">
                 <button 
                   onClick={handleDownloadClick} 
-                  className="block w-full rounded-xl bg-violet-600 hover:bg-violet-500 py-3 text-center font-bold text-white shadow-xl transition-all"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 hover:bg-violet-500 py-3.5 text-center font-bold text-white shadow-xl transition-all hover:scale-[1.01]"
                 >
                   ⬇ Download Now
                 </button>
-              ) : (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200 text-xs">
-                  ⚠️ Your payment is confirmed. Download link is temporarily unavailable. Please contact support@iconeditz.com with your Order ID.
-                </div>
-              )}
-
-              <button onClick={onClose} className="w-full rounded-xl border border-white/10 bg-surface-dark py-3 font-medium text-white transition-colors hover:bg-white/10">
-                🏠 Back to Store
-              </button>
+                <button onClick={onClose} className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-surface-dark py-3.5 font-medium text-white transition-colors hover:bg-white/10">
+                  🏠 Back to Store
+                </button>
+              </div>
             </div>
           )}
         </div>
