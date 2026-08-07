@@ -496,6 +496,7 @@ async function verifyPayment(req, res) {
     orderId: order.id,
     product: order.product_name,
     amount: order.amount,
+    customerEmail: order.customer_email || order.user_email || order.email || '',
     eventId,
     message: 'Payment verified successfully',
   })

@@ -61,6 +61,34 @@ function sanitizeProductPayload(body) {
     const zip = body.downloadUrl ?? body.zip_path
     payload.zip_path = zip ? String(zip).trim() : null
   }
+  if (body.download_key !== undefined || body.downloadKey !== undefined || body.r2_object_key !== undefined) {
+    const key = body.download_key ?? body.downloadKey ?? body.r2_object_key
+    payload.download_key = key ? String(key).trim() : null
+  }
+  if (body.download_filename !== undefined || body.downloadFilename !== undefined || body.original_filename !== undefined) {
+    const name = body.download_filename ?? body.downloadFilename ?? body.original_filename
+    payload.download_filename = name ? String(name).trim() : null
+  }
+  if (body.storage_provider !== undefined || body.storageProvider !== undefined) {
+    const prov = body.storage_provider ?? body.storageProvider
+    payload.storage_provider = prov ? String(prov).trim() : 'r2'
+  } else if (payload.download_key) {
+    payload.storage_provider = 'r2'
+  }
+  if (body.download_type !== undefined || body.downloadType !== undefined) {
+    const dt = body.download_type ?? body.downloadType
+    payload.download_type = dt ? String(dt).trim() : 'r2'
+  } else if (payload.download_key) {
+    payload.download_type = 'r2'
+  }
+  if (body.file_size !== undefined || body.fileSize !== undefined) {
+    const sz = body.file_size ?? body.fileSize
+    payload.file_size = sz ? Number(sz) : null
+  }
+  if (body.content_type !== undefined || body.contentType !== undefined) {
+    const ct = body.content_type ?? body.contentType
+    payload.content_type = ct ? String(ct).trim() : null
+  }
   if (body.demoVideo !== undefined || body.demo_video !== undefined) {
     const vid = body.demoVideo ?? body.demo_video
     payload.demo_video = vid ? String(vid).trim() : null
@@ -113,6 +141,8 @@ async function handleGetProducts(req, res) {
     thumbnail: p.thumbnail_path || p.thumbnail || '/assets/images/og-icon-editz.png',
     discountPrice: p.discount_price ?? p.discountPrice ?? p.price,
     downloadUrl: p.zip_path || p.downloadUrl || '',
+    downloadKey: p.download_key || p.r2_object_key || null,
+    downloadFilename: p.download_filename || null,
     demoVideo: p.demo_video || p.demoVideo || '',
   }))
   return res.json({ data: mapped, products: mapped })
@@ -149,6 +179,8 @@ export async function handleGetProduct(req, res, requestedId = req.query.id) {
   const thumbnail = data.thumbnail_path || data.thumbnail || '/assets/images/og-icon-editz.png'
   const discountPrice = data.discount_price ?? data.discountPrice ?? data.price
   const downloadUrl = data.zip_path || data.downloadUrl || ''
+  const downloadKey = data.download_key || data.r2_object_key || null
+  const downloadFilename = data.download_filename || null
   const demoVideo = data.demo_video || data.demoVideo || ''
 
   const formatted = {
@@ -156,6 +188,8 @@ export async function handleGetProduct(req, res, requestedId = req.query.id) {
     thumbnail,
     discountPrice,
     downloadUrl,
+    downloadKey,
+    downloadFilename,
     demoVideo,
     adminPreview: isAdmin,
   }
@@ -179,6 +213,15 @@ async function handleAdminProductActions(req, res) {
       sanitized.slug = await uniqueSlug(body.slug || body.title)
       sanitized.created_at = new Date().toISOString()
 
+      console.log('[Database Save Product - POST]', {
+        title: sanitized.title,
+        slug: sanitized.slug,
+        download_key: sanitized.download_key,
+        download_filename: sanitized.download_filename,
+        storage_provider: sanitized.storage_provider,
+        price: sanitized.price,
+      })
+
       const { data, error } = await supabaseAdmin.from('products').insert([sanitized]).select().single()
       if (error) throw error
 
@@ -186,6 +229,7 @@ async function handleAdminProductActions(req, res) {
         ...data,
         thumbnail: data.thumbnail_path || '/assets/images/og-icon-editz.png',
         discountPrice: data.discount_price ?? data.price,
+        downloadKey: data.download_key || null,
       }
       return res.status(201).json({ success: true, data: formatted, product: formatted })
     }
@@ -196,6 +240,14 @@ async function handleAdminProductActions(req, res) {
         sanitized.slug = await uniqueSlug(body.slug || body.title, id)
       }
 
+      console.log('[Database Save Product - PUT]', {
+        id,
+        title: sanitized.title,
+        download_key: sanitized.download_key,
+        download_filename: sanitized.download_filename,
+        storage_provider: sanitized.storage_provider,
+      })
+
       const { data, error } = await supabaseAdmin.from('products').update(sanitized).eq('id', id).select().single()
       if (error) throw error
 
@@ -203,6 +255,7 @@ async function handleAdminProductActions(req, res) {
         ...data,
         thumbnail: data.thumbnail_path || '/assets/images/og-icon-editz.png',
         discountPrice: data.discount_price ?? data.price,
+        downloadKey: data.download_key || null,
       }
       return res.json({ success: true, data: formatted, product: formatted })
     }

@@ -24,8 +24,17 @@ export default function AddProduct() {
     try {
       const product = {
         title: data.title || 'Untitled',
+        slug: data.slug,
         category: data.category || 'Uncategorized',
         thumbnail: data.thumbnail || '',
+        mainImage: data.mainImage || data.thumbnail || '',
+        downloadUrl: data.downloadUrl || '',
+        downloadKey: data.downloadKey || data.download_key || data.r2_object_key || null,
+        downloadFilename: data.downloadFilename || data.download_filename || null,
+        storageProvider: data.storageProvider || data.storage_provider || 'r2',
+        downloadType: data.downloadType || data.download_type || 'r2',
+        fileSize: data.fileSize || data.file_size || null,
+        contentType: data.contentType || data.content_type || null,
         screenshots: parseList(data.screenshots),
         demoVideo: data.demoVideo || '',
         description: data.description || '',
@@ -36,6 +45,7 @@ export default function AddProduct() {
         status: data.status || 'draft',
         createdAt: new Date().toISOString(),
       }
+      console.log('[Product Upload - Admin Submit]', product)
       await addProduct(product)
       navigate('/admin/products')
     } catch (err) {

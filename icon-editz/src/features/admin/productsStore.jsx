@@ -8,7 +8,20 @@ const ProductsContext = createContext(null)
 // Components will be responsible for their own data fetching and state management.
 export function ProductsProvider({ children }) {
 
-  const normalize = (product) => ({ ...product, thumbnail: product.thumbnail || product.thumbnail_path, image: product.image || product.thumbnail_path, demoVideo: product.demoVideo || product.demo_video, discountPrice: product.discountPrice ?? product.discount_price })
+  const normalize = (product) => ({
+    ...product,
+    thumbnail: product.thumbnail || product.thumbnail_path,
+    image: product.image || product.thumbnail_path,
+    demoVideo: product.demoVideo || product.demo_video,
+    discountPrice: product.discountPrice ?? product.discount_price,
+    downloadUrl: product.zip_path || product.downloadUrl || '',
+    downloadKey: product.download_key || product.r2_object_key || product.downloadKey || null,
+    downloadFilename: product.download_filename || product.downloadFilename || null,
+    storageProvider: product.storage_provider || product.storageProvider || null,
+    downloadType: product.download_type || product.downloadType || null,
+    fileSize: product.file_size || product.fileSize || null,
+    contentType: product.content_type || product.contentType || null,
+  })
   const getProducts = useCallback(async () => {
     const response = await request('/api/products')
     return { data: (response.data || []).map(normalize), products: (response.data || []).map(normalize), count: response.data?.length || 0, error: null }
@@ -19,7 +32,21 @@ export function ProductsProvider({ children }) {
     const response = await request(`/api/products?id=${encodeURIComponent(id)}`)
     return response.product ? normalize(response.product) : null
   }, [])
-  const toRecord = (product) => ({ ...product, thumbnail_path: product.thumbnail || product.image || null, demo_video: product.demoVideo || null, discount_price: product.discountPrice == null || product.discountPrice === '' ? null : Number(product.discountPrice), published: product.status ? product.status === 'published' : Boolean(product.published), status: product.status || (product.published ? 'published' : 'draft') })
+  const toRecord = (product) => ({
+    ...product,
+    thumbnail_path: product.thumbnail || product.image || null,
+    zip_path: product.downloadUrl || product.zip_path || null,
+    download_key: product.downloadKey || product.download_key || product.r2_object_key || null,
+    download_filename: product.downloadFilename || product.download_filename || product.original_filename || null,
+    storage_provider: product.storageProvider || product.storage_provider || (product.downloadKey || product.download_key ? 'r2' : 'supabase'),
+    download_type: product.downloadType || product.download_type || (product.downloadKey || product.download_key ? 'r2' : 'url'),
+    file_size: product.fileSize || product.file_size || null,
+    content_type: product.contentType || product.content_type || null,
+    demo_video: product.demoVideo || null,
+    discount_price: product.discountPrice == null || product.discountPrice === '' ? null : Number(product.discountPrice),
+    published: product.status ? product.status === 'published' : Boolean(product.published),
+    status: product.status || (product.published ? 'published' : 'draft'),
+  })
   const upsertProduct = useCallback(async (product) => {
     const endpoint = product.id ? `/api/products?id=${encodeURIComponent(product.id)}` : '/api/products'
     const response = await request(endpoint, { method: product.id ? 'PUT' : 'POST', body: toRecord(product) })

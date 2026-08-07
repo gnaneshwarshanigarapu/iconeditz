@@ -22,7 +22,7 @@ async function getDownload(req, res) {
 
   const { data: orderList, error } = await supabaseAdmin
     .from('orders')
-    .select('id,user_id,product_id,product_name,amount,payment_status,customer_email,products(download_key,download_filename)')
+    .select('*, products(*)')
     .or(filter)
 
   if (error) throw error

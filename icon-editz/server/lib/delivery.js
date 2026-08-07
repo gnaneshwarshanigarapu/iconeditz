@@ -5,17 +5,34 @@ import { supabaseAdmin } from './supabaseAdmin.js'
 const safeFileName = (name) => (name || 'download').replace(/[^a-zA-Z0-9._-]/g, '-')
 
 export async function createDelivery(order) {
-  const downloadKey = order.products?.download_key || order.download_key
-  const filename = order.products?.download_filename || order.product_name || 'asset'
+  const downloadKey =
+    order.products?.download_key ||
+    order.download_key ||
+    order.products?.r2_object_key ||
+    order.r2_object_key ||
+    order.products?.zip_path ||
+    order.zip_path ||
+    order.products?.download_url ||
+    order.download_url
+
+  const filename = order.products?.download_filename || order.products?.original_filename || order.product_name || 'asset'
+
+  console.log(`[Download API Signed URL] Processing order ${order.id} for product '${order.product_name || order.products?.title}'`, {
+    order_id: order.id,
+    payment_status: order.payment_status || order.status,
+    download_key: downloadKey,
+    filename,
+    storage_provider: process.env.STORAGE_PROVIDER || 'supabase',
+  })
 
   if (!downloadKey) {
-    console.warn(`[Download URL Generation] Order ${order.id} has no download_key configured on product`)
-    return { downloadUrl: null, message: 'No downloadable file linked to this product' }
+    console.warn(`[Download URL Generation] Order ${order.id} has no download_key or file path attached`)
+    return { downloadUrl: null, message: 'No downloadable file is attached to this asset.' }
   }
 
   // Direct HTTP/HTTPS URL
   if (downloadKey.startsWith('http://') || downloadKey.startsWith('https://')) {
-    console.log(`[Download URL Generation] Order ${order.id}: Direct URL detected`)
+    console.log(`[Download API Signed URL] Order ${order.id}: Direct URL detected (${downloadKey})`)
     return { downloadUrl: downloadKey, expiresAt: new Date(Date.now() + 86400000).toISOString() }
   }
 

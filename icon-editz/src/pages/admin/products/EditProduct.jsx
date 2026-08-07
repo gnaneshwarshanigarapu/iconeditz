@@ -65,7 +65,14 @@ export default function EditProduct() {
         slug: data.slug,
         category: data.category || 'Uncategorized',
         thumbnail: data.thumbnail || data.thumbnail_path || '',
+        mainImage: data.mainImage || data.thumbnail || '',
         downloadUrl: data.downloadUrl || data.zip_path || '',
+        downloadKey: data.downloadKey || data.download_key || data.r2_object_key || null,
+        downloadFilename: data.downloadFilename || data.download_filename || null,
+        storageProvider: data.storageProvider || data.storage_provider || 'r2',
+        downloadType: data.downloadType || data.download_type || 'r2',
+        fileSize: data.fileSize || data.file_size || null,
+        contentType: data.contentType || data.content_type || null,
         screenshots: parseList(data.screenshots),
         demoVideo: data.demoVideo || data.demo_video || '',
         description: data.description || '',
@@ -75,6 +82,7 @@ export default function EditProduct() {
         tags: parseList(data.tags),
         status: data.status || 'published',
       }
+      console.log('[Product Update - Admin Submit]', patch)
       await updateProduct(id, patch)
       navigate('/admin/products')
     } catch (err) {
@@ -91,6 +99,11 @@ export default function EditProduct() {
     thumbnail: product.thumbnail || product.thumbnail_path || '',
     mainImage: product.mainImage || product.thumbnail || product.thumbnail_path || '',
     downloadUrl: product.downloadUrl || product.zip_path || '',
+    downloadKey: product.downloadKey || product.download_key || product.r2_object_key || '',
+    downloadFilename: product.downloadFilename || product.download_filename || '',
+    storageProvider: product.storageProvider || product.storage_provider || 'r2',
+    fileSize: product.fileSize || product.file_size || '',
+    contentType: product.contentType || product.content_type || '',
     screenshots: Array.isArray(product.screenshots) ? product.screenshots.join(', ') : product.screenshots || '',
     demoVideo: product.demoVideo || product.demo_video || '',
     description: product.description || '',

@@ -68,5 +68,27 @@ export default withApi(['POST', 'DELETE', 'GET'], async (req, res) => {
     const folder = req.body?.folder || 'uploads';
     const uploadResult = await storageService.upload({ file: req.file, folder });
 
-    return res.status(201).json({ success: true, data: uploadResult });
+    const payload = {
+        key: uploadResult.key,
+        r2_object_key: uploadResult.key,
+        url: uploadResult.url,
+        name: uploadResult.name,
+        original_filename: uploadResult.name,
+        size: uploadResult.size,
+        file_size: uploadResult.size,
+        type: uploadResult.type,
+        content_type: uploadResult.type,
+        storage_provider: process.env.STORAGE_PROVIDER || 'supabase',
+    };
+
+    console.log('[R2 Upload Success]', {
+        key: payload.key,
+        bucket: process.env.R2_BUCKET || process.env.SUPABASE_STORAGE_BUCKET || 'uploads',
+        url: payload.url,
+        name: payload.name,
+        size: payload.size,
+        type: payload.type,
+    });
+
+    return res.status(201).json({ success: true, data: payload });
 });

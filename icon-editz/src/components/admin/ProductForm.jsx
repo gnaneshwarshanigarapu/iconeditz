@@ -71,12 +71,43 @@ export default function ProductForm({ defaultValues, onSubmit, isEditing = false
       })
       if (res.data?.url) {
         setValue(fieldName, res.data.url)
+        if (fieldName === 'downloadUrl') {
+          const key = res.data.key || res.data.r2_object_key
+          setValue('downloadKey', key)
+          setValue('download_key', key)
+          setValue('r2_object_key', key)
+          setValue('downloadFilename', res.data.name)
+          setValue('download_filename', res.data.name)
+          setValue('fileSize', res.data.size)
+          setValue('file_size', res.data.size)
+          setValue('contentType', res.data.type)
+          setValue('content_type', res.data.type)
+          setValue('storageProvider', res.data.storage_provider || 'r2')
+          setValue('storage_provider', res.data.storage_provider || 'r2')
+        }
       }
     } catch (err) {
       alert(`Upload error: ${err.message}`)
     } finally {
       setUploadingField(null)
     }
+  }
+
+  const watchDownloadUrl = watch('downloadUrl')
+  const watchDownloadKey = watch('downloadKey') || watch('download_key')
+  const watchDownloadFilename = watch('downloadFilename') || watch('download_filename')
+  const watchFileSize = watch('fileSize') || watch('file_size')
+
+  const onFormSubmit = (data) => {
+    const isPublishing = data.status === 'published' || Boolean(data.published)
+    const hasDownload = Boolean(data.downloadUrl || data.downloadKey || data.download_key || data.zip_path)
+
+    if (isPublishing && !hasDownload) {
+      alert('⚠️ Asset Validation Error: You cannot publish a product without attaching a ZIP/PDF file or Cloudflare R2 Object Key. Please upload a private file first.')
+      return
+    }
+
+    onSubmit(data)
   }
 
   const inputClass =
@@ -92,7 +123,7 @@ export default function ProductForm({ defaultValues, onSubmit, isEditing = false
         </h2>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
         {/* Main Product Info Card (Matches Screenshot 3/5) */}
         <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-6 shadow-xl space-y-4 backdrop-blur-xl">
           {/* Product Name & Slug */}
@@ -187,10 +218,34 @@ export default function ProductForm({ defaultValues, onSubmit, isEditing = false
             />
           </div>
 
+          {watchDownloadUrl && (watchDownloadUrl.includes('drive.google.com') || watchDownloadUrl.includes('dropbox.com') || watchDownloadUrl.includes('mega.nz')) && (
+            <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 text-xs space-y-1">
+              <div className="flex items-center justify-between text-blue-300 font-bold">
+                <span>🔗 External Cloud Link Attached (Google Drive / Cloud)</span>
+                <span className="font-mono text-[10px] bg-blue-500/20 px-2 py-0.5 rounded text-blue-200">
+                  External Cloud URL
+                </span>
+              </div>
+              <p className="font-mono text-[11px] text-text-muted break-all">{watchDownloadUrl}</p>
+            </div>
+          )}
+
+          {watchDownloadKey && (
+            <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-3 text-xs space-y-1">
+              <div className="flex items-center justify-between text-purple-300 font-bold">
+                <span>⚡ Cloudflare R2 Object Key Attached</span>
+                <span className="font-mono text-[10px] bg-purple-500/20 px-2 py-0.5 rounded text-purple-200">
+                  {watchFileSize ? `${Math.round(watchFileSize / 1024 / 1024 * 100) / 100} MB` : 'Attached'}
+                </span>
+              </div>
+              <p className="font-mono text-[11px] text-text-muted break-all">{watchDownloadKey}</p>
+            </div>
+          )}
+
           <div className="pt-1">
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition-all">
               <FiUploadCloud />
-              <span>{uploadingField === 'downloadUrl' ? 'Uploading ZIP...' : 'Upload Private File'}</span>
+              <span>{uploadingField === 'downloadUrl' ? 'Uploading ZIP...' : 'Upload Private File to R2'}</span>
               <input
                 type="file"
                 className="hidden"
