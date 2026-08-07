@@ -11,7 +11,7 @@ ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS status text DEFAULT 'activ
 
 -- 2. Create public.payment_attempts table if not exists
 CREATE TABLE IF NOT EXISTS public.payment_attempts (
-    id uuid DEFAULT gen_random_policy_id() PRIMARY KEY,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     order_id text,
     razorpay_order_id text,
     razorpay_payment_id text,

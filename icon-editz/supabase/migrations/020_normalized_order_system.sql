@@ -20,7 +20,7 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS billing_address jsonb DEFAULT
 
 -- 3. Create public.order_items table
 CREATE TABLE IF NOT EXISTS public.order_items (
-    id uuid DEFAULT gen_random_policy_id() PRIMARY KEY,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     order_id uuid REFERENCES public.orders(id) ON DELETE CASCADE,
     product_id uuid REFERENCES public.products(id) ON DELETE SET NULL,
     product_name text,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 
 -- 4. Create public.payment_attempts table with full webhook metrics
 CREATE TABLE IF NOT EXISTS public.payment_attempts (
-    id uuid DEFAULT gen_random_policy_id() PRIMARY KEY,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     order_id text,
     razorpay_order_id text,
     razorpay_payment_id text,

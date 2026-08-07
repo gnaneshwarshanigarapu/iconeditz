@@ -11,12 +11,13 @@ export async function syncCustomerOnPayment({ name, email, phone }) {
 
   try {
     // 1. Calculate LTV & Total Orders strictly from captured/PAID orders
-    const { data: paidOrders = [] } = await supabaseAdmin
+    const { data: rawPaidOrders } = await supabaseAdmin
       .from('orders')
       .select('amount, created_at')
-      .or(`customer_email.eq.${normalizedEmail},user_email.eq.${normalizedEmail},email.eq.${normalizedEmail}`)
+      .or(`customer_email.eq.${normalizedEmail},email.eq.${normalizedEmail}`)
       .or('payment_status.eq.PAID,status.eq.paid,payment_status.eq.captured')
 
+    const paidOrders = Array.isArray(rawPaidOrders) ? rawPaidOrders : []
     const totalOrdersCount = paidOrders.length
     const totalSpentAmount = paidOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0)
     const latestOrderDate = paidOrders[0]?.created_at || now

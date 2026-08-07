@@ -36,6 +36,12 @@ ALTER TABLE tools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE skills ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access
+DROP POLICY IF EXISTS "Allow public read access to projects" ON projects;
 CREATE POLICY "Allow public read access to projects" ON projects FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public read access to tools" ON tools;
 CREATE POLICY "Allow public read access to tools" ON tools FOR SELECT USING (true);
-CREATE-POLICY "Allow public read access to skills" ON skills FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public read access to skills" ON skills;
+CREATE POLICY "Allow public read access to skills" ON skills FOR SELECT USING (true);
+

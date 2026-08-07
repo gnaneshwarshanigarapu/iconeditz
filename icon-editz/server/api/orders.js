@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { createRequire } from 'node:module'
 import { z } from 'zod'
-import { authenticate } from '../lib/auth.js'
+import { authenticate, tryAuthenticate } from '../lib/auth.js'
 import { withApi } from '../lib/handler.js'
 import { supabaseAdmin } from '../lib/supabaseAdmin.js'
 import { createDelivery, sendDeliveryEmail } from '../lib/delivery.js'
@@ -105,7 +105,7 @@ async function listOrders(req, res) {
 }
 
 async function createOrder(req, res) {
-  const user = await authenticate(req)
+  const user = await tryAuthenticate(req)
   const { productId, items: rawItems, name, email, phone } = req.body || {}
 
   if (!phone) {
@@ -161,11 +161,18 @@ async function createOrder(req, res) {
 
   const firstProdName = orderItemsData[0]?.product_name || 'Creative Asset'
 
+  // Ensure Customer record exists for Guest / Authenticated User
+  await syncCustomerOnPayment({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    phone: phone.trim(),
+  }).catch(() => {})
+
   // Insert Order
   const { data: databaseOrder, error: databaseError } = await supabaseAdmin
     .from('orders')
     .insert({
-      user_id: user.sub,
+      user_id: user?.sub || null,
       product_id: orderItemsData[0]?.product_id || null,
       product_name: firstProdName,
       customer_name: name.trim(),
@@ -233,7 +240,7 @@ async function createOrder(req, res) {
 }
 
 async function verifyPayment(req, res) {
-  const user = await authenticate(req)
+  const user = await tryAuthenticate(req)
   const parsed = verificationSchema.safeParse(req.body)
   if (!parsed.success) throw httpError('Missing or invalid payment verification fields', 400)
   const input = parsed.data
