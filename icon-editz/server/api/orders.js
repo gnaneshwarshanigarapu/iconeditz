@@ -179,17 +179,10 @@ async function createOrder(req, res) {
     created_by: 'website_checkout',
   }
 
-  const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
-
-  // Concurrent execution of Razorpay Order creation and DB Order creation
-  const [razorpayOrder] = await Promise.all([
-    razorpay.orders.create({
-      amount: totalAmountPaise,
-      currency: 'INR',
-      receipt: localOrderId,
-      notes,
-    }),
-    supabaseAdmin.from('orders').insert({
+  // 1. Insert parent order record in database
+  const { data: databaseOrder, error: databaseError } = await supabaseAdmin
+    .from('orders')
+    .insert({
       id: localOrderId,
       user_id: user?.sub || null,
       product_id: orderItemsData[0]?.product_id || null,
@@ -203,13 +196,38 @@ async function createOrder(req, res) {
       payment_status: 'pending',
       status: 'pending',
       payment_method: 'razorpay',
-    }),
-    supabaseAdmin.from('order_items').insert(itemsWithOrderId),
-  ])
+    })
+    .select('id')
+    .single()
 
-  if (!razorpayOrder?.id) throw new Error('Razorpay returned an invalid order response')
+  if (databaseError || !databaseOrder) {
+    console.error('[Order Creation] Database insertion error:', databaseError?.message)
+    throw httpError(databaseError?.message || 'Unable to create order in database', 500)
+  }
 
-  // Non-blocking background tasks
+  // 2. Create Razorpay Order with explicit try/catch and automatic rollback on failure
+  let razorpayOrder
+  try {
+    razorpayOrder = await razorpay.orders.create({
+      amount: totalAmountPaise,
+      currency: 'INR',
+      receipt: localOrderId,
+      notes,
+    })
+  } catch (rzpErr) {
+    console.error('[Order Creation] Razorpay order creation failed:', rzpErr.message || rzpErr)
+    await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
+    throw httpError(rzpErr.message || 'Payment gateway connection failed. Please try again.', 502)
+  }
+
+  if (!razorpayOrder?.id) {
+    await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
+    throw httpError('Razorpay returned an invalid order response', 502)
+  }
+
+  // 3. Asynchronous non-blocking background tasks
+  const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
+  supabaseAdmin.from('order_items').insert(itemsWithOrderId).catch((err) => console.warn('Order items insert notice:', err.message))
   supabaseAdmin
     .from('orders')
     .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
