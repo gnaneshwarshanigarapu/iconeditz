@@ -50,14 +50,18 @@ async function listOrders(req, res) {
   const singleOrderId = req.query.id
 
   if (singleOrderId) {
-    // Single order details with SQL joins
-    const { data: singleOrder, error: singleErr } = await supabaseAdmin
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(singleOrderId)
+    const filter = isUuid
+      ? `id.eq.${singleOrderId},razorpay_order_id.eq.${singleOrderId},order_id.eq.${singleOrderId}`
+      : `razorpay_order_id.eq.${singleOrderId},order_id.eq.${singleOrderId}`
+
+    const { data: singleOrderList, error: singleErr } = await supabaseAdmin
       .from('orders')
       .select('*, order_items(*, products(*)), customers(*)')
-      .eq('id', singleOrderId)
-      .maybeSingle()
+      .or(filter)
 
     if (singleErr) throw singleErr
+    const singleOrder = singleOrderList && singleOrderList.length > 0 ? singleOrderList[0] : null
     if (!singleOrder) return res.status(404).json({ success: false, message: 'Order not found' })
     return res.json({ success: true, data: singleOrder, order: singleOrder })
   }
@@ -358,10 +362,15 @@ async function verifyPayment(req, res) {
 
   // 3. Search Database Order strictly by razorpay_order_id
   console.log(`[Payment Verification] Searching order where razorpay_order_id = ${normalizedRazorpayOrderId}`)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedRazorpayOrderId)
+  const filter = isUuid
+    ? `razorpay_order_id.eq.${normalizedRazorpayOrderId},order_id.eq.${normalizedRazorpayOrderId},id.eq.${normalizedRazorpayOrderId}`
+    : `razorpay_order_id.eq.${normalizedRazorpayOrderId},order_id.eq.${normalizedRazorpayOrderId}`
+
   const { data: orderList, error: orderErr } = await supabaseAdmin
     .from('orders')
     .select('id,user_id,product_id,product_name,customer_name,customer_email,customer_phone,amount,payment_status,products(download_key,download_filename)')
-    .or(`razorpay_order_id.eq.${normalizedRazorpayOrderId},order_id.eq.${normalizedRazorpayOrderId},id.eq.${normalizedRazorpayOrderId}`)
+    .or(filter)
 
   let order = orderList && orderList.length > 0 ? orderList[0] : null
   let rowsReturned = orderList ? orderList.length : 0
@@ -384,11 +393,11 @@ async function verifyPayment(req, res) {
     }
   }
 
-  if (orderErr || !order) {
+  if (!order) {
     console.error('[Order Verification Failure] Detailed Diagnostic Summary:', {
       received_razorpay_order_id: normalizedRazorpayOrderId,
       received_razorpay_payment_id: input.razorpay_payment_id,
-      sql_filter_used: `razorpay_order_id = '${normalizedRazorpayOrderId}'`,
+      sql_filter_used: filter,
       number_of_rows_returned: rowsReturned,
       available_database_columns: ['id', 'razorpay_order_id', 'order_id', 'product_id', 'product_name', 'customer_name', 'customer_email', 'customer_phone', 'amount', 'currency', 'status', 'payment_status', 'created_at'],
       db_error: orderErr?.message || null,

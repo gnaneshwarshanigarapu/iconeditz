@@ -32,8 +32,38 @@ export default function PaymentAttemptsPage() {
     alert(`Checkout recovery link dispatched to ${email}`)
   }
 
+  const capturedCount = attempts.filter((a) => (a.status || '').toLowerCase() === 'captured' || (a.status || '').toLowerCase() === 'paid').length
+  const failedCount = attempts.filter((a) => (a.status || '').toLowerCase() === 'failed').length
+  const pendingCount = attempts.filter((a) => (a.status || '').toLowerCase() === 'pending' || (a.status || '').toLowerCase() === 'initiated').length
+  const cancelledCount = attempts.filter((a) => (a.status || '').toLowerCase() === 'cancelled').length
+  const recoveryRate = attempts.length ? Math.round((capturedCount / attempts.length) * 100) : 100
+
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto space-y-2">
+      {/* Payment Gateway Statistics */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Pending Attempts</p>
+          <p className="text-xl font-black text-amber-400 mt-1">{pendingCount}</p>
+          <p className="text-[11px] font-semibold text-text-muted mt-1">Awaiting Gateway</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Failed Payments</p>
+          <p className="text-xl font-black text-rose-400 mt-1">{failedCount}</p>
+          <p className="text-[11px] font-semibold text-text-muted mt-1">Razorpay Drop-offs</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Cancelled</p>
+          <p className="text-xl font-black text-text-muted mt-1">{cancelledCount}</p>
+          <p className="text-[11px] font-semibold text-text-muted mt-1">User Dismissed</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Recovery Rate</p>
+          <p className="text-xl font-black text-emerald-400 mt-1">{recoveryRate}%</p>
+          <p className="text-[11px] font-semibold text-emerald-400 mt-1">Success Metric</p>
+        </div>
+      </div>
+
       {/* Controls */}
       <DataFilterBar
         search={search}

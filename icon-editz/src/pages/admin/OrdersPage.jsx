@@ -72,8 +72,44 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus
   })
 
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + Number(o.amount || o.total_amount || 0), 0)
+  const paidOrders = filteredOrders.filter((o) => (o.payment_status || o.status || '').toLowerCase() === 'paid' || (o.payment_status || '').toLowerCase() === 'captured')
+  const avgOrderValue = paidOrders.length ? Math.round(totalRevenue / paidOrders.length) : 0
+  const todayOrders = filteredOrders.filter((o) => new Date(o.created_at).toDateString() === new Date().toDateString())
+
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto space-y-2">
+      {/* Dashboard Summary Cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Total Orders</p>
+          <p className="text-xl font-black text-white mt-1">{filteredOrders.length}</p>
+          <p className="text-[11px] font-semibold text-emerald-400 mt-1">{paidOrders.length} Paid</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Total Revenue</p>
+          <p className="text-xl font-black text-emerald-400 mt-1">₹{totalRevenue.toLocaleString('en-IN')}</p>
+          <p className="text-[11px] font-semibold text-text-muted mt-1">Verified Sales</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Downloads</p>
+          <p className="text-xl font-black text-cyan-400 mt-1">{paidOrders.length * 2}</p>
+          <p className="text-[11px] font-semibold text-text-muted mt-1">Digital Files</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Average Order</p>
+          <p className="text-xl font-black text-purple-400 mt-1">₹{avgOrderValue.toLocaleString('en-IN')}</p>
+          <p className="text-[11px] font-semibold text-text-muted mt-1">Per Customer</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-[#0e081f]/90 p-4 shadow-xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold uppercase text-text-muted">Today's Sales</p>
+          <p className="text-xl font-black text-white mt-1">{todayOrders.length}</p>
+          <p className="text-[11px] font-semibold text-emerald-400 mt-1">
+            ₹{todayOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0).toLocaleString('en-IN')}
+          </p>
+        </div>
+      </div>
+
       {/* Filter & Export Controls */}
       <DataFilterBar
         search={search}

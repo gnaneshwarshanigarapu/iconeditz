@@ -14,13 +14,19 @@ async function getDownload(req, res) {
 
   console.log(`[File Delivery] Requesting fresh download link for order ID: ${orderId}...`)
 
-  const { data: order, error } = await supabaseAdmin
+  const normalizedOrderId = String(orderId).trim()
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizedOrderId)
+  const filter = isUuid
+    ? `id.eq.${normalizedOrderId},razorpay_order_id.eq.${normalizedOrderId},order_id.eq.${normalizedOrderId}`
+    : `razorpay_order_id.eq.${normalizedOrderId},order_id.eq.${normalizedOrderId}`
+
+  const { data: orderList, error } = await supabaseAdmin
     .from('orders')
     .select('id,user_id,product_id,product_name,amount,payment_status,customer_email,products(download_key,download_filename)')
-    .eq('id', orderId)
-    .maybeSingle()
+    .or(filter)
 
   if (error) throw error
+  const order = orderList && orderList.length > 0 ? orderList[0] : null
   if (!order) {
     console.error(`[File Delivery] Order ${orderId} not found`)
     throw Object.assign(new Error('Order not found'), { status: 404 })
