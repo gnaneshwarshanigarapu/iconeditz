@@ -275,12 +275,16 @@ async function createOrder(req, res) {
     // Step 6: Background Async Operations
     currentStep = 'background_sync'
     const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
-    supabaseAdmin.from('order_items').insert(itemsWithOrderId).catch((err) => console.warn('Order items insert notice:', err.message))
-    supabaseAdmin
-      .from('orders')
-      .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
-      .eq('id', localOrderId)
-      .catch(() => {})
+
+    Promise.resolve(supabaseAdmin.from('order_items').insert(itemsWithOrderId))
+      .catch((err) => console.warn('[POST /api/orders] Order items insert notice:', err.message))
+
+    Promise.resolve(
+      supabaseAdmin
+        .from('orders')
+        .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
+        .eq('id', localOrderId)
+    ).catch((err) => console.warn('[POST /api/orders] Razorpay order ID update notice:', err.message))
 
     syncCustomerOnPayment({ name: customer_name, email: customer_email, phone: customer_phone }).catch(() => {})
     logPaymentAttempt({
@@ -391,13 +395,15 @@ async function verifyPayment(req, res) {
     phone: order.customer_phone,
   }).catch(() => {})
 
-  supabaseAdmin.from('download_logs').insert({
-    user_id: order.user_id,
-    product_id: order.product_id,
-    order_id: order.id,
-    ip_address: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1',
-    download_count: 0,
-  }).catch(() => {})
+  Promise.resolve(
+    supabaseAdmin.from('download_logs').insert({
+      user_id: order.user_id,
+      product_id: order.product_id,
+      order_id: order.id,
+      ip_address: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1',
+      download_count: 0,
+    })
+  ).catch((err) => console.warn('[Payment Verification] Download log notice:', err.message))
 
   logPaymentAttempt({
     order_id: order.id,
@@ -418,10 +424,10 @@ async function verifyPayment(req, res) {
   if (process.env.RESEND_ENABLED === 'true') {
     sendDeliveryEmail(order, delivery)
       .then(() => {
-        supabaseAdmin.from('orders').update({ email_status: 'sent' }).eq('id', order.id).catch(() => {})
+        Promise.resolve(supabaseAdmin.from('orders').update({ email_status: 'sent' }).eq('id', order.id)).catch(() => {})
       })
       .catch((err) => {
-        supabaseAdmin.from('orders').update({ email_status: `failed: ${err.message}` }).eq('id', order.id).catch(() => {})
+        Promise.resolve(supabaseAdmin.from('orders').update({ email_status: `failed: ${err.message}` }).eq('id', order.id)).catch(() => {})
       })
   }
 
