@@ -128,7 +128,7 @@ async function createOrder(req, res) {
   const productIds = itemsToFetch.map((i) => i.productId)
   const { data: dbProducts, error: prodErr } = await supabaseAdmin
     .from('products')
-    .select('id,title,price,discount_price,published,status')
+    .select('id,title,slug,category,price,discount_price,published,status')
     .in('id', productIds)
 
   if (prodErr) throw prodErr
@@ -197,6 +197,25 @@ async function createOrder(req, res) {
   const { error: itemsErr } = await supabaseAdmin.from('order_items').insert(itemsWithOrderId)
   if (itemsErr) console.warn('Order items insert notice:', itemsErr.message)
 
+  const firstProduct = dbProducts[0] || {}
+  const couponCode = req.body?.couponCode || req.body?.coupon || 'none'
+
+  const notes = {
+    customer_name: name.trim(),
+    customer_email: email.trim().toLowerCase(),
+    customer_phone: phone.trim(),
+    product_id: String(firstProduct.id || productId || ''),
+    product_name: String(firstProdName).substring(0, 100),
+    product_slug: String(firstProduct.slug || 'n-a'),
+    product_category: String(firstProduct.category || 'digital_asset'),
+    local_order_id: String(databaseOrder.id),
+    coupon_code: String(couponCode),
+    payment_type: 'digital_asset',
+    storage_provider: String(process.env.STORAGE_PROVIDER || 'cloudflare-r2'),
+    website: 'icon-editz.com',
+    created_by: 'website_checkout',
+  }
+
   const receipt = databaseOrder.id
   let razorpayOrder
   try {
@@ -204,6 +223,7 @@ async function createOrder(req, res) {
       amount: totalAmountPaise,
       currency: 'INR',
       receipt,
+      notes,
     })
     razorpayOrder = order
   } catch (error) {
