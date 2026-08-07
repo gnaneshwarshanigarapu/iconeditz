@@ -26,7 +26,7 @@ const verificationSchema = z.object({
   razorpay_signature: z.string().min(1),
 })
 
-const httpError = (message, status) => Object.assign(new Error(message), { status })
+const httpError = (message, status, step) => Object.assign(new Error(message), { status, step })
 
 const require = createRequire(import.meta.url)
 const Razorpay = require('razorpay')
@@ -36,7 +36,7 @@ const getRazorpay = () => {
   const keyIdPresent = Boolean(process.env.RAZORPAY_KEY_ID)
   const secretPresent = Boolean(process.env.RAZORPAY_KEY_SECRET)
   if (!keyIdPresent || !secretPresent) {
-    throw httpError('Payment service temporarily unavailable.', 503)
+    throw httpError('Payment service temporarily unavailable: Missing Razorpay API keys', 503, 'environment_audit')
   }
   razorpayClient ||= new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -105,155 +105,213 @@ async function listOrders(req, res) {
 }
 
 async function createOrder(req, res) {
-  const user = await tryAuthenticate(req)
-  const { productId, items: rawItems, name, email, phone } = req.body || {}
+  const apiStart = Date.now()
+  let currentStep = 'initialization'
 
-  if (!phone) {
-    return res.status(400).json({ success: false, error: 'Phone number is required' })
+  const stepTimer = (stepName) => {
+    const start = Date.now()
+    return () => {
+      const duration = Date.now() - start
+      console.log(`[POST /api/orders] Step '${stepName}' completed in ${duration}ms`)
+      return duration
+    }
   }
 
-  const parsed = checkoutSchema.safeParse(req.body)
-  if (!parsed.success) throw httpError('Invalid checkout request', 400)
-  const razorpay = getRazorpay()
-
-  const itemsToFetch = rawItems && rawItems.length > 0
-    ? rawItems
-    : productId
-    ? [{ productId, quantity: 1 }]
-    : []
-
-  if (itemsToFetch.length === 0) throw httpError('No products selected for order', 400)
-
-  const productIds = itemsToFetch.map((i) => i.productId)
-  const { data: dbProducts, error: prodErr } = await supabaseAdmin
-    .from('products')
-    .select('id,title,slug,category,price,discount_price')
-    .in('id', productIds)
-
-  if (prodErr) throw prodErr
-  if (!dbProducts || dbProducts.length === 0) throw httpError('Selected products not found', 404)
-
-  const productMap = new Map(dbProducts.map((p) => [p.id, p]))
-
-  let totalAmountPaise = 0
-  const orderItemsData = []
-
-  for (const item of itemsToFetch) {
-    const prod = productMap.get(item.productId)
-    if (!prod) continue
-    const unitPrice = Number(prod.discount_price ?? prod.price)
-    const lineTotalPaise = Math.round(unitPrice * 100) * item.quantity
-    totalAmountPaise += lineTotalPaise
-
-    orderItemsData.push({
-      product_id: prod.id,
-      product_name: prod.title,
-      quantity: item.quantity,
-      unit_price: unitPrice,
-      total_price: unitPrice * item.quantity,
-    })
-  }
-
-  if (!totalAmountPaise || totalAmountPaise < 100) {
-    return res.status(400).json({ success: false, error: 'The payment amount must be at least 100 paise' })
-  }
-
-  const localOrderId = crypto.randomUUID()
-  const firstProduct = dbProducts[0] || {}
-  const firstProdName = orderItemsData[0]?.product_name || firstProduct.title || 'Creative Asset'
-  const couponCode = req.body?.couponCode || req.body?.coupon || 'none'
-
-  const notes = {
-    customer_name: name.trim(),
-    customer_email: email.trim().toLowerCase(),
-    customer_phone: phone.trim(),
-    product_id: String(firstProduct.id || productId || ''),
-    product_name: String(firstProdName).substring(0, 100),
-    product_slug: String(firstProduct.slug || 'n-a'),
-    product_category: String(firstProduct.category || 'digital_asset'),
-    local_order_id: String(localOrderId),
-    coupon_code: String(couponCode),
-    payment_type: 'digital_asset',
-    storage_provider: String(process.env.STORAGE_PROVIDER || 'supabase'),
-    website: 'icon-editz.com',
-    created_by: 'website_checkout',
-  }
-
-  // 1. Insert parent order record in database
-  const { data: databaseOrder, error: databaseError } = await supabaseAdmin
-    .from('orders')
-    .insert({
-      id: localOrderId,
-      user_id: user?.sub || null,
-      product_id: orderItemsData[0]?.product_id || null,
-      product_name: firstProdName,
-      customer_name: name.trim(),
-      customer_email: email.trim().toLowerCase(),
-      customer_phone: phone.trim(),
-      amount: totalAmountPaise / 100,
-      total_amount: totalAmountPaise / 100,
-      currency: 'INR',
-      payment_status: 'pending',
-      status: 'pending',
-      payment_method: 'razorpay',
-    })
-    .select('id')
-    .single()
-
-  if (databaseError || !databaseOrder) {
-    console.error('[Order Creation] Database insertion error:', databaseError?.message)
-    throw httpError(databaseError?.message || 'Unable to create order in database', 500)
-  }
-
-  // 2. Create Razorpay Order with explicit try/catch and automatic rollback on failure
-  let razorpayOrder
   try {
-    razorpayOrder = await razorpay.orders.create({
-      amount: totalAmountPaise,
+    // Step 1: Validation
+    currentStep = 'request_validation'
+    const endValTimer = stepTimer('request_validation')
+    const user = await tryAuthenticate(req)
+
+    const rawBody = req.body || {}
+    const customer_name = (rawBody.customer_name || rawBody.name || '').trim()
+    const customer_email = (rawBody.customer_email || rawBody.email || '').trim().toLowerCase()
+    const customer_phone = (rawBody.customer_phone || rawBody.phone || '').trim()
+    const product_id = rawBody.product_id || rawBody.productId
+    const rawItems = rawBody.items
+
+    if (!customer_name) throw httpError('Customer name is required', 400, 'request_validation')
+    if (!customer_email || !customer_email.includes('@')) throw httpError('Valid customer email is required', 400, 'request_validation')
+    if (!customer_phone || customer_phone.length < 7) throw httpError('Valid mobile phone number is required', 400, 'request_validation')
+
+    const itemsToFetch = rawItems && rawItems.length > 0
+      ? rawItems
+      : product_id
+      ? [{ productId: product_id, quantity: 1 }]
+      : []
+
+    if (itemsToFetch.length === 0) throw httpError('No valid product selected for order', 400, 'request_validation')
+    endValTimer()
+
+    // Step 2: Environment Audit
+    currentStep = 'environment_audit'
+    const endEnvTimer = stepTimer('environment_audit')
+    const requiredEnv = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET']
+    const missingEnv = requiredEnv.filter((key) => !process.env[key])
+    if (missingEnv.length > 0) {
+      console.error(`[POST /api/orders Environment Error] Missing required variables: ${missingEnv.join(', ')}`)
+      throw httpError(`Payment service misconfigured. Missing environment variables: ${missingEnv.join(', ')}`, 503, 'environment_audit')
+    }
+    const razorpay = getRazorpay()
+    endEnvTimer()
+
+    // Step 3: Database Lookup
+    currentStep = 'database_lookup'
+    const endDbLookupTimer = stepTimer('database_lookup')
+    const productIds = itemsToFetch.map((i) => i.productId || i.product_id)
+
+    const { data: dbProducts, error: prodErr } = await supabaseAdmin
+      .from('products')
+      .select('id,title,slug,category,price,discount_price')
+      .in('id', productIds)
+
+    if (prodErr) {
+      console.error('[POST /api/orders DB Lookup Error]', prodErr.message)
+      throw httpError(`Failed to query product database: ${prodErr.message}`, 500, 'database_lookup')
+    }
+    if (!dbProducts || dbProducts.length === 0) {
+      throw httpError('Selected product not found in database', 404, 'database_lookup')
+    }
+
+    const productMap = new Map(dbProducts.map((p) => [p.id, p]))
+    let totalAmountPaise = 0
+    const orderItemsData = []
+
+    for (const item of itemsToFetch) {
+      const targetId = item.productId || item.product_id
+      const prod = productMap.get(targetId)
+      if (!prod) continue
+      const unitPrice = Number(prod.discount_price ?? prod.price)
+      const lineTotalPaise = Math.round(unitPrice * 100) * item.quantity
+      totalAmountPaise += lineTotalPaise
+
+      orderItemsData.push({
+        product_id: prod.id,
+        product_name: prod.title,
+        quantity: item.quantity,
+        unit_price: unitPrice,
+        total_price: unitPrice * item.quantity,
+      })
+    }
+
+    if (!totalAmountPaise || totalAmountPaise < 100) {
+      throw httpError('The total payment amount must be at least ₹1 (100 paise)', 400, 'database_lookup')
+    }
+    endDbLookupTimer()
+
+    // Step 4: Database Order Insert
+    currentStep = 'database_insert'
+    const endDbInsertTimer = stepTimer('database_insert')
+    const localOrderId = crypto.randomUUID()
+    const firstProduct = dbProducts[0] || {}
+    const firstProdName = orderItemsData[0]?.product_name || firstProduct.title || 'Creative Asset'
+    const couponCode = rawBody.couponCode || rawBody.coupon || 'none'
+
+    const { data: databaseOrder, error: databaseError } = await supabaseAdmin
+      .from('orders')
+      .insert({
+        id: localOrderId,
+        user_id: user?.sub || null,
+        product_id: orderItemsData[0]?.product_id || null,
+        product_name: firstProdName,
+        customer_name,
+        customer_email,
+        customer_phone,
+        amount: totalAmountPaise / 100,
+        total_amount: totalAmountPaise / 100,
+        currency: 'INR',
+        payment_status: 'pending',
+        status: 'pending',
+        payment_method: 'razorpay',
+      })
+      .select('id')
+      .single()
+
+    if (databaseError || !databaseOrder) {
+      console.error('[POST /api/orders DB Insert Error]', databaseError)
+      throw httpError(databaseError?.message || 'Database order creation failed', 500, 'database_insert')
+    }
+    endDbInsertTimer()
+
+    // Step 5: Razorpay Order Creation Request
+    currentStep = 'razorpay_request'
+    const endRzpTimer = stepTimer('razorpay_request')
+    const notes = {
+      customer_name,
+      customer_email,
+      customer_phone,
+      product_id: String(firstProduct.id || product_id || ''),
+      product_name: String(firstProdName).substring(0, 100),
+      product_slug: String(firstProduct.slug || 'n-a'),
+      product_category: String(firstProduct.category || 'digital_asset'),
+      local_order_id: String(localOrderId),
+      coupon_code: String(couponCode),
+      payment_type: 'digital_asset',
+      storage_provider: String(process.env.STORAGE_PROVIDER || 'supabase'),
+      website: 'icon-editz.com',
+      created_by: 'website_checkout',
+    }
+
+    let razorpayOrder
+    try {
+      razorpayOrder = await razorpay.orders.create({
+        amount: totalAmountPaise,
+        currency: 'INR',
+        receipt: localOrderId,
+        notes,
+      })
+    } catch (rzpErr) {
+      console.error('[POST /api/orders Razorpay Error]', rzpErr.message || rzpErr)
+      await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
+      throw httpError(rzpErr.message || 'Payment gateway order creation failed', 502, 'razorpay_request')
+    }
+
+    if (!razorpayOrder?.id) {
+      await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
+      throw httpError('Razorpay returned an invalid order response', 502, 'razorpay_request')
+    }
+    endRzpTimer()
+
+    // Step 6: Background Async Operations
+    currentStep = 'background_sync'
+    const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
+    supabaseAdmin.from('order_items').insert(itemsWithOrderId).catch((err) => console.warn('Order items insert notice:', err.message))
+    supabaseAdmin
+      .from('orders')
+      .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
+      .eq('id', localOrderId)
+      .catch(() => {})
+
+    syncCustomerOnPayment({ name: customer_name, email: customer_email, phone: customer_phone }).catch(() => {})
+    logPaymentAttempt({
+      order_id: localOrderId,
+      razorpay_order_id: razorpayOrder.id,
+      amount: totalAmountPaise / 100,
       currency: 'INR',
-      receipt: localOrderId,
-      notes,
+      status: 'initiated',
+      customer_name,
+      customer_email,
+      customer_phone,
+      webhook_event: 'order.created',
+    }).catch(() => {})
+
+    const totalDuration = Date.now() - apiStart
+    console.log(`[POST /api/orders] SUCCESS: Created Razorpay Order ${razorpayOrder.id} for Local Order ${localOrderId} in ${totalDuration}ms`)
+
+    return res.status(201).json({
+      success: true,
+      key_id: process.env.RAZORPAY_KEY_ID,
+      order_id: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      step: 'order_creation_success',
+      durationMs: totalDuration,
     })
-  } catch (rzpErr) {
-    console.error('[Order Creation] Razorpay order creation failed:', rzpErr.message || rzpErr)
-    await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
-    throw httpError(rzpErr.message || 'Payment gateway connection failed. Please try again.', 502)
+  } catch (err) {
+    console.error(`[POST /api/orders Failure] Step '${currentStep}' failed:`, err.message || err)
+    err.step = err.step || currentStep
+    throw err
   }
-
-  if (!razorpayOrder?.id) {
-    await supabaseAdmin.from('orders').delete().eq('id', localOrderId).catch(() => {})
-    throw httpError('Razorpay returned an invalid order response', 502)
-  }
-
-  // 3. Asynchronous non-blocking background tasks
-  const itemsWithOrderId = orderItemsData.map((item) => ({ ...item, order_id: localOrderId }))
-  supabaseAdmin.from('order_items').insert(itemsWithOrderId).catch((err) => console.warn('Order items insert notice:', err.message))
-  supabaseAdmin
-    .from('orders')
-    .update({ razorpay_order_id: razorpayOrder.id, order_id: razorpayOrder.id })
-    .eq('id', localOrderId)
-    .catch(() => {})
-
-  syncCustomerOnPayment({ name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim() }).catch(() => {})
-  logPaymentAttempt({
-    order_id: localOrderId,
-    razorpay_order_id: razorpayOrder.id,
-    amount: totalAmountPaise / 100,
-    currency: 'INR',
-    status: 'initiated',
-    customer_name: name,
-    customer_email: email,
-    customer_phone: phone,
-    webhook_event: 'order.created',
-  }).catch(() => {})
-
-  return res.status(201).json({
-    success: true,
-    key_id: process.env.RAZORPAY_KEY_ID,
-    order_id: razorpayOrder.id,
-    amount: razorpayOrder.amount,
-    currency: razorpayOrder.currency,
-  })
 }
 
 async function verifyPayment(req, res) {
